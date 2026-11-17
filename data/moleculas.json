@@ -1,0 +1,873 @@
+{
+    "version": "1.0",
+    "elementos": {
+        "H": {
+            "nombre": "Hidrógeno",
+            "valencia": 1,
+            "color": "#FFFFFF"
+        },
+        "C": {
+            "nombre": "Carbono",
+            "valencia": 4,
+            "color": "#404040"
+        },
+        "N": {
+            "nombre": "Nitrógeno",
+            "valencia": 3,
+            "color": "#3050F8"
+        },
+        "O": {
+            "nombre": "Oxígeno",
+            "valencia": 2,
+            "color": "#FF0D0D"
+        }
+    },
+    "moleculas": [
+        {
+            "id": "h2",
+            "nombre": "Hidrógeno",
+            "formula": "H₂",
+            "atomos": [
+                {
+                    "id": "H1",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H2",
+                    "elemento": "H"
+                }
+            ],
+            "enlaces": [
+                {
+                    "desde": "H1",
+                    "hasta": "H2",
+                    "orden": 1
+                }
+            ],
+            "geometria": "lineal",
+            "angulo_grados": 180,
+            "angulo_referencia": "Molécula diatómica lineal",
+            "descripcion": "Es el gas más ligero que existe. Está formado por dos átomos de hidrógeno unidos por un enlace sencillo.",
+            "dato_curioso": "El hidrógeno es el elemento más abundante del universo, aunque en la Tierra casi siempre se encuentra unido a otros átomos, como en el agua."
+        },
+        {
+            "id": "o2",
+            "nombre": "Oxígeno",
+            "formula": "O₂",
+            "atomos": [
+                {
+                    "id": "O1",
+                    "elemento": "O"
+                },
+                {
+                    "id": "O2",
+                    "elemento": "O"
+                }
+            ],
+            "enlaces": [
+                {
+                    "desde": "O1",
+                    "hasta": "O2",
+                    "orden": 2
+                }
+            ],
+            "geometria": "lineal",
+            "angulo_grados": 180,
+            "angulo_referencia": "Molécula diatómica lineal",
+            "descripcion": "Es el gas que respiramos. Sus dos átomos de oxígeno están unidos por un enlace doble, que es muy estable.",
+            "dato_curioso": "El oxígeno forma cerca de una quinta parte (21 %) del aire que respiramos."
+        },
+        {
+            "id": "h2o",
+            "nombre": "Agua",
+            "formula": "H₂O",
+            "atomos": [
+                {
+                    "id": "O1",
+                    "elemento": "O"
+                },
+                {
+                    "id": "H1",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H2",
+                    "elemento": "H"
+                }
+            ],
+            "enlaces": [
+                {
+                    "desde": "O1",
+                    "hasta": "H1",
+                    "orden": 1
+                },
+                {
+                    "desde": "O1",
+                    "hasta": "H2",
+                    "orden": 1
+                }
+            ],
+            "geometria": "angular",
+            "angulo_grados": 104.5,
+            "angulo_referencia": "Ángulo H–O–H ≈ 104.5°",
+            "descripcion": "Es la molécula que más abunda en la superficie de la Tierra y es indispensable para la vida. Tiene forma angular, como una 'V'.",
+            "dato_curioso": "El agua es una molécula polar: el oxígeno atrae con más fuerza los electrones, por eso puede disolver muchas sustancias."
+        },
+        {
+            "id": "co2",
+            "nombre": "Dióxido de carbono",
+            "formula": "CO₂",
+            "atomos": [
+                {
+                    "id": "C1",
+                    "elemento": "C"
+                },
+                {
+                    "id": "O1",
+                    "elemento": "O"
+                },
+                {
+                    "id": "O2",
+                    "elemento": "O"
+                }
+            ],
+            "enlaces": [
+                {
+                    "desde": "C1",
+                    "hasta": "O1",
+                    "orden": 2
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "O2",
+                    "orden": 2
+                }
+            ],
+            "geometria": "lineal",
+            "angulo_grados": 180,
+            "angulo_referencia": "Ángulo O–C–O = 180°",
+            "descripcion": "Es un gas que producimos al respirar y que las plantas usan para fabricar su alimento. Tiene dos enlaces dobles, uno a cada lado del carbono.",
+            "dato_curioso": "El hielo seco, que se usa para crear efecto de humo en espectáculos, es dióxido de carbono sólido."
+        },
+        {
+            "id": "ch4",
+            "nombre": "Metano",
+            "formula": "CH₄",
+            "atomos": [
+                {
+                    "id": "C1",
+                    "elemento": "C"
+                },
+                {
+                    "id": "H1",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H2",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H3",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H4",
+                    "elemento": "H"
+                }
+            ],
+            "enlaces": [
+                {
+                    "desde": "C1",
+                    "hasta": "H1",
+                    "orden": 1
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "H2",
+                    "orden": 1
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "H3",
+                    "orden": 1
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "H4",
+                    "orden": 1
+                }
+            ],
+            "geometria": "tetraédrica",
+            "angulo_grados": 109.5,
+            "angulo_referencia": "Ángulo H–C–H ≈ 109.5°",
+            "descripcion": "Es el principal componente del gas natural que se usa en las estufas. Tiene cuatro enlaces sencillos que apuntan a las esquinas de un tetraedro.",
+            "dato_curioso": "El metano también se forma de manera natural en pantanos y en el sistema digestivo de algunos animales, como las vacas."
+        },
+        {
+            "id": "nh3",
+            "nombre": "Amoníaco",
+            "formula": "NH₃",
+            "atomos": [
+                {
+                    "id": "N1",
+                    "elemento": "N"
+                },
+                {
+                    "id": "H1",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H2",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H3",
+                    "elemento": "H"
+                }
+            ],
+            "enlaces": [
+                {
+                    "desde": "N1",
+                    "hasta": "H1",
+                    "orden": 1
+                },
+                {
+                    "desde": "N1",
+                    "hasta": "H2",
+                    "orden": 1
+                },
+                {
+                    "desde": "N1",
+                    "hasta": "H3",
+                    "orden": 1
+                }
+            ],
+            "geometria": "piramidal",
+            "angulo_grados": 107,
+            "angulo_referencia": "Ángulo H–N–H ≈ 107°",
+            "descripcion": "Es un gas de olor muy penetrante. Tiene tres enlaces sencillos y un par de electrones libre que empuja a los hidrógenos formando una pirámide.",
+            "dato_curioso": "Gran parte de los fertilizantes que se usan en la agricultura se fabrican a partir de amoníaco."
+        },
+        {
+            "id": "ch3oh",
+            "nombre": "Metanol",
+            "formula": "CH₃OH",
+            "atomos": [
+                {
+                    "id": "C1",
+                    "elemento": "C"
+                },
+                {
+                    "id": "O1",
+                    "elemento": "O"
+                },
+                {
+                    "id": "H1",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H2",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H3",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H4",
+                    "elemento": "H"
+                }
+            ],
+            "enlaces": [
+                {
+                    "desde": "C1",
+                    "hasta": "H1",
+                    "orden": 1
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "H2",
+                    "orden": 1
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "H3",
+                    "orden": 1
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "O1",
+                    "orden": 1
+                },
+                {
+                    "desde": "O1",
+                    "hasta": "H4",
+                    "orden": 1
+                }
+            ],
+            "geometria": "tetraédrica",
+            "angulo_grados": 108.5,
+            "angulo_referencia": "Ángulo C–O–H ≈ 108.5°",
+            "descripcion": "Es el alcohol más sencillo. Se parece al metano, pero uno de sus hidrógenos está sustituido por un grupo OH (oxígeno unido a hidrógeno).",
+            "dato_curioso": "Se llama también 'alcohol de madera' porque antiguamente se obtenía al calentar madera. Es tóxico y nunca debe ingerirse."
+        },
+        {
+            "id": "c2h6o",
+            "nombre": "Etanol",
+            "formula": "C₂H₆O",
+            "atomos": [
+                {
+                    "id": "C1",
+                    "elemento": "C"
+                },
+                {
+                    "id": "C2",
+                    "elemento": "C"
+                },
+                {
+                    "id": "O1",
+                    "elemento": "O"
+                },
+                {
+                    "id": "H1",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H2",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H3",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H4",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H5",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H6",
+                    "elemento": "H"
+                }
+            ],
+            "enlaces": [
+                {
+                    "desde": "C1",
+                    "hasta": "C2",
+                    "orden": 1
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "H1",
+                    "orden": 1
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "H2",
+                    "orden": 1
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "H3",
+                    "orden": 1
+                },
+                {
+                    "desde": "C2",
+                    "hasta": "H4",
+                    "orden": 1
+                },
+                {
+                    "desde": "C2",
+                    "hasta": "H5",
+                    "orden": 1
+                },
+                {
+                    "desde": "C2",
+                    "hasta": "O1",
+                    "orden": 1
+                },
+                {
+                    "desde": "O1",
+                    "hasta": "H6",
+                    "orden": 1
+                }
+            ],
+            "geometria": "tetraédrica",
+            "angulo_grados": 108.5,
+            "angulo_referencia": "Ángulo C–O–H ≈ 108.5° (en el grupo OH)",
+            "descripcion": "Es el alcohol de las bebidas alcohólicas y también se usa como desinfectante. Tiene dos carbonos unidos por un enlace sencillo y un grupo OH al final.",
+            "dato_curioso": "Su fórmula también se escribe C₂H₅OH, porque el grupo OH está al final de la cadena de carbonos."
+        },
+        {
+            "id": "c2h4",
+            "nombre": "Etileno",
+            "formula": "C₂H₄",
+            "atomos": [
+                {
+                    "id": "C1",
+                    "elemento": "C"
+                },
+                {
+                    "id": "C2",
+                    "elemento": "C"
+                },
+                {
+                    "id": "H1",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H2",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H3",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H4",
+                    "elemento": "H"
+                }
+            ],
+            "enlaces": [
+                {
+                    "desde": "C1",
+                    "hasta": "C2",
+                    "orden": 2
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "H1",
+                    "orden": 1
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "H2",
+                    "orden": 1
+                },
+                {
+                    "desde": "C2",
+                    "hasta": "H3",
+                    "orden": 1
+                },
+                {
+                    "desde": "C2",
+                    "hasta": "H4",
+                    "orden": 1
+                }
+            ],
+            "geometria": "trigonal plana",
+            "angulo_grados": 120,
+            "angulo_referencia": "Ángulo H–C–H ≈ 120°",
+            "descripcion": "Es el hidrocarburo más sencillo con un enlace doble entre carbonos. Todos sus átomos están en un mismo plano.",
+            "dato_curioso": "Es una hormona vegetal: las frutas como el plátano y el jitomate producen etileno y lo usan para madurar."
+        },
+        {
+            "id": "h2o2",
+            "nombre": "Peróxido de hidrógeno",
+            "formula": "H₂O₂",
+            "atomos": [
+                {
+                    "id": "O1",
+                    "elemento": "O"
+                },
+                {
+                    "id": "O2",
+                    "elemento": "O"
+                },
+                {
+                    "id": "H1",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H2",
+                    "elemento": "H"
+                }
+            ],
+            "enlaces": [
+                {
+                    "desde": "O1",
+                    "hasta": "H1",
+                    "orden": 1
+                },
+                {
+                    "desde": "O1",
+                    "hasta": "O2",
+                    "orden": 1
+                },
+                {
+                    "desde": "O2",
+                    "hasta": "H2",
+                    "orden": 1
+                }
+            ],
+            "geometria": "no lineal",
+            "angulo_grados": 94.8,
+            "angulo_referencia": "Ángulo H–O–O ≈ 94.8°",
+            "descripcion": "Es un líquido que se descompone con facilidad. Sus dos oxígenos están unidos por un enlace sencillo y cada uno tiene un hidrógeno.",
+            "dato_curioso": "Diluido en agua se usa como antiséptico para limpiar heridas leves, porque libera oxígeno al descomponerse."
+        },
+        {
+            "id": "ch2o",
+            "nombre": "Formaldehído",
+            "formula": "CH₂O",
+            "atomos": [
+                {
+                    "id": "C1",
+                    "elemento": "C"
+                },
+                {
+                    "id": "O1",
+                    "elemento": "O"
+                },
+                {
+                    "id": "H1",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H2",
+                    "elemento": "H"
+                }
+            ],
+            "enlaces": [
+                {
+                    "desde": "C1",
+                    "hasta": "O1",
+                    "orden": 2
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "H1",
+                    "orden": 1
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "H2",
+                    "orden": 1
+                }
+            ],
+            "geometria": "trigonal plana",
+            "angulo_grados": 116,
+            "angulo_referencia": "Ángulo H–C–H ≈ 116°",
+            "descripcion": "Es un gas de olor muy fuerte y picante. Tiene un enlace doble entre el carbono y el oxígeno, y dos hidrógenos unidos al carbono.",
+            "dato_curioso": "Disuelto en agua se conoce como formol, y se usa para conservar muestras biológicas en laboratorios."
+        },
+        {
+            "id": "c2h4o2",
+            "nombre": "Ácido acético",
+            "formula": "C₂H₄O₂",
+            "atomos": [
+                {
+                    "id": "C1",
+                    "elemento": "C"
+                },
+                {
+                    "id": "C2",
+                    "elemento": "C"
+                },
+                {
+                    "id": "O1",
+                    "elemento": "O"
+                },
+                {
+                    "id": "O2",
+                    "elemento": "O"
+                },
+                {
+                    "id": "H1",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H2",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H3",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H4",
+                    "elemento": "H"
+                }
+            ],
+            "enlaces": [
+                {
+                    "desde": "C1",
+                    "hasta": "C2",
+                    "orden": 1
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "H1",
+                    "orden": 1
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "H2",
+                    "orden": 1
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "H3",
+                    "orden": 1
+                },
+                {
+                    "desde": "C2",
+                    "hasta": "O1",
+                    "orden": 2
+                },
+                {
+                    "desde": "C2",
+                    "hasta": "O2",
+                    "orden": 1
+                },
+                {
+                    "desde": "O2",
+                    "hasta": "H4",
+                    "orden": 1
+                }
+            ],
+            "geometria": "tetraédrica (en C) y trigonal plana (en el grupo COOH)",
+            "angulo_grados": 120,
+            "angulo_referencia": "Ángulo O=C–O ≈ 120°",
+            "descripcion": "Es el ácido que da el sabor agrio al vinagre. Tiene un grupo COOH al final de una cadena de dos carbonos.",
+            "dato_curioso": "El vinagre comercial tiene alrededor de 5 % de ácido acético en agua."
+        },
+        {
+            "id": "c3h6o",
+            "nombre": "Acetona",
+            "formula": "C₃H₆O",
+            "atomos": [
+                {
+                    "id": "C1",
+                    "elemento": "C"
+                },
+                {
+                    "id": "C2",
+                    "elemento": "C"
+                },
+                {
+                    "id": "C3",
+                    "elemento": "C"
+                },
+                {
+                    "id": "O1",
+                    "elemento": "O"
+                },
+                {
+                    "id": "H1",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H2",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H3",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H4",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H5",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H6",
+                    "elemento": "H"
+                }
+            ],
+            "enlaces": [
+                {
+                    "desde": "C2",
+                    "hasta": "C1",
+                    "orden": 1
+                },
+                {
+                    "desde": "C2",
+                    "hasta": "C3",
+                    "orden": 1
+                },
+                {
+                    "desde": "C2",
+                    "hasta": "O1",
+                    "orden": 2
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "H1",
+                    "orden": 1
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "H2",
+                    "orden": 1
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "H3",
+                    "orden": 1
+                },
+                {
+                    "desde": "C3",
+                    "hasta": "H4",
+                    "orden": 1
+                },
+                {
+                    "desde": "C3",
+                    "hasta": "H5",
+                    "orden": 1
+                },
+                {
+                    "desde": "C3",
+                    "hasta": "H6",
+                    "orden": 1
+                }
+            ],
+            "geometria": "trigonal plana (en el C central)",
+            "angulo_grados": 117,
+            "angulo_referencia": "Ángulo C–C–C ≈ 117°",
+            "descripcion": "Es un líquido incoloro y muy volátil. Su carbono central tiene un enlace doble con el oxígeno y dos grupos CH₃ a los lados.",
+            "dato_curioso": "Es el principal componente de muchos quitaesmaltes y se evapora muy rápido al contacto con el aire."
+        },
+        {
+            "id": "ch4n2o",
+            "nombre": "Urea",
+            "formula": "CH₄N₂O",
+            "atomos": [
+                {
+                    "id": "C1",
+                    "elemento": "C"
+                },
+                {
+                    "id": "O1",
+                    "elemento": "O"
+                },
+                {
+                    "id": "N1",
+                    "elemento": "N"
+                },
+                {
+                    "id": "N2",
+                    "elemento": "N"
+                },
+                {
+                    "id": "H1",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H2",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H3",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H4",
+                    "elemento": "H"
+                }
+            ],
+            "enlaces": [
+                {
+                    "desde": "C1",
+                    "hasta": "O1",
+                    "orden": 2
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "N1",
+                    "orden": 1
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "N2",
+                    "orden": 1
+                },
+                {
+                    "desde": "N1",
+                    "hasta": "H1",
+                    "orden": 1
+                },
+                {
+                    "desde": "N1",
+                    "hasta": "H2",
+                    "orden": 1
+                },
+                {
+                    "desde": "N2",
+                    "hasta": "H3",
+                    "orden": 1
+                },
+                {
+                    "desde": "N2",
+                    "hasta": "H4",
+                    "orden": 1
+                }
+            ],
+            "geometria": "trigonal plana (en el C central)",
+            "angulo_grados": 116,
+            "angulo_referencia": "Ángulo N–C–N ≈ 116°",
+            "descripcion": "Es una molécula con un carbono unido a dos grupos NH₂ y un oxígeno con enlace doble. Contiene nitrógeno en dos posiciones.",
+            "dato_curioso": "Es el principal producto de desecho del nitrógeno en la orina de los mamíferos, y también se usa como fertilizante."
+        },
+        {
+            "id": "hcooh",
+            "nombre": "Ácido metanoico",
+            "formula": "HCOOH",
+            "atomos": [
+                {
+                    "id": "C1",
+                    "elemento": "C"
+                },
+                {
+                    "id": "O1",
+                    "elemento": "O"
+                },
+                {
+                    "id": "O2",
+                    "elemento": "O"
+                },
+                {
+                    "id": "H1",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H2",
+                    "elemento": "H"
+                }
+            ],
+            "enlaces": [
+                {
+                    "desde": "C1",
+                    "hasta": "O1",
+                    "orden": 2
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "O2",
+                    "orden": 1
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "H1",
+                    "orden": 1
+                },
+                {
+                    "desde": "O2",
+                    "hasta": "H2",
+                    "orden": 1
+                }
+            ],
+            "geometria": "trigonal plana (en C)",
+            "angulo_grados": 106,
+            "angulo_referencia": "Ángulo C–O–H ≈ 106°",
+            "descripcion": "Es el ácido más sencillo de todos. Tiene un carbono con un enlace doble a un oxígeno, y un grupo OH unido al otro lado.",
+            "dato_curioso": "Las hormigas lo usan como defensa, y por eso su picadura arde. Su nombre viene de la palabra latina para hormiga."
+        }
+    ]
+}
