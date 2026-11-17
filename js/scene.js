@@ -139,9 +139,12 @@ export function acercar(factor) {
     camara.position.copy(controles.target).add(desplazamiento);
 }
 
-/** Devuelve una copia de la lista de objetos que hay dentro del grupo de átomos. */
+/** Devuelve una copia de la lista de grupos de átomos (sin los grupos de enlaces). */
 export function obtenerAtomos() {
-    return grupoAtomos ? [...grupoAtomos.children] : [];
+    if (!grupoAtomos) return [];
+    return grupoAtomos.children.filter(
+        (objeto) => objeto.userData && (objeto.userData.tipo === 'atomo' || objeto.userData.id)
+    );
 }
 
 /** Devuelve el grupo donde se colocan las esferas y los cilindros de los enlaces. */

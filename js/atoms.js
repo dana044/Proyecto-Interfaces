@@ -65,6 +65,16 @@ function crearAtomoVisual(elemento) {
     );
     grupo.add(esfera);
 
+    // Borde brillante real: una esfera un poco más grande, solo su cara
+    // trasera, que se ve como un contorno alrededor de la esfera.
+    // Empieza oculta y solo se muestra cuando el átomo está seleccionado.
+    const borde = new THREE.Mesh(
+        new THREE.SphereGeometry(config.radio * 1.12, 32, 24),
+        new THREE.MeshBasicMaterial({ color: COLOR_RESALTADO, side: THREE.BackSide, transparent: true, opacity: 0.9 })
+    );
+    borde.visible = false;
+    grupo.add(borde);
+
     if (config.bordeOscuro) {
         const contorno = new THREE.Mesh(
             new THREE.SphereGeometry(config.radio * 1.02, 32, 24),
@@ -77,7 +87,7 @@ function crearAtomoVisual(elemento) {
     etiqueta.position.set(0, config.radio + 0.25, 0);
     grupo.add(etiqueta);
 
-    return { grupo, esfera, radio: config.radio };
+    return { grupo, esfera, borde, radio: config.radio };
 }
 
 function generarId(elemento) {
@@ -110,6 +120,7 @@ export function agregarAtomo(elemento, posicion = { x: 0, y: 0, z: 0 }) {
     const visual = crearAtomoVisual(elemento);
     visual.grupo.position.set(posicion.x, posicion.y, posicion.z);
     visual.grupo.userData.id = id;
+    visual.grupo.userData.tipo = 'atomo';
     contenedor.add(visual.grupo);
 
     atomos.set(id, {
@@ -117,6 +128,7 @@ export function agregarAtomo(elemento, posicion = { x: 0, y: 0, z: 0 }) {
         elemento,
         grupo: visual.grupo,
         esfera: visual.esfera,
+        borde: visual.borde,
         radio: visual.radio,
         enlaces: new Set()
     });
@@ -134,22 +146,24 @@ export function moverAtomo(id, posicion) {
     for (const otroId of atomo.enlaces) {
         actualizarEnlace(id, otroId);
     }
+    emit('escena:atomo-movido', { id, posicion: { x: posicion.x, y: posicion.y, z: posicion.z } });
     return true;
 }
 
 /** Quita un átomo y todos sus enlaces. */
-export function eliminarAtomo(id) {
+export function eliminarAtomo(id, emitirEvento = true) {
     const atomo = atomos.get(id);
     if (!atomo) return false;
 
     for (const otroId of [...atomo.enlaces]) {
-        quitarEnlace(id, otroId);
+        quitarEnlace(id, otroId, emitirEvento);
     }
     obtenerContenedorAtomos().remove(atomo.grupo);
     liberarGrupo(atomo.grupo);
     atomos.delete(id);
 
     if (seleccionado === id) seleccionado = null;
+    if (emitirEvento) emit('escena:atomo-eliminado', { id, elemento: atomo.elemento });
     return true;
 }
 
@@ -165,6 +179,9 @@ export function crearEnlace(idA, idB, orden = 1) {
     if (enlaces.has(clave)) quitarEnlace(idA, idB);
 
     const grupo = new THREE.Group();
+    grupo.userData.tipo = 'enlace';
+    grupo.userData.a = idA;
+    grupo.userData.b = idB;
     const material = new THREE.MeshStandardMaterial({ color: 0x6b7280, roughness: 0.6 });
     const cilindros = [];
     const cantidad = orden === 2 ? 2 : 1;
@@ -185,7 +202,7 @@ export function crearEnlace(idA, idB, orden = 1) {
     return true;
 }
 
-function quitarEnlace(idA, idB) {
+function quitarEnlace(idA, idB, emitirEvento = true) {
     const clave = claveEnlace(idA, idB);
     const enlace = enlaces.get(clave);
     if (!enlace) return;
@@ -195,6 +212,7 @@ function quitarEnlace(idA, idB) {
     enlaces.delete(clave);
     atomos.get(idA)?.enlaces.delete(idB);
     atomos.get(idB)?.enlaces.delete(idA);
+    if (emitirEvento) emit('escena:enlace-eliminado', { a: idA, b: idB });
 }
 
 /** Recalcula posición, longitud y dirección de los cilindros de un enlace. */
@@ -226,7 +244,9 @@ function actualizarEnlace(idA, idB) {
 /** Marca un átomo como seleccionado con un borde brillante. Pasa null para quitar la selección. */
 export function seleccionarAtomo(id) {
     if (seleccionado && atomos.has(seleccionado)) {
-        atomos.get(seleccionado).esfera.material.emissive.setHex(0x000000);
+        const anterior = atomos.get(seleccionado);
+        anterior.esfera.material.emissive.setHex(0x000000);
+        if (anterior.borde) anterior.borde.visible = false;
     }
     seleccionado = null;
 
@@ -234,8 +254,10 @@ export function seleccionarAtomo(id) {
     if (atomo) {
         atomo.esfera.material.emissive.setHex(COLOR_RESALTADO);
         atomo.esfera.material.emissiveIntensity = 0.4;
+        if (atomo.borde) atomo.borde.visible = true;
         seleccionado = id;
     }
+    emit('escena:atomo-seleccionado', { id: seleccionado });
     return seleccionado;
 }
 
@@ -243,15 +265,16 @@ export function seleccionarAtomo(id) {
 export function limpiarEscena() {
     for (const clave of [...enlaces.keys()]) {
         const [a, b] = clave.split('|');
-        quitarEnlace(a, b);
+        quitarEnlace(a, b, false);
     }
     for (const id of [...atomos.keys()]) {
-        eliminarAtomo(id);
+        eliminarAtomo(id, false);
     }
     seleccionado = null;
     for (const elemento of Object.keys(contadores)) {
         contadores[elemento] = 0;
     }
+    emit('escena:escena-limpia');
 }
 
 /** Devuelve la lista de átomos con su id, elemento y posición actual. */

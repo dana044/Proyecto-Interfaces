@@ -27,9 +27,14 @@ Intenciones acordadas: agregar-atomo, deshacer, rehacer, limpiar, rotar, acercar
 | Evento                       | Datos                       |
 | ---------------------------- | --------------------------- |
 | escena:atomo-agregado        | {id, elemento}              |
+| escena:atomo-movido          | {id, posicion}              |
+| escena:atomo-eliminado       | {id, elemento}              |
+| escena:atomo-seleccionado    | {id}                        |
 | escena:enlace-creado         | {a, b, orden}               |
+| escena:enlace-eliminado      | {a, b}                      |
 | escena:enlace-rechazado      | {motivo}                    |
 | escena:molecula-identificada | {nombre, formula, completa} |
+| escena:escena-limpia         | —                           |
 
 ## Interfaz y estado
 
