@@ -1,0 +1,556 @@
+/* MolecuLab 3D · css/styles.css · HU-05 (versión 2)
+   Valores de: docs/guia_visual.pdf v1.0 */
+
+:root {
+  /* Fondos y superficies */
+  --fondo: #F7F5FC;
+  --superficie: #FFFFFF;
+  --lienzo: #F3F4F6;
+  --cuadricula: #D1D5DB;
+
+  /* Acciones y acentos */
+  --accion: #6D28D9;
+  --accion-hover: #5B21B6;
+  --accion-presionado: #4C1D95;
+  --acento: #0F766E;
+
+  /* Texto y bordes */
+  --texto: #202331;
+  --texto-secundario: #525566;
+  --borde: #858096;
+  --sombra: 0 4px 16px rgba(32, 35, 49, 0.08);
+  --deshabilitado-fondo: #E5E7EB;
+
+  /* Estados */
+  --ok: #15803D;
+  --aviso: #B45309;
+  --error: #B91C1C;
+
+  /* Átomos */
+  --atomo-h: #FFFFFF;
+  --atomo-c: #374151;
+  --atomo-n: #2563EB;
+  --atomo-o: #DC2626;
+
+  /* Tipografía y forma */
+  --fuente-titulo: "Nunito Sans", sans-serif;
+  --fuente-texto: "Inter", sans-serif;
+  --radio-tarjeta: 16px;
+  --radio-boton: 12px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  gap: 16px;
+  height: 100vh;
+  padding: 16px 24px;
+  background: var(--fondo);
+  color: var(--texto);
+  font-family: var(--fuente-texto);
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+h1, h2 {
+  font-family: var(--fuente-titulo);
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0;
+}
+
+h1 { font-size: 32px; }
+h2 { font-size: 24px; margin-bottom: 16px; }
+
+p {
+  margin: 0;
+}
+
+/* Texto solo para lectores de pantalla y teclado (no se ve) */
+.solo-lector {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Encabezado */
+
+.encabezado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.encabezado-izq {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.marca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.marca svg {
+  color: var(--accion);
+}
+
+.chip {
+  padding: 8px 16px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accion-presionado);
+  background: #EDE9FE;
+  border-radius: 999px;
+}
+
+/* Botón de menú (hamburguesa) */
+
+.boton-menu {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 8px 16px;
+  font-family: var(--fuente-texto);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--accion);
+  background: var(--superficie);
+  border: 2px solid var(--accion);
+  border-radius: var(--radio-boton);
+  cursor: pointer;
+}
+
+.boton-menu:hover {
+  color: var(--accion-hover);
+  border-color: var(--accion-hover);
+}
+
+/* Menú abierto: la etiqueta se rellena */
+#menu-atomos:checked ~ .encabezado .boton-menu {
+  color: #FFFFFF;
+  background: var(--accion);
+}
+
+/* Foco de teclado sobre el interruptor oculto, mostrado en la etiqueta */
+#menu-atomos:focus-visible ~ .encabezado .boton-menu {
+  outline: 3px solid var(--accion);
+  outline-offset: 3px;
+}
+
+.hamburguesa {
+  position: relative;
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 2px;
+}
+
+.hamburguesa::before,
+.hamburguesa::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 20px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 2px;
+}
+
+.hamburguesa::before { top: -6px; }
+.hamburguesa::after  { top: 6px; }
+
+/* Barra de estado */
+
+.barra-estado {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.indicador {
+  --estado: var(--aviso);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  font-size: 16px;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-tarjeta);
+  box-shadow: var(--sombra);
+}
+
+.indicador strong {
+  display: block;
+  font-weight: 600;
+}
+
+.indicador .valor {
+  color: var(--estado);
+}
+
+.indicador .punto {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--estado);
+}
+
+.estado-ok    { --estado: var(--ok); }
+.estado-aviso { --estado: var(--aviso); }
+.estado-error { --estado: var(--error); }
+
+/* Zona de mensajes */
+
+.zona-mensajes {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 12px 24px;
+  background: var(--superficie);
+  border: 2px dashed var(--borde);
+  border-radius: var(--radio-tarjeta);
+}
+
+.zona-mensajes p {
+  font-size: 18px;
+}
+
+.icono {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-size: 16px;
+  font-weight: 700;
+  border: 2px solid var(--texto);
+  border-radius: 50%;
+}
+
+.mensaje {
+  --estado: var(--aviso);
+  padding: 12px 16px;
+  font-size: 16px;
+  border-left: 4px solid var(--estado);
+}
+
+.mensaje-correcto { --estado: var(--ok); }
+.mensaje-aviso    { --estado: var(--aviso); }
+.mensaje-error    { --estado: var(--error); }
+
+/* Escena principal */
+
+.escena {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 24px;
+  min-height: 0;
+}
+
+/* Con el menú abierto aparece la columna de átomos */
+#menu-atomos:checked ~ .escena {
+  grid-template-columns: 260px minmax(0, 1fr) 320px;
+}
+
+.panel {
+  min-height: 0;
+  padding: 24px;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-tarjeta);
+  box-shadow: var(--sombra);
+  overflow: auto;
+}
+
+/* Panel de átomos: oculto al inicio */
+.panel-atomos {
+  display: none;
+  flex-direction: column;
+  gap: 16px;
+  overflow: visible;
+}
+
+#menu-atomos:checked ~ .escena .panel-atomos {
+  display: flex;
+}
+
+.panel-info dl {
+  display: grid;
+  gap: 16px;
+  margin: 0 0 24px;
+}
+
+.panel-info dt {
+  font-size: 16px;
+  color: var(--texto-secundario);
+}
+
+.panel-info dd {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.descripcion {
+  padding: 16px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-tarjeta);
+}
+
+/* Lienzo 3D */
+
+.lienzo {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  background-color: var(--lienzo);
+  background-image:
+    linear-gradient(var(--cuadricula) 1px, transparent 1px),
+    linear-gradient(90deg, var(--cuadricula) 1px, transparent 1px);
+  background-size: 32px 32px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-tarjeta);
+}
+
+.lienzo canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Cámara espejo flotante, abajo a la izquierda del lienzo */
+
+.camara-flotante {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 2;
+  width: 200px;
+  margin: 0;
+}
+
+/* El espejo se aplica al contenedor: el video y la superposición se reflejan juntos */
+.camara {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: #111827;
+  border: 2px dashed var(--borde);
+  border-radius: 12px;
+  transform: scaleX(-1);
+}
+
+#camara-espejo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#superposicion-mano {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.camara-flotante figcaption {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 4px 8px;
+  font-size: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 8px;
+}
+
+/* Tooltips: aparecen al pasar el cursor o al enfocar con teclado */
+
+.tip {
+  position: relative;
+}
+
+.tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  z-index: 20;
+  width: max-content;
+  max-width: 300px;
+  padding: 8px 12px;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.3;
+  color: #FFFFFF;
+  background: var(--texto);
+  border-radius: 8px;
+  transform: translateX(-50%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+}
+
+.tip:hover::after,
+.tip:focus-visible::after {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* En el panel de átomos el tooltip sale hacia la derecha */
+.panel-atomos .tip::after {
+  bottom: auto;
+  top: 50%;
+  left: calc(100% + 12px);
+  transform: translateY(-50%);
+}
+
+/* Controles */
+
+.boton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 8px 20px;
+  font-family: var(--fuente-texto);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--accion);
+  background: var(--superficie);
+  border: 2px solid var(--accion);
+  border-radius: var(--radio-boton);
+  cursor: pointer;
+}
+
+.boton:hover {
+  color: var(--accion-hover);
+  border-color: var(--accion-hover);
+}
+
+.boton:active {
+  color: var(--accion-presionado);
+  border-color: var(--accion-presionado);
+}
+
+.boton-principal {
+  color: #FFFFFF;
+  background: var(--accion);
+}
+
+.boton-principal:hover {
+  color: #FFFFFF;
+  background: var(--accion-hover);
+}
+
+.boton-principal:active {
+  color: #FFFFFF;
+  background: var(--accion-presionado);
+}
+
+.boton:focus-visible {
+  outline: 3px solid var(--accion);
+  outline-offset: 3px;
+}
+
+.boton:disabled {
+  color: var(--texto-secundario);
+  background: var(--deshabilitado-fondo);
+  border-color: transparent;
+  cursor: not-allowed;
+}
+
+.boton-atomo {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+/* Símbolos de los átomos; el hidrógeno lleva borde oscuro para distinguirse del lienzo */
+
+.simbolo {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #FFFFFF;
+  border-radius: 50%;
+}
+
+.atomo-h {
+  color: var(--texto);
+  background: var(--atomo-h);
+  border: 2px solid var(--atomo-c);
+}
+
+.atomo-c { background: var(--atomo-c); }
+.atomo-n { background: var(--atomo-n); }
+.atomo-o { background: var(--atomo-o); }
+
+/* Acciones de respaldo */
+
+.respaldo {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.respaldo .boton {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Pantallas de 1024 px o menos: apilado simple */
+
+@media (max-width: 1023px) {
+  body {
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .barra-estado {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .escena,
+  #menu-atomos:checked ~ .escena {
+    grid-template-columns: 1fr;
+  }
+
+  .camara-flotante {
+    width: 160px;
+  }
+
+  .respaldo {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
