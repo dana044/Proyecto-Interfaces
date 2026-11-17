@@ -1,4 +1,7 @@
 /**
+ * @file scene.js
+ * @description Escena 3D con Three.js: renderer, cámara, luces, cuadrícula y control con mouse de respaldo.
+ * Crea la escena dentro de #lienzo-3d y expone rotarVista, acercar y el grupo donde se colocan los átomos.
  * @author Citlaly Morales Viveros
  */
 
