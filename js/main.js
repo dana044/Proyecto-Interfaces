@@ -1,6 +1,6 @@
 /**
  * @fileoverview Punto de entrada de MolecuLab 3D.
- * Inicia los módulos en orden: interfaz, escena, gestos y voz.
+ * Inicia los módulos en orden: escena, gestos, voz e interfaz.
  * Si un módulo falla, los demás siguen funcionando.
  */
 
@@ -34,10 +34,14 @@ async function iniciarModulo(nombre, fn) {
 
 /** Inicia la aplicación en orden. */
 async function iniciarApp() {
-  await iniciarModulo('escena',   iniciarEscena);
-  await iniciarModulo('gestos',   iniciarGestos);
-  await iniciarModulo('voz',      iniciarVoz);
+  await iniciarModulo('escena', iniciarEscena);
+  await iniciarModulo('gestos', iniciarGestos);
   await iniciarModulo('interfaz', iniciarInterfaz);
+  await iniciarModulo('voz', iniciarVoz);
+
+  // Prueba temporal de la escena.
+  window.Atomos = Atomos;
+  window.Bus = Bus;
 }
 
 iniciarApp();
