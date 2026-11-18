@@ -171,7 +171,7 @@ El contexto del proyecto exige contrastar los datos con el libro de texto o la f
 - [ ] Valencias H = 1, C = 4, N = 3, O = 2 contra el libro del curso.
 - [ ] Nombres y fórmulas en español de secundaria.
 - [ ] Datos curiosos revisados (sin afirmaciones no verificadas).
-- [ ] Fuente citada: ********\_\_******** (página o capítulo).
+- [ ] Fuente citada: **\*\*\*\***\_\_**\*\*\*\*** (página o capítulo).
 
 **Nota:** los ángulos de metanol, etanol, peróxido de hidrógeno, formaldehído, ácido acético, acetona, urea y ácido metanoico son valores de referencia aproximados. Conviene confirmarlos con la fuente del curso antes de presentarlos como datos definitivos.
 

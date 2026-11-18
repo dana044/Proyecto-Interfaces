@@ -5,15 +5,14 @@
  */
 
 import { emit } from './bus.js';
+import { iniciarEscena } from './scene.js';
+import { iniciarGestos } from './gestures.js';
+import { iniciarVoz } from './voice.js';
+import { iniciarInterfaz } from './ui.js';
 
-// --- Importar funciones de inicio de cada módulo ---
-// Cada módulo exporta su función aunque esté vacía por ahora (HU-06).
-// Se irán implementando en sus HU correspondientes.
-
-import { iniciarEscena }    from './scene.js';     // HU-07 (Citaly)
-import { iniciarGestos }    from './gestures.js';  // HU-09 (Dana)
-import { iniciarVoz }       from './voice.js';     // HU-10 (Stephanie)
-import { iniciarInterfaz }  from './ui.js';        // HU-11 (Stephanie)
+// PRUEBA TEMPORAL: borrar después de agregar la cámara y la voz
+import * as Atomos from './atoms.js';
+import * as Bus from './bus.js';
 
 /**
  * Intenta iniciar un módulo. Si falla, emite un mensaje de error
@@ -35,10 +34,10 @@ async function iniciarModulo(nombre, fn) {
 
 /** Inicia la aplicación en orden. */
 async function iniciarApp() {
-  await iniciarModulo('interfaz', iniciarInterfaz);
   await iniciarModulo('escena',   iniciarEscena);
   await iniciarModulo('gestos',   iniciarGestos);
   await iniciarModulo('voz',      iniciarVoz);
+  await iniciarModulo('interfaz', iniciarInterfaz);
 }
 
 iniciarApp();
