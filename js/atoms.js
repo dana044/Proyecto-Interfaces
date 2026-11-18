@@ -7,7 +7,7 @@
 
 import * as THREE from 'three';
 import { obtenerContenedorAtomos } from './scene.js';
-import { emit } from './bus.js';
+import { emit, on } from './bus.js';
 
 const MAX_ATOMOS = 20;
 const ALTURA_ENLACE_DOBLE = 0.08;
@@ -104,7 +104,7 @@ function enviarMensaje(tipo, texto) {
  * Devuelve el id del átomo o null si no se pudo agregar.
  */
 export function agregarAtomo(elemento, posicion = { x: 0, y: 0, z: 0 }) {
-    if (!ELEMENTOS[elemento]) {
+    if (!Object.hasOwn(ELEMENTOS, elemento)) {
         enviarMensaje('aviso', 'Todavía no conozco ese elemento; puedo agregar hidrógeno, carbono, nitrógeno u oxígeno');
         return null;
     }
@@ -292,6 +292,26 @@ function liberarGrupo(grupo) {
         if (objeto.material) {
             if (objeto.material.map) objeto.material.map.dispose();
             objeto.material.dispose();
+        }
+    });
+}
+
+/** Conecta el comando de agregar átomos con la escena. */
+export function iniciarComandosDeAtomos() {
+    on('voz:comando', ({ intencion, parametros }) => {
+        if (intencion !== 'agregar-atomo') return;
+
+        const { elemento, cantidad } = parametros ?? {};
+        if (!Object.hasOwn(ELEMENTOS, elemento)) return;
+        if (!Number.isSafeInteger(cantidad) || cantidad < 1) return;
+
+        const disponibles = MAX_ATOMOS - atomos.size;
+        const visibles = Math.min(cantidad, disponibles);
+        const separacion = ELEMENTOS[elemento].radio * 2 + 0.15;
+
+        for (let i = 0; i < cantidad; i++) {
+            const x = (i - (visibles - 1) / 2) * separacion;
+            if (agregarAtomo(elemento, { x, y: 0, z: 0 }) === null) break;
         }
     });
 }

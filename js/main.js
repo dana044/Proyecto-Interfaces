@@ -9,6 +9,8 @@ import { iniciarEscena } from './scene.js';
 import { iniciarGestos } from './gestures.js';
 import { iniciarVoz } from './voice.js';
 import { iniciarInterfaz } from './ui.js';
+import { iniciarComandos } from './commands.js';
+import { iniciarComandosDeAtomos } from './atoms.js';
 
 // PRUEBA TEMPORAL: borrar después de agregar la cámara y la voz
 import * as Atomos from './atoms.js';
@@ -37,7 +39,10 @@ async function iniciarApp() {
   await iniciarModulo('escena', iniciarEscena);
   await iniciarModulo('gestos', iniciarGestos);
   await iniciarModulo('interfaz', iniciarInterfaz);
+  await iniciarModulo('comandos de átomos', iniciarComandosDeAtomos);
+  await iniciarModulo('comandos de voz', iniciarComandos);
   await iniciarModulo('voz', iniciarVoz);
+
 
   // Prueba temporal de la escena.
   window.Atomos = Atomos;

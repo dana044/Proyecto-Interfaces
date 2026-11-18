@@ -1,7 +1,6 @@
 /**
  * @file scene.js
- * @description Escena 3D con Three.js: renderer, cámara, luces, cuadrícula y control con mouse de respaldo.
- * Crea la escena dentro de #lienzo-3d y expone rotarVista, acercar y el grupo donde se colocan los átomos.
+ * @description Escena 3D con Three.js, cámara, luces, cuadrícula y controles.
  * @author Citlaly Morales Viveros
  */
 
@@ -19,13 +18,12 @@ let escena = null;
 let camara = null;
 let controles = null;
 let grupoAtomos = null;
-let esferaPrueba = null;
 let observadorTamano = null;
 let iniciado = false;
 
 /**
  * Crea la escena 3D dentro de #lienzo-3d.
- * Devuelve true si la escena quedó lista y false si no encontró el contenedor.
+ * Devuelve true si la escena quedó lista y false si falta el contenedor.
  */
 export async function iniciarEscena() {
     if (iniciado) return true;
@@ -52,19 +50,15 @@ export async function iniciarEscena() {
     contenedor.appendChild(renderer.domElement);
 
     escena.add(new THREE.AmbientLight(0xffffff, 0.6));
+
     const luzDireccional = new THREE.DirectionalLight(0xffffff, 1.0);
     luzDireccional.position.set(5, 10, 7);
     escena.add(luzDireccional);
 
-    const cuadricula = new THREE.GridHelper(20, 20, COLOR_CUADRICULA, COLOR_CUADRICULA);
-    escena.add(cuadricula);
-
-    esferaPrueba = new THREE.Mesh(
-        new THREE.SphereGeometry(0.5, 32, 16),
-        new THREE.MeshStandardMaterial({ color: 0x9ca3af })
+    const cuadricula = new THREE.GridHelper(
+        20, 20, COLOR_CUADRICULA, COLOR_CUADRICULA
     );
-    esferaPrueba.name = 'esfera-prueba';
-    escena.add(esferaPrueba);
+    escena.add(cuadricula);
 
     grupoAtomos = new THREE.Group();
     grupoAtomos.name = 'atomos';
@@ -87,6 +81,7 @@ export async function iniciarEscena() {
 
 function ajustarTamano() {
     if (!renderer || !contenedor) return;
+
     const ancho = contenedor.clientWidth;
     const alto = contenedor.clientHeight;
     if (ancho === 0 || alto === 0) return;
@@ -104,17 +99,22 @@ function animar() {
 
 /**
  * Gira la vista alrededor de la molécula.
- * dx y dy son desplazamientos relativos de la pantalla (valores entre 0 y 1 aprox.).
  * Un desplazamiento de 0.5 en dx equivale a media vuelta horizontal.
  */
 export function rotarVista(dx, dy) {
     if (!iniciado) return;
 
-    const desplazamiento = new THREE.Vector3().subVectors(camara.position, controles.target);
+    const desplazamiento = new THREE.Vector3().subVectors(
+        camara.position, controles.target
+    );
     const esferica = new THREE.Spherical().setFromVector3(desplazamiento);
 
     esferica.theta -= dx * Math.PI * 2;
-    esferica.phi = THREE.MathUtils.clamp(esferica.phi - dy * Math.PI, 0.05, Math.PI - 0.05);
+    esferica.phi = THREE.MathUtils.clamp(
+        esferica.phi - dy * Math.PI,
+        0.05,
+        Math.PI - 0.05
+    );
 
     desplazamiento.setFromSpherical(esferica);
     camara.position.copy(controles.target).add(desplazamiento);
@@ -122,42 +122,41 @@ export function rotarVista(dx, dy) {
 }
 
 /**
- * Acerca la cámara si factor es mayor que 1 y la aleja si es menor que 1.
- * Por ejemplo, factor 2 deja la cámara a la mitad de su distancia actual.
- * La distancia queda limitada entre DISTANCIA_MIN y DISTANCIA_MAX.
+ * Acerca la cámara con un factor mayor que 1 y la aleja
+ * con un factor entre 0 y 1.
  */
 export function acercar(factor) {
     if (!iniciado || !factor || factor <= 0) return;
 
-    const desplazamiento = new THREE.Vector3().subVectors(camara.position, controles.target);
+    const desplazamiento = new THREE.Vector3().subVectors(
+        camara.position, controles.target
+    );
     const distancia = THREE.MathUtils.clamp(
         desplazamiento.length() / factor,
         DISTANCIA_MIN,
         DISTANCIA_MAX
     );
+
     desplazamiento.setLength(distancia);
     camara.position.copy(controles.target).add(desplazamiento);
 }
 
-/** Devuelve una copia de la lista de grupos de átomos (sin los grupos de enlaces). */
+/** Devuelve los grupos de átomos de la escena. */
 export function obtenerAtomos() {
     if (!grupoAtomos) return [];
+
     return grupoAtomos.children.filter(
-        (objeto) => objeto.userData && (objeto.userData.tipo === 'atomo' || objeto.userData.id)
+        (objeto) => objeto.userData
+            && (objeto.userData.tipo === 'atomo' || objeto.userData.id)
     );
 }
 
-/** Devuelve el grupo donde se colocan las esferas y los cilindros de los enlaces. */
+/** Devuelve el grupo donde se colocan los átomos y enlaces. */
 export function obtenerContenedorAtomos() {
     return grupoAtomos;
 }
 
-/** Quita la esfera de referencia de la escena y libera su memoria. */
+/** Conserva la compatibilidad con los módulos que importan esta función. */
 export function quitarEsferaDePrueba() {
-    if (esferaPrueba && escena) {
-        escena.remove(esferaPrueba);
-        esferaPrueba.geometry.dispose();
-        esferaPrueba.material.dispose();
-        esferaPrueba = null;
-    }
+    // La escena ahora inicia sin la esfera de prueba.
 }

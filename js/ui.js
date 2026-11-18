@@ -1,5 +1,6 @@
 import { on } from './bus.js';
 import { alternarMicrofono } from './voice.js';
+import { agregarAtomo } from './atoms.js';
 
 const estadosMicrofono = {
   escuchando: { texto: 'Escuchando', clase: 'estado-ok' },
@@ -12,6 +13,13 @@ export function iniciarInterfaz() {
   const indicador = document.querySelector('#estado-microfono');
   const valor = indicador.querySelector('.valor');
   const mensajes = document.querySelector('#zona-mensajes');
+
+document.querySelectorAll('#panel-atomos [data-accion="agregar"]')
+  .forEach((boton) => {
+    boton.addEventListener('click', () => {
+      agregarAtomo(boton.dataset.elemento);
+    });
+  });
 
   microfono.addEventListener('click', alternarMicrofono);
   document.addEventListener('keydown', (evento) => {
