@@ -5,7 +5,7 @@
  */
 
 /** Activa o desactiva los logs de depuración en consola. */
-const DEBUG = true;
+const DEBUG = false;
 
 /** @type {Object.<string, Function[]>} Mapa de nombre de evento → oyentes */
 const oyentes = {};
@@ -26,6 +26,12 @@ export function emit(nombre, datos = {}) {
  * @param {string} nombre - Nombre del evento a escuchar
  * @param {Function} funcion - Función que se ejecuta al recibir el evento
  */
+/**
+ * Inicio del bus (HU-06: cada módulo exporta una iniciar...()).
+ * El bus no necesita inicialización: solo deja constancia de que existe.
+ */
+export function iniciarBus() {}
+
 export function on(nombre, funcion) {
   if (!oyentes[nombre]) oyentes[nombre] = [];
   oyentes[nombre].push(funcion);

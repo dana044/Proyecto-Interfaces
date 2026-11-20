@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { obtenerCamara, obtenerContenedorAtomos, obtenerLienzo } from './scene.js';
 import { emit, on } from './bus.js';
 import { AVISO_ELEMENTO_DESCONOCIDO, ELEMENTOS, MAX_ATOMOS } from './elementos.js';
+import { setUltimaAccion } from './state.js';
 
 const ALTURA_ENLACE_DOBLE = 0.08;
 const FACTOR_TOLERANCIA_PELLIZCO = 1.5;
@@ -23,6 +24,19 @@ const contadores = Object.fromEntries(
 
 let seleccionado = null;
 let arrastre = null;
+
+/* Historial para Deshacer (HU-16, versión mínima): fotos de la escena
+   antes de cada agregado y de cada limpieza. Solo deshace agregar y
+   limpiar; mover átomos con el arrastre todavía no se deshace. */
+const historial = [];
+let restaurando = false;
+let catalogoMoleculas = null;
+
+function guardarFoto() {
+    if (restaurando) return;
+    historial.push(obtenerListaAtomos());
+    if (historial.length > 50) historial.shift();
+}
 let arrastreIniciado = false;
 const rayo = new THREE.Raycaster();
 
@@ -155,6 +169,7 @@ export function agregarAtomo(elemento, posicion) {
     const contenedor = obtenerContenedorAtomos();
     if (!contenedor) return null;
 
+    guardarFoto();
     const destino = posicion ?? buscarPosicionLibre(ELEMENTOS[elemento].radio);
     const id = generarId(elemento);
     const visual = crearAtomoVisual(elemento);
@@ -175,6 +190,7 @@ export function agregarAtomo(elemento, posicion) {
     });
 
     emit('escena:atomo-agregado', { id, elemento });
+    setUltimaAccion(`Agregaste ${ELEMENTOS[elemento].nombre} (${id})`);
     return id;
 }
 
@@ -317,6 +333,7 @@ export function seleccionarAtomo(id) {
 }
 
 export function limpiarEscena() {
+    guardarFoto();
     for (const clave of [...enlaces.keys()]) {
         const [a, b] = clave.split('|');
         quitarEnlace(a, b, false);
@@ -332,6 +349,7 @@ export function limpiarEscena() {
     }
 
     emit('escena:escena-limpia');
+    setUltimaAccion('Limpiaste la escena');
 }
 
 export function obtenerListaAtomos() {
@@ -356,8 +374,108 @@ function liberarGrupo(grupo) {
     });
 }
 
+/**
+ * Deshace el último agregado o la última limpieza, restaurando la foto
+ * anterior de la escena. Devuelve false si no hay nada que deshacer.
+ */
+export function deshacer() {
+    const foto = historial.pop();
+    if (!foto) {
+        enviarMensaje('aviso', 'No hay nada que deshacer todavía');
+        return false;
+    }
+
+    restaurando = true;
+    limpiarEscena();
+    for (const atomo of foto) {
+        agregarAtomo(atomo.elemento, atomo.posicion);
+    }
+    restaurando = false;
+    enviarMensaje('aviso', 'Se deshizo la última acción');
+    setUltimaAccion('Deshiciste la última acción');
+    return true;
+}
+
+function mismoConteo(a, b) {
+    const claves = new Set([...Object.keys(a), ...Object.keys(b)]);
+    for (const clave of claves) {
+        if ((a[clave] || 0) !== (b[clave] || 0)) return false;
+    }
+    return true;
+}
+
+/**
+ * Verifica la molécula construida comparando sus átomos con el catálogo
+ * (data/moleculas.json). Versión provisional hasta HU-15/HU-22: como los
+ * enlaces todavía no se crean en la escena, la comparación es por
+ * cantidad de átomos de cada elemento, no por enlaces ni valencias.
+ * Si coincide, emite escena:molecula-identificada y devuelve la molécula;
+ * si no, avisa que todavía no es una molécula completa del catálogo.
+ */
+export async function verificarMolecula() {
+    const actuales = obtenerListaAtomos();
+    if (actuales.length === 0) {
+        enviarMensaje('aviso', 'La escena está vacía. Agrega átomos y pulsa Verificar molécula.');
+        return null;
+    }
+
+    try {
+        if (!catalogoMoleculas) {
+            const respuesta = await fetch('data/moleculas.json');
+            if (!respuesta.ok) throw new Error('catálogo no disponible');
+            catalogoMoleculas = await respuesta.json();
+        }
+    } catch {
+        enviarMensaje('error', 'No pude leer el catálogo de moléculas (data/moleculas.json).');
+        return null;
+    }
+
+    const conteo = {};
+    for (const atomo of actuales) {
+        conteo[atomo.elemento] = (conteo[atomo.elemento] || 0) + 1;
+    }
+
+    const encontrada = (catalogoMoleculas.moleculas || []).find((molecula) => {
+        const esperado = {};
+        for (const atomo of molecula.atomos || []) {
+            esperado[atomo.elemento] = (esperado[atomo.elemento] || 0) + 1;
+        }
+        return mismoConteo(conteo, esperado);
+    });
+
+    if (!encontrada) {
+        enviarMensaje('aviso', 'Todavía no es una molécula completa del catálogo. Revisa los átomos que agregaste.');
+        setUltimaAccion('Verificación: molécula incompleta');
+        return null;
+    }
+
+    emit('escena:molecula-identificada', {
+        nombre: encontrada.nombre,
+        formula: encontrada.formula,
+        completa: true,
+        geometria: encontrada.geometria,
+        descripcion: encontrada.descripcion,
+    });
+    enviarMensaje('correcto', `¡Es ${encontrada.nombre}! Su fórmula es ${encontrada.formula}.`);
+    setUltimaAccion(`Verificaste ${encontrada.nombre}`);
+    return encontrada;
+}
+
 export function iniciarComandosDeAtomos() {
     on('voz:comando', ({ intencion, parametros }) => {
+        if (intencion === 'deshacer') {
+            deshacer();
+            return;
+        }
+        if (intencion === 'limpiar') {
+            limpiarEscena();
+            enviarMensaje('aviso', 'Se limpió la escena');
+            return;
+        }
+        if (intencion === 'verificar') {
+            verificarMolecula();
+            return;
+        }
         if (intencion !== 'agregar-atomo') return;
 
         const { elemento, cantidad } = parametros ?? {};

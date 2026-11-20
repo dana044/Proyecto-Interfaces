@@ -12,7 +12,6 @@
   --accion: #6D28D9;
   --accion-hover: #5B21B6;
   --accion-presionado: #4C1D95;
-  --acento: #0F766E;
 
   /* Texto y bordes */
   --texto: #202331;
@@ -28,9 +27,9 @@
 
   /* Átomos */
   --atomo-h: #FFFFFF;
-  --atomo-c: #374151;
-  --atomo-n: #2563EB;
-  --atomo-o: #DC2626;
+  --atomo-c: #404040;
+  --atomo-n: #3050F8;
+  --atomo-o: #FF0D0D;
 
   /* Tipografía y forma */
   --fuente-titulo: "Nunito Sans", sans-serif;
@@ -323,7 +322,31 @@ p {
   display: none;
   flex-direction: column;
   gap: 16px;
-  overflow: visible;
+  overflow: hidden;
+}
+
+/* Lista de átomos con scroll vertical: los 10 botones caben completos.
+   Antes esta regla vivía solo dentro del @media de pantallas chicas,
+   así que en escritorio el panel se desbordaba y se cortaban los últimos. */
+.lista-elementos {
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.lista-elementos .boton-atomo {
+  width: 100%;
+}
+
+/* Símbolos claros (H, He, Li, Be, B, F, Ne): texto oscuro sobre fondo claro.
+   Antes también vivía solo en el @media, así que en escritorio la H
+   era blanca sobre blanco, invisible. */
+.simbolo-claro {
+  color: var(--texto);
+  border: 2px solid var(--atomo-c);
 }
 
 #menu-atomos:checked~.escena .panel-atomos {
@@ -465,14 +488,6 @@ p {
   visibility: visible;
 }
 
-/* En el panel de átomos el tooltip sale hacia la derecha */
-.panel-atomos .tip::after {
-  bottom: auto;
-  top: 50%;
-  left: calc(100% + 12px);
-  transform: translateY(-50%);
-}
-
 /* Controles */
 
 .boton {
@@ -548,24 +563,6 @@ p {
   border-radius: 50%;
 }
 
-.atomo-h {
-  color: var(--texto);
-  background: var(--atomo-h);
-  border: 2px solid var(--atomo-c);
-}
-
-.atomo-c {
-  background: var(--atomo-c);
-}
-
-.atomo-n {
-  background: var(--atomo-n);
-}
-
-.atomo-o {
-  background: var(--atomo-o);
-}
-
 /* Acciones de respaldo */
 
 .respaldo {
@@ -605,20 +602,6 @@ p {
   }
 
   .lista-elementos {
-  display: grid;
-  gap: 12px;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 4px;
-}
-
-.lista-elementos .boton-atomo {
-  width: 100%;
-}
-
-.simbolo-claro {
-  color: var(--texto);
-  border: 2px solid var(--atomo-c);
-}
-
+    max-height: 60vh;
+  }
 }

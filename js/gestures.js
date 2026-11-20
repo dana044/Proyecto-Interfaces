@@ -20,12 +20,12 @@ const FPS_MINIMO = 20;
 const SEGUNDOS_LENTOS_ANTES_DE_BAJAR = 2;
 const ANCHO_BAJA_RESOLUCION = 640;
 const ALTO_BAJA_RESOLUCION = 480;
+const UMBRAL_PELLIZCO_INICIO = 0.05;
+const UMBRAL_PELLIZCO_FIN = 0.08;
 const ALFA_SUAVIZADO = 0.4;
 const MS_MANO_PERDIDA = 500;
+const PUNTO_PULGAR = 4;
 const PUNTO_INDICE = 8;
-const FACTOR_DEDO_EXTENDIDO = 1.1;
-const FACTOR_DEDO_PLEGADO = 1.0;
-const CUADROS_PARA_SOLTAR = 3;
 
 const MENSAJE_PERMISO_DENEGADO = 'Necesito tu cámara para ver tus manos; actívala en el candado de la barra de direcciones. Mientras tanto puedes usar el mouse.';
 const MENSAJE_SIN_CAMARA = 'No encontré una cámara disponible. Si otra aplicación la está usando, ciérrala e inténtalo de nuevo. Mientras tanto puedes usar el mouse.';
@@ -45,8 +45,8 @@ let ultimoNumeroManos = -1;
 let cuadrosEnVentana = 0;
 let inicioVentana = 0;
 let segundosLentosSeguidos = 0;
-let agarrando = false;
-let cuadrosAbierta = 0;
+let umbrales = { inicio: UMBRAL_PELLIZCO_INICIO, fin: UMBRAL_PELLIZCO_FIN };
+let pellizcando = false;
 let suavizado = null;
 let ultimoMomentoConMano = 0;
 let cursor = null;
@@ -246,7 +246,7 @@ function dibujarManos(resultado) {
   const radioPunto = Math.max(3, Math.round(lienzo.width * 0.02));
 
   for (const puntos of resultado.landmarks || []) {
-    contexto.strokeStyle = '#994abb';
+    contexto.strokeStyle = '#00FF00';
     contexto.lineWidth = grosorLinea;
     for (const conexion of HandLandmarker.HAND_CONNECTIONS) {
       const a = aPixeles(puntos[conexion.start]);
@@ -257,7 +257,7 @@ function dibujarManos(resultado) {
       contexto.stroke();
     }
 
-    contexto.fillStyle = '#901187';
+    contexto.fillStyle = '#FF0000';
     for (const punto of puntos) {
       const { x, y } = aPixeles(punto);
       contexto.beginPath();
@@ -265,6 +265,14 @@ function dibujarManos(resultado) {
       contexto.fill();
     }
   }
+}
+
+/**
+ * Cambia los umbrales del pellizco, como fracción del ancho del video.
+ * @param {{inicio?: number, fin?: number}} nuevos
+ */
+export function configurarPellizco(nuevos = {}) {
+  umbrales = { ...umbrales, ...nuevos };
 }
 
 /** Crea el círculo del cursor virtual dentro de #lienzo-3d. */
@@ -302,9 +310,9 @@ function mostrarCursor(x, y) {
   cursor.style.display = 'block';
   cursor.style.left = `${x * contenedor.clientWidth}px`;
   cursor.style.top = `${y * contenedor.clientHeight}px`;
-  cursor.style.borderColor = agarrando ? '#22C55E' : '#FFFFFF';
-  cursor.style.backgroundColor = agarrando ? 'rgba(34, 197, 94, 0.5)' : 'transparent';
-  cursor.style.transform = agarrando ? 'scale(0.6)' : 'scale(1)';
+  cursor.style.borderColor = pellizcando ? '#22C55E' : '#FFFFFF';
+  cursor.style.backgroundColor = pellizcando ? 'rgba(34, 197, 94, 0.5)' : 'transparent';
+  cursor.style.transform = pellizcando ? 'scale(0.6)' : 'scale(1)';
 }
 
 function ocultarCursor() {
@@ -312,45 +320,15 @@ function ocultarCursor() {
 }
 
 /**
- * Distancia en píxeles del video entre dos puntos de la mano.
- * @param {{x: number, y: number}} a
- * @param {{x: number, y: number}} b
+ * Distancia en píxeles del video entre el pulgar y el índice.
+ * @param {Array<{x: number, y: number}>} puntos - 21 puntos de la mano
  */
-function distanciaPx(a, b) {
-  return Math.hypot((a.x - b.x) * video.videoWidth, (a.y - b.y) * video.videoHeight);
-}
-
-/**
- * Indica si un dedo está estirado comparando la punta con la articulación media,
- * ambas medidas desde la muñeca.
- * @param {Array<{x: number, y: number}>} puntos
- * @param {number} punta - Índice del punto de la punta
- * @param {number} articulacion - Índice de la articulación media
- */
-function relacionDedo(puntos, punta, articulacion) {
-  return distanciaPx(puntos[punta], puntos[0]) / distanciaPx(puntos[articulacion], puntos[0]);
-}
-
-/**
- * Índice arriba: el índice estirado y los otros tres dedos plegados.
- * @param {Array<{x: number, y: number}>} puntos
- */
-function esIndiceArriba(puntos) {
-  return relacionDedo(puntos, 8, 6) > FACTOR_DEDO_EXTENDIDO
-    && relacionDedo(puntos, 12, 10) < FACTOR_DEDO_PLEGADO
-    && relacionDedo(puntos, 16, 14) < FACTOR_DEDO_PLEGADO
-    && relacionDedo(puntos, 20, 18) < FACTOR_DEDO_PLEGADO;
-}
-
-/**
- * Mano abierta: los cuatro dedos estirados.
- * @param {Array<{x: number, y: number}>} puntos
- */
-function esManoAbierta(puntos) {
-  return relacionDedo(puntos, 8, 6) > FACTOR_DEDO_EXTENDIDO
-    && relacionDedo(puntos, 12, 10) > FACTOR_DEDO_EXTENDIDO
-    && relacionDedo(puntos, 16, 14) > FACTOR_DEDO_EXTENDIDO
-    && relacionDedo(puntos, 20, 18) > FACTOR_DEDO_EXTENDIDO;
+function distanciaPellizco(puntos) {
+  const pulgar = puntos[PUNTO_PULGAR];
+  const indice = puntos[PUNTO_INDICE];
+  const dx = (pulgar.x - indice.x) * video.videoWidth;
+  const dy = (pulgar.y - indice.y) * video.videoHeight;
+  return Math.hypot(dx, dy);
 }
 
 /**
@@ -358,15 +336,14 @@ function esManoAbierta(puntos) {
  * @param {number} ahora
  */
 function procesarManoPerdida(ahora) {
-  cuadrosAbierta = 0;
-  if (!agarrando) {
+  if (!pellizcando) {
     ocultarCursor();
     suavizado = null;
     return;
   }
   if (ahora - ultimoMomentoConMano < MS_MANO_PERDIDA) return;
 
-  agarrando = false;
+  pellizcando = false;
   emit('gesto:pellizco-fin', { ...suavizado });
   emit('ui:mensaje', {
     tipo: 'aviso',
@@ -377,12 +354,12 @@ function procesarManoPerdida(ahora) {
 }
 
 /**
- * Agarra con índice arriba, mueve con la punta del índice y suelta al abrir la mano.
- * Emite los eventos gesto:pellizco-* que escucha atoms.js y mueve el cursor.
+ * Detecta el pellizco con la primera mano, suaviza el índice, emite los
+ * eventos gesto:pellizco-* y mueve el cursor. Usa histéresis para no parpadear.
  * @param {import('@mediapipe/tasks-vision').HandLandmarkerResult} resultado
  * @param {number} ahora
  */
-function procesarAgarre(resultado, ahora) {
+function procesarPellizco(resultado, ahora) {
   const puntos = resultado.landmarks?.[0];
   if (!puntos) {
     procesarManoPerdida(ahora);
@@ -401,16 +378,16 @@ function procesarAgarre(resultado, ahora) {
       }
     : { x, y };
 
-  cuadrosAbierta = agarrando && esManoAbierta(puntos) ? cuadrosAbierta + 1 : 0;
+  const distancia = distanciaPellizco(puntos);
+  const ancho = video.videoWidth;
 
-  if (agarrando && cuadrosAbierta >= CUADROS_PARA_SOLTAR) {
-    agarrando = false;
-    cuadrosAbierta = 0;
-    emit('gesto:pellizco-fin', { ...suavizado });
-  } else if (!agarrando && esIndiceArriba(puntos)) {
-    agarrando = true;
+  if (!pellizcando && distancia < umbrales.inicio * ancho) {
+    pellizcando = true;
     emit('gesto:pellizco-inicio', { ...suavizado });
-  } else if (agarrando && esIndiceArriba(puntos)) {
+  } else if (pellizcando && distancia > umbrales.fin * ancho) {
+    pellizcando = false;
+    emit('gesto:pellizco-fin', { ...suavizado });
+  } else if (pellizcando) {
     emit('gesto:pellizco-mover', { ...suavizado });
   }
 
@@ -436,7 +413,7 @@ function bucleDeteccion() {
     const resultado = landmarker.detectForVideo(video, ahora);
     actualizarManos(resultado);
     dibujarManos(resultado);
-    procesarAgarre(resultado, ahora);
+    procesarPellizco(resultado, ahora);
     medirFPS(ahora);
   } catch (error) {
     console.warn('[gestos] No se pudo detectar en este cuadro:', error);
@@ -490,9 +467,8 @@ export async function iniciarGestos() {
  */
 export function detenerGestos() {
   detenido = true;
-  if (agarrando) emit('gesto:pellizco-fin', { ...suavizado });
-  agarrando = false;
-  cuadrosAbierta = 0;
+  if (pellizcando) emit('gesto:pellizco-fin', { ...suavizado });
+  pellizcando = false;
   suavizado = null;
   ocultarCursor();
   cancelAnimationFrame(idAnimacion);

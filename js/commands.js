@@ -95,6 +95,26 @@ function interpretarVoz({ texto }) {
         return;
     }
 
+    if (frase === 'deshacer') {
+        emit('voz:comando', { intencion: 'deshacer', parametros: {} });
+        return;
+    }
+
+    if (frase === 'limpiar' || frase === 'limpia la escena') {
+        emit('voz:comando', { intencion: 'limpiar', parametros: {} });
+        return;
+    }
+
+    if (frase === 'verificar' || frase === 'verifica' || frase === 'verifica la molecula') {
+        emit('voz:comando', { intencion: 'verificar', parametros: {} });
+        return;
+    }
+
+    if (frase === 'ayuda') {
+        responder('Puedes decir: agrega oxígeno, agrega dos hidrógenos, deshacer, limpiar o verificar.');
+        return;
+    }
+
     const consulta = frase.match(PREGUNTA_GLOSARIO);
     if (consulta) {
         const definicion = GLOSARIO.get(consulta[1]);

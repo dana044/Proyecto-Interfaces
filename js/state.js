@@ -38,4 +38,20 @@ export function setModo(nuevoModo) {
  */
 export function setUltimaAccion(descripcion) {
   estado.ultimaAccion = descripcion;
+
+  // Antes esta función solo guardaba el texto en memoria y nadie la
+  // llamaba: el indicador #estado-accion se quedaba en "Ninguna todavía".
+  // Ahora actualiza también la barra de estado, si ya existe en la página.
+  const indicador = document.querySelector('#estado-accion');
+  if (!indicador) return;
+  const valor = indicador.querySelector('.valor');
+  if (valor) valor.textContent = descripcion;
+  indicador.classList.remove('estado-ok', 'estado-aviso', 'estado-error');
+  indicador.classList.add('estado-ok');
 }
+
+/**
+ * Inicio del estado compartido (HU-06: cada módulo exporta una iniciar...()).
+ * No hay nada que arrancar: el estado inicial ya está en `estado`.
+ */
+export function iniciarEstado() {}

@@ -1,7 +1,8 @@
 import { on } from './bus.js';
 import { alternarMicrofono } from './voice.js';
-import { agregarAtomo } from './atoms.js';
+import { agregarAtomo, deshacer, limpiarEscena, verificarMolecula } from './atoms.js';
 import { ELEMENTOS } from './elementos.js';
+import { setUltimaAccion } from './state.js';
 
 const estadosMicrofono = {
   escuchando: { texto: 'Escuchando', clase: 'estado-ok' },
@@ -67,13 +68,30 @@ function iniciarPanelAtomos() {
 export function iniciarInterfaz() {
   const microfono = document.querySelector('[data-accion="microfono"]');
   const indicador = document.querySelector('#estado-microfono');
-  const valor = indicador.querySelector('.valor');
   const mensajes = document.querySelector('#zona-mensajes');
   const indicadorCamara = document.querySelector('#estado-camara');
   const indicadorMano = document.querySelector('#estado-mano');
 
   iniciarPanelAtomos();
-  
+
+  // Si falta un elemento de la página, no se rompe toda la interfaz:
+  // antes un solo elemento ausente dejaba mudos la barra y los mensajes.
+  if (!microfono || !indicador || !mensajes || !indicadorCamara || !indicadorMano) return;
+  const valor = indicador.querySelector('.valor');
+  if (!valor) return;
+
+  // Botones de respaldo: Deshacer, Limpiar y Verificar no tenían ningún
+  // listener y el clic no hacía nada. Ahora sí hacen lo que prometen.
+  const botonDeshacer = document.querySelector('[data-accion="deshacer"]');
+  const botonLimpiar = document.querySelector('[data-accion="limpiar"]');
+  const botonVerificar = document.querySelector('[data-accion="verificar"]');
+  botonDeshacer?.addEventListener('click', () => deshacer());
+  botonLimpiar?.addEventListener('click', () => {
+    if (!window.confirm('¿Borrar todos los átomos de la escena?')) return;
+    limpiarEscena();
+  });
+  botonVerificar?.addEventListener('click', () => verificarMolecula());
+
   microfono.addEventListener('click', alternarMicrofono);
   document.addEventListener('keydown', (evento) => {
     if (evento.code !== 'Space' || evento.defaultPrevented || evento.repeat
@@ -119,5 +137,30 @@ export function iniciarInterfaz() {
     }
     aviso.textContent = texto;
     mensajes.replaceChildren(aviso);
+    setUltimaAccion(texto);
+  });
+
+  // La última acción también se actualiza al seleccionar o mover un átomo.
+  // Antes estos dos eventos se emitían sin ningún receptor.
+  on('escena:atomo-seleccionado', ({ id }) => {
+    if (id) setUltimaAccion(`Seleccionaste ${id}`);
+  });
+  on('escena:atomo-movido', ({ id }) => {
+    if (id) setUltimaAccion(`Moviste ${id}`);
+  });
+
+  // Panel de información de la molécula: antes sus campos (fórmula,
+  // nombre, geometría, descripción) no los escribía ningún JS.
+  on('escena:molecula-identificada', ({ nombre, formula, geometria, descripcion }) => {
+    const panelInfo = document.querySelector('#panel-info');
+    if (!panelInfo) return;
+    const escribir = (campo, texto) => {
+      const elemento = panelInfo.querySelector(`[data-campo="${campo}"]`);
+      if (elemento && texto) elemento.textContent = texto;
+    };
+    escribir('formula', formula);
+    escribir('nombre', nombre);
+    escribir('geometria', geometria);
+    escribir('descripcion', descripcion);
   });
 }

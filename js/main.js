@@ -1,21 +1,18 @@
 /**
  * @fileoverview Punto de entrada de MolecuLab 3D.
- * Inicia los módulos en orden: escena, arrastre de átomos, gestos, voz e interfaz.
+ * Inicia los módulos en orden: interfaz, bus, estado, escena, arrastre, gestos, comandos y voz.
  * Si un módulo falla, los demás siguen funcionando.
  * @author Citlaly Morales Viveros
  */
 
-import { emit } from './bus.js';
+import { emit, iniciarBus } from './bus.js';
+import { iniciarEstado } from './state.js';
 import { iniciarEscena } from './scene.js';
-import { iniciarGestos } from './gestures.js';
+import { iniciarGestos, detenerGestos } from './gestures.js';
 import { iniciarVoz } from './voice.js';
 import { iniciarInterfaz } from './ui.js';
 import { iniciarComandos } from './commands.js';
 import { iniciarComandosDeAtomos, iniciarArrastreDeAtomos } from './atoms.js';
-
-// PRUEBA TEMPORAL: borrar después de agregar la cámara y la voz
-import * as Atomos from './atoms.js';
-import * as Bus from './bus.js';
 
 /**
  * Intenta iniciar un módulo. Si falla, emite un mensaje de error
@@ -35,22 +32,27 @@ async function iniciarModulo(nombre, fn) {
   }
 }
 
-/** Inicia la aplicación en orden. */
+/**
+ * Inicia la aplicación en orden. La interfaz va primero: antes, si la
+ * escena o los gestos fallaban al arrancar, su mensaje de error
+ * (ui:mensaje) no tenía receptor todavía y el usuario no veía nada.
+ */
 async function iniciarApp() {
+  await iniciarModulo('interfaz', iniciarInterfaz);
+  await iniciarModulo('bus', iniciarBus);
+  await iniciarModulo('estado', iniciarEstado);
   await iniciarModulo('escena', iniciarEscena);
   await iniciarModulo('arrastre de átomos', () => {
     if (!iniciarArrastreDeAtomos()) throw new Error('la escena no tiene lienzo');
   });
   await iniciarModulo('gestos', iniciarGestos);
-  await iniciarModulo('interfaz', iniciarInterfaz);
   await iniciarModulo('comandos de átomos', iniciarComandosDeAtomos);
   await iniciarModulo('comandos de voz', iniciarComandos);
   await iniciarModulo('voz', iniciarVoz);
-
-
-  // Prueba temporal de la escena.
-  window.Atomos = Atomos;
-  window.Bus = Bus;
 }
+
+// Al cerrar o recargar la página se apaga la cámara: detenerGestos()
+// existía pero nadie la llamaba.
+window.addEventListener('beforeunload', detenerGestos);
 
 iniciarApp();

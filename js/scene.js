@@ -166,7 +166,5 @@ export function obtenerLienzo() {
     return renderer ? renderer.domElement : null;
 }
 
-/** Conserva la compatibilidad con los módulos que importan esta función. */
-export function quitarEsferaDePrueba() {
-    // La escena ahora inicia sin la esfera de prueba.
-}
+// Nota: la esfera de prueba de HU-07 se quitó a propósito; no hay
+// función que la quite porque la escena ya inicia sin ella.
