@@ -623,6 +623,46 @@ function mismoConteo(a, b) {
 }
 
 /**
+ * Valida que cada molécula del catálogo cumpla la valencia de sus átomos.
+ * Devuelve una copia del catálogo solo con las moléculas válidas; si una
+ * no cumple, se omite y se avisa en consola, sin romper el resto.
+ * @param {object} catalogo Catálogo leído de data/moleculas.json.
+ * @returns {object} El mismo catálogo, con solo las moléculas válidas.
+ */
+function validarCatalogo(catalogo) {
+    const moleculas = catalogo?.moleculas;
+    if (!Array.isArray(moleculas)) return catalogo;
+
+    const validas = moleculas.filter((molecula) => {
+        const atomos = new Map((molecula.atomos || []).map((a) => [a.id, a.elemento]));
+        const usados = new Map();
+        for (const enlace of molecula.enlaces || []) {
+            if (!atomos.has(enlace.desde) || !atomos.has(enlace.hasta)) {
+                console.warn(`[MolecuLab] Molécula omitida del catálogo: ${molecula.id} — el enlace ${enlace.desde}–${enlace.hasta} menciona un átomo que no existe.`);
+                return false;
+            }
+            usados.set(enlace.desde, (usados.get(enlace.desde) || 0) + enlace.orden);
+            usados.set(enlace.hasta, (usados.get(enlace.hasta) || 0) + enlace.orden);
+        }
+        for (const [id, elemento] of atomos) {
+            const valencia = ELEMENTOS[elemento]?.valencia;
+            if (valencia === undefined) {
+                console.warn(`[MolecuLab] Molécula omitida del catálogo: ${molecula.id} — el átomo ${id} usa el elemento ${elemento}, que no está en el catálogo de elementos.`);
+                return false;
+            }
+            const usadosPorAtomo = usados.get(id) || 0;
+            if (usadosPorAtomo !== valencia) {
+                console.warn(`[MolecuLab] Molécula omitida del catálogo: ${molecula.id} (${molecula.nombre}) — ${id} (${elemento}) tiene ${usadosPorAtomo} enlaces y su valencia es ${valencia}.`);
+                return false;
+            }
+        }
+        return true;
+    });
+
+    return { ...catalogo, moleculas: validas };
+}
+
+/**
  * Verifica la molécula construida comparando sus átomos con el catálogo
  * (data/moleculas.json). Versión provisional: la comparación es por
  * cantidad de átomos de cada elemento, no por enlaces ni valencias.
@@ -640,7 +680,7 @@ export async function verificarMolecula() {
         if (!catalogoMoleculas) {
             const respuesta = await fetch('data/moleculas.json');
             if (!respuesta.ok) throw new Error('catálogo no disponible');
-            catalogoMoleculas = await respuesta.json();
+            catalogoMoleculas = validarCatalogo(await respuesta.json());
         }
     } catch {
         enviarMensaje('error', 'No pude leer el catálogo de moléculas (data/moleculas.json).');

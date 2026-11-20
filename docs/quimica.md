@@ -77,7 +77,7 @@ Si la molécula está incompleta, el sistema indica qué átomo o enlace falta.
 | 5   | Metano                | CH₄     | Tetraédrica                                   | 109.5°               | 4 simples                               |
 | 6   | Amoníaco              | NH₃     | Piramidal                                     | 107°                 | 3 simples                               |
 | 7   | Metanol               | CH₃OH   | Tetraédrica (en C)                            | C–O–H ≈ 108.5°       | 4 simples + 1 simple O–H                |
-| 8   | Etanol                | C₂H₆O   | Tetraédrica (en C)                            | C–O–H ≈ 108.5°       | 7 simples (incluye C–C)                 |
+| 8   | Etanol                | C₂H₆O   | Tetraédrica (en C)                            | C–O–H ≈ 108.5°       | 8 simples (5 C–H, 1 C–C, 1 C–O, 1 O–H)  |
 | 9   | Etileno               | C₂H₄    | Trigonal plana                                | H–C–H ≈ 120°         | 1 doble C=C + 4 simples C–H             |
 | 10  | Peróxido de hidrógeno | H₂O₂    | No lineal                                     | H–O–O ≈ 94.8°        | 3 simples                               |
 | 11  | Formaldehído          | CH₂O    | Trigonal plana                                | H–C–H ≈ 116°         | 1 doble C=O + 2 simples C–H             |
