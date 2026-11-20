@@ -1,7 +1,7 @@
 /**
  * @fileoverview Bus de eventos global para MolecuLab 3D.
  * Permite comunicación entre módulos sin dependencias directas.
- * @see docs/contrato-eventos.md
+ * @see docs/eventos.md
  */
 
 /** Activa o desactiva los logs de depuración en consola. */

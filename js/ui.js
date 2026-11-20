@@ -8,11 +8,35 @@ const estadosMicrofono = {
   error: { texto: 'Error', clase: 'estado-error' },
 };
 
+const estadosCamara = {
+  activa: { texto: 'Activa', clase: 'estado-ok' },
+  denegada: { texto: 'Denegada', clase: 'estado-error' },
+  'sin-dispositivo': { texto: 'Sin cámara', clase: 'estado-error' },
+};
+
+/**
+ * Actualiza un indicador de la barra de estado (#estado-camara,
+ * #estado-mano o #estado-microfono) con su texto y su color.
+ * @param {Element | null} indicador
+ * @param {{ texto: string, clase: string }} datos
+ */
+function actualizarIndicador(indicador, datos) {
+  if (!indicador) return;
+
+  indicador.classList.remove('estado-ok', 'estado-aviso', 'estado-error');
+  indicador.classList.add(datos.clase);
+
+  const valor = indicador.querySelector('.valor');
+  if (valor) valor.textContent = datos.texto;
+}
+
 export function iniciarInterfaz() {
   const microfono = document.querySelector('[data-accion="microfono"]');
   const indicador = document.querySelector('#estado-microfono');
   const valor = indicador.querySelector('.valor');
   const mensajes = document.querySelector('#zona-mensajes');
+  const indicadorCamara = document.querySelector('#estado-camara');
+  const indicadorMano = document.querySelector('#estado-mano');
 
 document.querySelectorAll('#panel-atomos [data-accion="agregar"]')
   .forEach((boton) => {
@@ -43,6 +67,19 @@ document.querySelectorAll('#panel-atomos [data-accion="agregar"]')
     indicador.classList.remove('estado-ok', 'estado-aviso', 'estado-error');
     indicador.classList.add(datos.clase);
     valor.textContent = datos.texto;
+  });
+
+  on('estado:camara', ({ estado }) => {
+    const datos = estadosCamara[estado];
+    if (!datos) return;
+    actualizarIndicador(indicadorCamara, datos);
+  });
+
+  on('estado:manos', ({ cantidad }) => {
+    const numero = Number(cantidad) || 0;
+    actualizarIndicador(indicadorMano, numero === 0
+      ? { texto: 'No detectada', clase: 'estado-aviso' }
+      : { texto: `${numero} detectada${numero > 1 ? 's' : ''}`, clase: 'estado-ok' });
   });
 
   on('ui:mensaje', ({ tipo, texto }) => {
