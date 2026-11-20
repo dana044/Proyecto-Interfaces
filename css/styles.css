@@ -39,11 +39,14 @@
   --radio-boton: 12px;
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   height: 100%;
   margin: 0;
 }
@@ -61,15 +64,22 @@ body {
   line-height: 1.5;
 }
 
-h1, h2 {
+h1,
+h2 {
   font-family: var(--fuente-titulo);
   font-weight: 700;
   line-height: 1.2;
   margin: 0;
 }
 
-h1 { font-size: 32px; }
-h2 { font-size: 24px; margin-bottom: 16px; }
+h1 {
+  font-size: 32px;
+}
+
+h2 {
+  font-size: 24px;
+  margin-bottom: 16px;
+}
 
 p {
   margin: 0;
@@ -146,13 +156,13 @@ p {
 }
 
 /* Menú abierto: la etiqueta se rellena */
-#menu-atomos:checked ~ .encabezado .boton-menu {
+#menu-atomos:checked~.encabezado .boton-menu {
   color: #FFFFFF;
   background: var(--accion);
 }
 
 /* Foco de teclado sobre el interruptor oculto, mostrado en la etiqueta */
-#menu-atomos:focus-visible ~ .encabezado .boton-menu {
+#menu-atomos:focus-visible~.encabezado .boton-menu {
   outline: 3px solid var(--accion);
   outline-offset: 3px;
 }
@@ -177,8 +187,13 @@ p {
   border-radius: 2px;
 }
 
-.hamburguesa::before { top: -6px; }
-.hamburguesa::after  { top: 6px; }
+.hamburguesa::before {
+  top: -6px;
+}
+
+.hamburguesa::after {
+  top: 6px;
+}
 
 /* Barra de estado */
 
@@ -218,9 +233,17 @@ p {
   background: var(--estado);
 }
 
-.estado-ok    { --estado: var(--ok); }
-.estado-aviso { --estado: var(--aviso); }
-.estado-error { --estado: var(--error); }
+.estado-ok {
+  --estado: var(--ok);
+}
+
+.estado-aviso {
+  --estado: var(--aviso);
+}
+
+.estado-error {
+  --estado: var(--error);
+}
 
 /* Zona de mensajes */
 
@@ -259,9 +282,17 @@ p {
   border-left: 4px solid var(--estado);
 }
 
-.mensaje-correcto { --estado: var(--ok); }
-.mensaje-aviso    { --estado: var(--aviso); }
-.mensaje-error    { --estado: var(--error); }
+.mensaje-correcto {
+  --estado: var(--ok);
+}
+
+.mensaje-aviso {
+  --estado: var(--aviso);
+}
+
+.mensaje-error {
+  --estado: var(--error);
+}
 
 /* Escena principal */
 
@@ -273,7 +304,7 @@ p {
 }
 
 /* Con el menú abierto aparece la columna de átomos */
-#menu-atomos:checked ~ .escena {
+#menu-atomos:checked~.escena {
   grid-template-columns: 260px minmax(0, 1fr) 320px;
 }
 
@@ -295,7 +326,7 @@ p {
   overflow: visible;
 }
 
-#menu-atomos:checked ~ .escena .panel-atomos {
+#menu-atomos:checked~.escena .panel-atomos {
   display: flex;
 }
 
@@ -341,6 +372,17 @@ p {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+/* Foco de teclado en la escena: el contorno va en el contenedor porque el canvas
+   queda recortado por overflow: hidden de .lienzo. */
+.lienzo canvas:focus {
+  outline: none;
+}
+
+.lienzo:has(canvas:focus-visible) {
+  outline: 3px solid var(--accion);
+  outline-offset: 3px;
 }
 
 /* Cámara espejo flotante, abajo a la izquierda del lienzo */
@@ -512,9 +554,17 @@ p {
   border: 2px solid var(--atomo-c);
 }
 
-.atomo-c { background: var(--atomo-c); }
-.atomo-n { background: var(--atomo-n); }
-.atomo-o { background: var(--atomo-o); }
+.atomo-c {
+  background: var(--atomo-c);
+}
+
+.atomo-n {
+  background: var(--atomo-n);
+}
+
+.atomo-o {
+  background: var(--atomo-o);
+}
 
 /* Acciones de respaldo */
 
@@ -542,7 +592,7 @@ p {
   }
 
   .escena,
-  #menu-atomos:checked ~ .escena {
+  #menu-atomos:checked~.escena {
     grid-template-columns: 1fr;
   }
 

@@ -1,7 +1,8 @@
 /**
  * @fileoverview Punto de entrada de MolecuLab 3D.
- * Inicia los módulos en orden: escena, gestos, voz e interfaz.
+ * Inicia los módulos en orden: escena, arrastre de átomos, gestos, voz e interfaz.
  * Si un módulo falla, los demás siguen funcionando.
+ * @author Citlaly Morales Viveros
  */
 
 import { emit } from './bus.js';
@@ -10,7 +11,7 @@ import { iniciarGestos } from './gestures.js';
 import { iniciarVoz } from './voice.js';
 import { iniciarInterfaz } from './ui.js';
 import { iniciarComandos } from './commands.js';
-import { iniciarComandosDeAtomos } from './atoms.js';
+import { iniciarComandosDeAtomos, iniciarArrastreDeAtomos } from './atoms.js';
 
 // PRUEBA TEMPORAL: borrar después de agregar la cámara y la voz
 import * as Atomos from './atoms.js';
@@ -37,6 +38,9 @@ async function iniciarModulo(nombre, fn) {
 /** Inicia la aplicación en orden. */
 async function iniciarApp() {
   await iniciarModulo('escena', iniciarEscena);
+  await iniciarModulo('arrastre de átomos', () => {
+    if (!iniciarArrastreDeAtomos()) throw new Error('la escena no tiene lienzo');
+  });
   await iniciarModulo('gestos', iniciarGestos);
   await iniciarModulo('interfaz', iniciarInterfaz);
   await iniciarModulo('comandos de átomos', iniciarComandosDeAtomos);

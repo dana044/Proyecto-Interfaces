@@ -156,6 +156,16 @@ export function obtenerContenedorAtomos() {
     return grupoAtomos;
 }
 
+/** Devuelve la cámara de perspectiva o null si la escena no está iniciada. */
+export function obtenerCamara() {
+    return camara;
+}
+
+/** Devuelve el elemento canvas de WebGL o null si la escena no está iniciada. */
+export function obtenerLienzo() {
+    return renderer ? renderer.domElement : null;
+}
+
 /** Conserva la compatibilidad con los módulos que importan esta función. */
 export function quitarEsferaDePrueba() {
     // La escena ahora inicia sin la esfera de prueba.
