@@ -20,6 +20,12 @@ const FPS_MINIMO = 20;
 const SEGUNDOS_LENTOS_ANTES_DE_BAJAR = 2;
 const ANCHO_BAJA_RESOLUCION = 640;
 const ALTO_BAJA_RESOLUCION = 480;
+const UMBRAL_PELLIZCO_INICIO = 0.05;
+const UMBRAL_PELLIZCO_FIN = 0.08;
+const ALFA_SUAVIZADO = 0.4;
+const MS_MANO_PERDIDA = 500;
+const PUNTO_PULGAR = 4;
+const PUNTO_INDICE = 8;
 
 const MENSAJE_PERMISO_DENEGADO = 'Necesito tu cámara para ver tus manos; actívala en el candado de la barra de direcciones. Mientras tanto puedes usar el mouse.';
 const MENSAJE_SIN_CAMARA = 'No encontré una cámara disponible. Si otra aplicación la está usando, ciérrala e inténtalo de nuevo. Mientras tanto puedes usar el mouse.';
@@ -39,6 +45,11 @@ let ultimoNumeroManos = -1;
 let cuadrosEnVentana = 0;
 let inicioVentana = 0;
 let segundosLentosSeguidos = 0;
+let umbrales = { inicio: UMBRAL_PELLIZCO_INICIO, fin: UMBRAL_PELLIZCO_FIN };
+let pellizcando = false;
+let suavizado = null;
+let ultimoMomentoConMano = 0;
+let cursor = null;
 
 /**
  * Publica el estado de la cámara en el bus.
@@ -256,6 +267,133 @@ function dibujarManos(resultado) {
   }
 }
 
+/**
+ * Cambia los umbrales del pellizco, como fracción del ancho del video.
+ * @param {{inicio?: number, fin?: number}} nuevos
+ */
+export function configurarPellizco(nuevos = {}) {
+  umbrales = { ...umbrales, ...nuevos };
+}
+
+/** Crea el círculo del cursor virtual dentro de #lienzo-3d. */
+function crearCursor() {
+  const contenedor = document.getElementById('lienzo-3d');
+  if (!contenedor || cursor) return;
+
+  cursor = document.createElement('div');
+  Object.assign(cursor.style, {
+    position: 'absolute',
+    width: '28px',
+    height: '28px',
+    marginLeft: '-14px',
+    marginTop: '-14px',
+    borderRadius: '50%',
+    border: '3px solid #FFFFFF',
+    boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.4)',
+    pointerEvents: 'none',
+    display: 'none',
+    zIndex: '5',
+    transition: 'transform 0.1s, background-color 0.1s',
+  });
+  contenedor.appendChild(cursor);
+}
+
+/**
+ * Muestra el cursor en (x, y); se vuelve verde y se encoge al pellizcar.
+ * @param {number} x
+ * @param {number} y
+ */
+function mostrarCursor(x, y) {
+  if (!cursor) return;
+
+  const contenedor = cursor.parentElement;
+  cursor.style.display = 'block';
+  cursor.style.left = `${x * contenedor.clientWidth}px`;
+  cursor.style.top = `${y * contenedor.clientHeight}px`;
+  cursor.style.borderColor = pellizcando ? '#22C55E' : '#FFFFFF';
+  cursor.style.backgroundColor = pellizcando ? 'rgba(34, 197, 94, 0.5)' : 'transparent';
+  cursor.style.transform = pellizcando ? 'scale(0.6)' : 'scale(1)';
+}
+
+function ocultarCursor() {
+  if (cursor) cursor.style.display = 'none';
+}
+
+/**
+ * Distancia en píxeles del video entre el pulgar y el índice.
+ * @param {Array<{x: number, y: number}>} puntos - 21 puntos de la mano
+ */
+function distanciaPellizco(puntos) {
+  const pulgar = puntos[PUNTO_PULGAR];
+  const indice = puntos[PUNTO_INDICE];
+  const dx = (pulgar.x - indice.x) * video.videoWidth;
+  const dy = (pulgar.y - indice.y) * video.videoHeight;
+  return Math.hypot(dx, dy);
+}
+
+/**
+ * Suelta el átomo si la mano se perdió más de 0.5 s, o limpia el cursor.
+ * @param {number} ahora
+ */
+function procesarManoPerdida(ahora) {
+  if (!pellizcando) {
+    ocultarCursor();
+    suavizado = null;
+    return;
+  }
+  if (ahora - ultimoMomentoConMano < MS_MANO_PERDIDA) return;
+
+  pellizcando = false;
+  emit('gesto:pellizco-fin', { ...suavizado });
+  emit('ui:mensaje', {
+    tipo: 'aviso',
+    texto: 'Perdí tu mano y solté el átomo donde estaba.',
+  });
+  ocultarCursor();
+  suavizado = null;
+}
+
+/**
+ * Detecta el pellizco con la primera mano, suaviza el índice, emite los
+ * eventos gesto:pellizco-* y mueve el cursor. Usa histéresis para no parpadear.
+ * @param {import('@mediapipe/tasks-vision').HandLandmarkerResult} resultado
+ * @param {number} ahora
+ */
+function procesarPellizco(resultado, ahora) {
+  const puntos = resultado.landmarks?.[0];
+  if (!puntos) {
+    procesarManoPerdida(ahora);
+    return;
+  }
+
+  ultimoMomentoConMano = ahora;
+
+  // La x se refleja aquí para que coincida con la vista en espejo.
+  const x = 1 - puntos[PUNTO_INDICE].x;
+  const y = puntos[PUNTO_INDICE].y;
+  suavizado = suavizado
+    ? {
+        x: ALFA_SUAVIZADO * x + (1 - ALFA_SUAVIZADO) * suavizado.x,
+        y: ALFA_SUAVIZADO * y + (1 - ALFA_SUAVIZADO) * suavizado.y,
+      }
+    : { x, y };
+
+  const distancia = distanciaPellizco(puntos);
+  const ancho = video.videoWidth;
+
+  if (!pellizcando && distancia < umbrales.inicio * ancho) {
+    pellizcando = true;
+    emit('gesto:pellizco-inicio', { ...suavizado });
+  } else if (pellizcando && distancia > umbrales.fin * ancho) {
+    pellizcando = false;
+    emit('gesto:pellizco-fin', { ...suavizado });
+  } else if (pellizcando) {
+    emit('gesto:pellizco-mover', { ...suavizado });
+  }
+
+  mostrarCursor(suavizado.x, suavizado.y);
+}
+
 /** Bucle de detección: un cuadro nuevo del video, una detección. */
 function bucleDeteccion() {
   if (detenido) return;
@@ -275,6 +413,7 @@ function bucleDeteccion() {
     const resultado = landmarker.detectForVideo(video, ahora);
     actualizarManos(resultado);
     dibujarManos(resultado);
+    procesarPellizco(resultado, ahora);
     medirFPS(ahora);
   } catch (error) {
     console.warn('[gestos] No se pudo detectar en este cuadro:', error);
@@ -318,6 +457,7 @@ export async function iniciarGestos() {
   }
 
   contexto = lienzo.getContext('2d');
+  crearCursor();
 
   iniciarCamara();
 }
@@ -327,6 +467,10 @@ export async function iniciarGestos() {
  */
 export function detenerGestos() {
   detenido = true;
+  if (pellizcando) emit('gesto:pellizco-fin', { ...suavizado });
+  pellizcando = false;
+  suavizado = null;
+  ocultarCursor();
   cancelAnimationFrame(idAnimacion);
   detenerStream();
   if (video) video.srcObject = null;
