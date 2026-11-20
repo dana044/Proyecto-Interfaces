@@ -1,4 +1,4 @@
-/* MolecuLab 3D · css/styles.css · HU-05 (versión 2)
+/* MolecuLab 3D · css/styles.css (versión 2)
    Valores de: docs/guia_visual.pdf v1.0 */
 
 :root {
@@ -401,6 +401,35 @@ p {
    queda recortado por overflow: hidden de .lienzo. */
 .lienzo canvas:focus {
   outline: none;
+}
+
+/* Tarjeta con la información de un átomo: aparece solo al dejar el
+   cursor sobre él. No intercepta el cursor, para no estorbar el
+   arrastre ni el giro de la vista. */
+.tarjeta-atomo {
+  position: absolute;
+  z-index: 30;
+  max-width: 260px;
+  padding: 12px 16px;
+  font-size: 16px;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  box-shadow: var(--sombra);
+  pointer-events: none;
+}
+
+.tarjeta-atomo[hidden] {
+  display: none;
+}
+
+.tarjeta-atomo strong,
+.tarjeta-atomo span {
+  display: block;
+}
+
+.tarjeta-atomo span {
+  color: var(--texto-secundario);
 }
 
 .lienzo:has(canvas:focus-visible) {

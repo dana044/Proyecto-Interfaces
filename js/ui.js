@@ -50,12 +50,16 @@ function iniciarPanelAtomos() {
     insignia.style.backgroundColor =
       '#' + datos.color.toString(16).padStart(6, '0');
 
-    if (datos.bordeOscuro) {
-      insignia.classList.add('simbolo-claro');
-    }
+    // Por el momento el panel solo muestra el nombre. La información
+    // completa queda en el título, en la etiqueta para lectores de
+    // pantalla y en la tarjeta que aparece al pasar el cursor sobre
+    // un átomo en la escena.
+    const info = `${datos.nombre} · ${datos.grupo} · Valencia ${datos.valencia}`;
+    boton.setAttribute('aria-label', info);
+    boton.title = info;
 
     const etiqueta = document.createElement('span');
-    etiqueta.textContent = `${datos.nombre} · Valencia ${datos.valencia}`;
+    etiqueta.textContent = datos.nombre;
 
     boton.append(insignia, etiqueta);
     boton.addEventListener('click', () => agregarAtomo(simbolo));

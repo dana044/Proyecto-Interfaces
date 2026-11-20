@@ -24,6 +24,8 @@ const ALTURA_ENLACE_DOBLE = 0.08;
 const FACTOR_TOLERANCIA_PELLIZCO = 1.5;
 const PASO_TECLADO = 0.1;
 const COLOR_RESALTADO = 0xfacc15;
+const COLOR_VISTA_PREVIA_POSIBLE = 0x15803d;
+const COLOR_VISTA_PREVIA_RECHAZO = 0xb91c1c;
 const EJE_UP = new THREE.Vector3(0, 1, 0);
 
 const atomos = new Map();
@@ -34,6 +36,7 @@ const contadores = Object.fromEntries(
 
 let seleccionado = null;
 let arrastre = null;
+let vistaPrevia = null;
 
 /* Historial para Deshacer (versión mínima): fotos de la escena
    antes de cada agregado y de cada limpieza. Solo deshace agregar y
@@ -54,17 +57,30 @@ function claveEnlace(a, b) {
     return a < b ? `${a}|${b}` : `${b}|${a}`;
 }
 
-function crearEtiqueta(simbolo) {
+/**
+ * Crea la etiqueta con el símbolo del elemento. La letra es oscura
+ * solo si el color de la esfera es claro; con los colores de grupo
+ * actuales, todos son oscuros y la letra es blanca.
+ * @param {string} simbolo Símbolo del elemento.
+ * @param {number} color Color de la esfera, en hexadecimal.
+ */
+function crearEtiqueta(simbolo, color) {
     const lienzo = document.createElement('canvas');
     lienzo.width = 128;
     lienzo.height = 128;
+
+    const rojo = (color >> 16) & 0xff;
+    const verde = (color >> 8) & 0xff;
+    const azul = color & 0xff;
+    const luminancia = 0.2126 * rojo + 0.7152 * verde + 0.0722 * azul;
+    const claro = luminancia > 180;
 
     const ctx = lienzo.getContext('2d');
     ctx.font = 'bold 84px Inter, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = simbolo === 'H' ? '#202331' : '#ffffff';
-    ctx.strokeStyle = simbolo === 'H' ? '#202331' : '#000000';
+    ctx.fillStyle = claro ? '#202331' : '#ffffff';
+    ctx.strokeStyle = claro ? '#202331' : '#000000';
     ctx.lineWidth = 6;
     ctx.strokeText(simbolo, 64, 64);
     ctx.fillText(simbolo, 64, 64);
@@ -118,7 +134,7 @@ function crearAtomoVisual(elemento) {
         grupo.add(contorno);
     }
 
-    const etiqueta = crearEtiqueta(elemento);
+    const etiqueta = crearEtiqueta(elemento, config.color);
     etiqueta.position.set(0, config.radio + 0.25, 0);
     grupo.add(etiqueta);
 
@@ -150,6 +166,93 @@ function actualizarAnillo(id) {
     if (!atomo || !atomo.anillo) return;
     const libres = Math.max(valenciaDe(atomo.elemento) - valenciaUsada(id), 0);
     actualizarAnilloValencia(atomo.anillo, atomo.radio, libres);
+}
+
+/** Quita el resaltado de la vista previa, si había uno activo. */
+function limpiarVistaPrevia() {
+    if (!vistaPrevia) return;
+    const objetivo = atomos.get(vistaPrevia.idB);
+    if (objetivo && objetivo.id !== seleccionado) {
+        objetivo.esfera.material.emissive.setHex(0x000000);
+    }
+    vistaPrevia = null;
+}
+
+/**
+ * Muestra qué pasaría si se soltara el átomo arrastrado aquí, sin
+ * crear todavía el enlace. El vecino más cercano se ilumina en
+ * verde si se puede unir, o en rojo si se rechazaría, y la barra
+ * de estado dice qué pasaría. Se actualiza en cada movimiento del
+ * arrastre y solo cambia cuando cambia la pareja o el resultado.
+ *
+ * @param {string} id Id del átomo que se está arrastrando.
+ * @returns {{idA: string, idB: string, posible: boolean, motivo: string|null}|null}
+ */
+export function actualizarVistaPrevia(id) {
+    const atomo = atomos.get(id);
+    if (!atomo) {
+        limpiarVistaPrevia();
+        return null;
+    }
+
+    const lista = obtenerListaAtomos();
+    const soltado = lista.find((item) => item.id === id);
+    if (!soltado) {
+        limpiarVistaPrevia();
+        return null;
+    }
+
+    const cercano = buscarVecinoMasCercano(soltado, lista);
+    if (!cercano) {
+        limpiarVistaPrevia();
+        return null;
+    }
+
+    const vecino = cercano.vecino;
+    const ordenActual = enlaces.get(claveEnlace(id, vecino.id))?.orden ?? 0;
+    const resultado = evaluarUnion({
+        idA: id,
+        elementoA: soltado.elemento,
+        idB: vecino.id,
+        elementoB: vecino.elemento,
+        ordenActual,
+        enlaces: [...enlaces.values()],
+    });
+
+    // Ya tienen un enlace doble: solo se está moviendo la molécula.
+    if (resultado.accion === 'nada') {
+        limpiarVistaPrevia();
+        return null;
+    }
+
+    if (vistaPrevia
+        && vistaPrevia.idA === id
+        && vistaPrevia.idB === vecino.id
+        && vistaPrevia.posible === resultado.ok) {
+        return vistaPrevia;
+    }
+
+    limpiarVistaPrevia();
+    const objetivo = atomos.get(vecino.id);
+    if (!objetivo) return null;
+
+    objetivo.esfera.material.emissive.setHex(
+        resultado.ok ? COLOR_VISTA_PREVIA_POSIBLE : COLOR_VISTA_PREVIA_RECHAZO
+    );
+    objetivo.esfera.material.emissiveIntensity = 0.5;
+
+    vistaPrevia = {
+        idA: id,
+        idB: vecino.id,
+        posible: resultado.ok,
+        motivo: resultado.motivo,
+    };
+    setUltimaAccion(resultado.ok
+        ? (resultado.accion === 'convertir-doble'
+            ? `Suelta para convertir el enlace entre ${id} y ${vecino.id} en doble`
+            : `Suelta para unir ${id} con ${vecino.id}`)
+        : `No se puede unir: ${resultado.motivo}`);
+    return vistaPrevia;
 }
 
 /**
@@ -315,6 +418,10 @@ export function eliminarAtomo(id, emitirEvento = true) {
     const atomo = atomos.get(id);
     if (!atomo) return false;
 
+    if (vistaPrevia && (vistaPrevia.idA === id || vistaPrevia.idB === id)) {
+        limpiarVistaPrevia();
+    }
+
     for (const otroId of [...atomo.enlaces]) {
         quitarEnlace(id, otroId, emitirEvento);
     }
@@ -420,6 +527,9 @@ function actualizarEnlace(idA, idB) {
 export function seleccionarAtomo(id) {
     if (seleccionado && atomos.has(seleccionado)) {
         const anterior = atomos.get(seleccionado);
+        // Vuelve a su color de grupo: el amarillo es solo mientras
+        // está seleccionado.
+        anterior.esfera.material.color.setHex(ELEMENTOS[anterior.elemento].color);
         anterior.esfera.material.emissive.setHex(0x000000);
         if (anterior.borde) anterior.borde.visible = false;
     }
@@ -427,6 +537,7 @@ export function seleccionarAtomo(id) {
 
     const atomo = atomos.get(id);
     if (atomo) {
+        atomo.esfera.material.color.setHex(COLOR_RESALTADO);
         atomo.esfera.material.emissive.setHex(COLOR_RESALTADO);
         atomo.esfera.material.emissiveIntensity = 0.4;
         if (atomo.borde) atomo.borde.visible = true;
@@ -438,6 +549,8 @@ export function seleccionarAtomo(id) {
 }
 
 export function limpiarEscena() {
+    ocultarTarjetaAtomo();
+    limpiarVistaPrevia();
     guardarFoto();
     for (const clave of [...enlaces.keys()]) {
         const [a, b] = clave.split('|');
@@ -661,6 +774,7 @@ function iniciarArrastre(x, y) {
     };
     seleccionarAtomo(id);
     resaltarPorDelante(atomo, true);
+    actualizarVistaPrevia(id);
     return true;
 }
 
@@ -681,6 +795,7 @@ function moverArrastre(x, y) {
     for (const otroId of atomo.enlaces) {
         actualizarEnlace(arrastre.id, otroId);
     }
+    actualizarVistaPrevia(arrastre.id);
 }
 
 function terminarArrastre(id) {
@@ -689,6 +804,8 @@ function terminarArrastre(id) {
     const atomo = atomos.get(id);
     if (!atomo) return;
 
+    ocultarTarjetaAtomo();
+    limpiarVistaPrevia();
     resaltarPorDelante(atomo, false);
     const p = atomo.grupo.position.clone();
     moverAtomo(id, { x: p.x, y: p.y, z: p.z });
@@ -726,6 +843,7 @@ function iniciarArrastreTeclado(id) {
 
     arrastre = { id, teclado: true, origen: atomo.grupo.position.clone() };
     resaltarPorDelante(atomo, true);
+    actualizarVistaPrevia(id);
     enviarMensaje('aviso', `${id} agarrado. Flechas para moverlo, Enter para soltarlo, Escape para cancelar`);
 }
 
@@ -744,11 +862,13 @@ function desplazarAtomoTeclado(id, dx, dy) {
     for (const otroId of atomo.enlaces) {
         actualizarEnlace(id, otroId);
     }
+    actualizarVistaPrevia(id);
 }
 
 function cancelarArrastreTeclado() {
     const { id, origen } = arrastre;
     arrastre = null;
+    limpiarVistaPrevia();
     const atomo = atomos.get(id);
     if (!atomo) return;
 
@@ -815,6 +935,101 @@ function manejarTeclado(evento) {
     }
 }
 
+/* Tarjeta de información del átomo: aparece solo al dejar el
+   cursor quieto sobre un átomo en la escena. */
+const ESPERA_TARJETA_MS = 500;
+let tarjetaPendiente = null;
+let tarjetaVisibleId = null;
+let temporizadorTarjeta = null;
+let tarjetaX = 0;
+let tarjetaY = 0;
+
+/** Oculta la tarjeta y cancela la espera, si había una en curso. */
+function ocultarTarjetaAtomo() {
+    if (temporizadorTarjeta !== null) {
+        clearTimeout(temporizadorTarjeta);
+        temporizadorTarjeta = null;
+    }
+    tarjetaPendiente = null;
+    tarjetaVisibleId = null;
+    const tarjeta = document.getElementById('tarjeta-atomo');
+    if (tarjeta) tarjeta.hidden = true;
+}
+
+/**
+ * Muestra la tarjeta con la información de un átomo, junto al cursor.
+ * @param {string} id Id del átomo.
+ */
+function mostrarTarjetaAtomo(id) {
+    const atomo = atomos.get(id);
+    const tarjeta = document.getElementById('tarjeta-atomo');
+    if (!atomo || !tarjeta) return;
+
+    const datos = ELEMENTOS[atomo.elemento];
+    const usados = valenciaUsada(id);
+    const libres = Math.max(datos.valencia - usados, 0);
+    const contenedor = document.getElementById('lienzo-3d');
+    const rect = contenedor?.getBoundingClientRect();
+
+    tarjeta.replaceChildren();
+    const titulo = document.createElement('strong');
+    titulo.textContent = `${datos.nombre} (${atomo.elemento})`;
+    const grupo = document.createElement('span');
+    grupo.textContent = datos.grupo;
+    const valencia = document.createElement('span');
+    valencia.textContent = `Valencia: ${datos.valencia} · Enlaces: ${usados} · Libres: ${libres}`;
+    tarjeta.append(titulo, grupo, valencia);
+
+    tarjeta.hidden = false;
+    if (rect) {
+        const izquierda = Math.min(
+            Math.max(tarjetaX - rect.left + 16, 8),
+            Math.max(rect.width - tarjeta.offsetWidth - 8, 8)
+        );
+        const arriba = Math.min(
+            Math.max(tarjetaY - rect.top + 16, 8),
+            Math.max(rect.height - tarjeta.offsetHeight - 8, 8)
+        );
+        tarjeta.style.left = `${izquierda}px`;
+        tarjeta.style.top = `${arriba}px`;
+    }
+    tarjetaVisibleId = id;
+    tarjetaPendiente = null;
+    temporizadorTarjeta = null;
+}
+
+/**
+ * Al mover el cursor sobre la escena, espera a que se quede quieto
+ * sobre un átomo para mostrar su tarjeta. Si el cursor se mueve a
+ * otro átomo o fuera de la escena, la espera empieza de nuevo.
+ */
+function manejarHover(evento) {
+    if (arrastre) {
+        ocultarTarjetaAtomo();
+        return;
+    }
+    if (evento.pointerType && evento.pointerType !== 'mouse') return;
+
+    const lienzo = obtenerLienzo();
+    if (!lienzo) return;
+    tarjetaX = evento.clientX;
+    tarjetaY = evento.clientY;
+
+    const punto = coordenadasDePuntero(evento, lienzo);
+    const id = punto ? atomoBajoPuntero(punto.x, punto.y) : null;
+
+    if (!id) {
+        ocultarTarjetaAtomo();
+        return;
+    }
+    if (id === tarjetaVisibleId) return;
+    if (id === tarjetaPendiente) return;
+
+    if (temporizadorTarjeta !== null) clearTimeout(temporizadorTarjeta);
+    tarjetaPendiente = id;
+    temporizadorTarjeta = setTimeout(() => mostrarTarjetaAtomo(id), ESPERA_TARJETA_MS);
+}
+
 /** Conecta el arrastre con pellizco, mouse y teclado. */
 export function iniciarArrastreDeAtomos() {
     if (arrastreIniciado) return true;
@@ -836,6 +1051,7 @@ export function iniciarArrastreDeAtomos() {
 
     // El átomo recibe el arrastre antes que OrbitControls.
     lienzo.addEventListener('pointerdown', (evento) => {
+        ocultarTarjetaAtomo();
         if (evento.button !== 0) return;
 
         const punto = coordenadasDePuntero(evento, lienzo);
@@ -852,6 +1068,10 @@ export function iniciarArrastreDeAtomos() {
         const punto = coordenadasDePuntero(evento, lienzo);
         if (punto) moverArrastre(punto.x, punto.y);
     });
+
+    // Tarjeta de información: solo al dejar el cursor sobre un átomo.
+    lienzo.addEventListener('pointermove', manejarHover);
+    lienzo.addEventListener('pointerleave', ocultarTarjetaAtomo);
 
     const finalizar = (evento) => {
         if (!arrastre || arrastre.teclado) return;
