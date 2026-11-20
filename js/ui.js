@@ -1,6 +1,7 @@
 import { on } from './bus.js';
 import { alternarMicrofono } from './voice.js';
 import { agregarAtomo } from './atoms.js';
+import { ELEMENTOS } from './elementos.js';
 
 const estadosMicrofono = {
   escuchando: { texto: 'Escuchando', clase: 'estado-ok' },
@@ -30,6 +31,39 @@ function actualizarIndicador(indicador, datos) {
   if (valor) valor.textContent = datos.texto;
 }
 
+function iniciarPanelAtomos() {
+  const lista = document.querySelector('#lista-elementos');
+  if (!lista) return;
+
+  const botones = Object.entries(ELEMENTOS).map(([simbolo, datos]) => {
+    const boton = document.createElement('button');
+    boton.type = 'button';
+    boton.className = 'boton boton-atomo';
+    boton.dataset.accion = 'agregar';
+    boton.dataset.elemento = simbolo;
+
+    const insignia = document.createElement('span');
+    insignia.className = 'simbolo';
+    insignia.textContent = simbolo;
+    insignia.setAttribute('aria-hidden', 'true');
+    insignia.style.backgroundColor =
+      '#' + datos.color.toString(16).padStart(6, '0');
+
+    if (datos.bordeOscuro) {
+      insignia.classList.add('simbolo-claro');
+    }
+
+    const etiqueta = document.createElement('span');
+    etiqueta.textContent = `${datos.nombre} · Valencia ${datos.valencia}`;
+
+    boton.append(insignia, etiqueta);
+    boton.addEventListener('click', () => agregarAtomo(simbolo));
+    return boton;
+  });
+
+  lista.replaceChildren(...botones);
+}
+
 export function iniciarInterfaz() {
   const microfono = document.querySelector('[data-accion="microfono"]');
   const indicador = document.querySelector('#estado-microfono');
@@ -38,13 +72,8 @@ export function iniciarInterfaz() {
   const indicadorCamara = document.querySelector('#estado-camara');
   const indicadorMano = document.querySelector('#estado-mano');
 
-document.querySelectorAll('#panel-atomos [data-accion="agregar"]')
-  .forEach((boton) => {
-    boton.addEventListener('click', () => {
-      agregarAtomo(boton.dataset.elemento);
-    });
-  });
-
+  iniciarPanelAtomos();
+  
   microfono.addEventListener('click', alternarMicrofono);
   document.addEventListener('keydown', (evento) => {
     if (evento.code !== 'Space' || evento.defaultPrevented || evento.repeat

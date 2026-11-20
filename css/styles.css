@@ -603,4 +603,22 @@ p {
   .respaldo {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .lista-elementos {
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.lista-elementos .boton-atomo {
+  width: 100%;
+}
+
+.simbolo-claro {
+  color: var(--texto);
+  border: 2px solid var(--atomo-c);
+}
+
 }

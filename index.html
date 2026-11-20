@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es-MX">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,7 +9,9 @@
   <!-- Tipografía de la guía visual: Nunito Sans (títulos) e Inter (texto) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;family=Nunito+Sans:wght@700&amp;display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;family=Nunito+Sans:wght@700&amp;display=swap"
+    rel="stylesheet">
 
   <!-- Librerías por CDN con versión fija. Debe ir antes de cualquier script de módulo. -->
   <script type="importmap">
@@ -22,6 +25,7 @@
 
   <link rel="stylesheet" href="css/styles.css">
 </head>
+
 <body>
 
   <!-- Interruptor del menú de átomos (sin JavaScript).
@@ -36,10 +40,10 @@
       </label>
       <h1 class="marca">
         <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true">
-          <circle cx="16" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/>
-          <circle cx="8" cy="24" r="4" fill="none" stroke="currentColor" stroke-width="2"/>
-          <circle cx="24" cy="24" r="4" fill="none" stroke="currentColor" stroke-width="2"/>
-          <path d="M14 11 9 20M18 11l5 9" stroke="currentColor" stroke-width="2"/>
+          <circle cx="16" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2" />
+          <circle cx="8" cy="24" r="4" fill="none" stroke="currentColor" stroke-width="2" />
+          <circle cx="24" cy="24" r="4" fill="none" stroke="currentColor" stroke-width="2" />
+          <path d="M14 11 9 20M18 11l5 9" stroke="currentColor" stroke-width="2" />
         </svg>
         MolecuLab 3D
       </h1>
@@ -91,30 +95,7 @@
     <!-- Panel de átomos: oculto al inicio, se abre con «Átomos» -->
     <aside id="panel-atomos" class="panel panel-atomos">
       <h2>Átomos</h2>
-
-      <button type="button" class="boton boton-atomo tip" data-tip="Agrega un hidrógeno · Gesto / Voz / Clic" data-accion="agregar" data-elemento="H">
-        <span class="simbolo atomo-h">H</span>
-        <span>Hidrógeno · Valencia 1</span>
-        <span class="solo-lector">Gesto, voz o clic</span>
-      </button>
-
-      <button type="button" class="boton boton-atomo tip" data-tip="Agrega un carbono · Gesto / Voz / Clic" data-accion="agregar" data-elemento="C">
-        <span class="simbolo atomo-c">C</span>
-        <span>Carbono · Valencia 4</span>
-        <span class="solo-lector">Gesto, voz o clic</span>
-      </button>
-
-      <button type="button" class="boton boton-atomo tip" data-tip="Agrega un nitrógeno · Gesto / Voz / Clic" data-accion="agregar" data-elemento="N">
-        <span class="simbolo atomo-n">N</span>
-        <span>Nitrógeno · Valencia 3</span>
-        <span class="solo-lector">Gesto, voz o clic</span>
-      </button>
-
-      <button type="button" class="boton boton-atomo tip" data-tip="Agrega un oxígeno · Gesto / Voz / Clic" data-accion="agregar" data-elemento="O">
-        <span class="simbolo atomo-o">O</span>
-        <span>Oxígeno · Valencia 2</span>
-        <span class="solo-lector">Gesto, voz o clic</span>
-      </button>
+      <div id="lista-elementos" class="lista-elementos"></div>
     </aside>
 
     <!-- Escena 3D: Three.js crea aquí su propio canvas -->
@@ -142,7 +123,8 @@
         <dt>Geometría</dt>
         <dd data-campo="geometria">—</dd>
       </dl>
-      <p class="descripcion" data-campo="descripcion">Construye una molécula y verifícala para ver su información aquí.</p>
+      <p class="descripcion" data-campo="descripcion">Construye una molécula y verifícala para ver su información aquí.
+      </p>
     </aside>
 
   </main>
@@ -157,11 +139,13 @@
       Limpiar
       <span class="solo-lector">Voz o clic</span>
     </button>
-    <button class="boton boton-principal tip" data-tip="Verifica la molécula · Pulgar arriba (1 seg) / Voz / Clic" data-accion="verificar">
+    <button class="boton boton-principal tip" data-tip="Verifica la molécula · Pulgar arriba (1 seg) / Voz / Clic"
+      data-accion="verificar">
       Verificar molécula
       <span class="solo-lector">Pulgar arriba, voz o clic</span>
     </button>
-    <button class="boton tip" data-tip="Activa o pausa el micrófono · Tecla Espacio / Clic" data-accion="microfono" aria-keyshortcuts="Space">
+    <button class="boton tip" data-tip="Activa o pausa el micrófono · Tecla Espacio / Clic" data-accion="microfono"
+      aria-keyshortcuts="Space">
       Micrófono
       <span class="solo-lector">Tecla Espacio o clic</span>
     </button>
@@ -169,4 +153,5 @@
 
   <script type="module" src="js/main.js"></script>
 </body>
+
 </html>

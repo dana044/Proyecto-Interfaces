@@ -1,0 +1,15 @@
+export const GLOSARIO = new Map([
+    ['molecula', 'Una molécula es un conjunto de dos o más átomos unidos por enlaces químicos.'],
+    ['atomo', 'Un átomo es una unidad de un elemento químico. Tiene un núcleo y electrones a su alrededor.'],
+    ['enlace covalente', 'Es una unión en la que dos átomos comparten uno o más pares de electrones.'],
+    ['valencia', 'La valencia indica cuántos enlaces puede formar un átomo según las reglas de este laboratorio.'],
+    ['enlace doble', 'Es una unión en la que dos átomos comparten dos pares de electrones.'],
+    ['formula quimica', 'Una fórmula química usa símbolos y números para indicar qué elementos hay y en qué cantidad.'],
+    ['geometria molecular', 'Es la forma que toman los átomos de una molécula en el espacio.'],
+    ['agua', 'Una molécula de agua tiene dos átomos de hidrógeno y uno de oxígeno. Su fórmula es H₂O.'],
+    ['proton', 'Un protón es una partícula con carga positiva que está en el núcleo del átomo.'],
+    ['neutron', 'Un neutrón es una partícula sin carga eléctrica que está en el núcleo del átomo.'],
+    ['electron', 'Un electrón es una partícula con carga negativa que se encuentra alrededor del núcleo.'],
+    ['numero atomico', 'El número atómico es la cantidad de protones del átomo. Ese número determina de qué elemento se trata.'],
+    ['ion', 'Un ion es un átomo o grupo de átomos con carga eléctrica. Si pierde electrones queda positivo y si gana electrones queda negativo.'],
+]);
