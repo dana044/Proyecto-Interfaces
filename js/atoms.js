@@ -38,17 +38,79 @@ let seleccionado = null;
 let arrastre = null;
 let vistaPrevia = null;
 
-/* Historial para Deshacer (versión mínima): fotos de la escena
-   antes de cada agregado y de cada limpieza. Solo deshace agregar y
-   limpiar; mover átomos con el arrastre todavía no se deshace. */
+/* Historial para Deshacer y Rehacer: fotos de la escena antes de
+   cada acción (agregar, mover, enlazar y limpiar). Cada entrada es
+   { foto, descripcion }, la foto guarda átomos y enlaces, y el
+   límite es de 30 acciones. La pila de rehacer se llena al deshacer
+   y se vacía en cuanto se hace una acción nueva. */
 const historial = [];
+const pilaRehacer = [];
 let restaurando = false;
 let catalogoMoleculas = null;
+/* Foto del arrastre en curso: se guarda al empezar a mover un átomo
+   y se quita si al soltarlo resulta que no se movió. */
+let fotoArrastrePendiente = null;
 
-function guardarFoto() {
-    if (restaurando) return;
-    historial.push(obtenerListaAtomos());
-    if (historial.length > 50) historial.shift();
+/**
+ * Guarda una foto de la escena antes de una acción, con su
+ * descripción para el mensaje («enlace O–H», «agregar O»...).
+ * Vacía la pila de rehacer: una acción nueva hace obsoletas las
+ * que se habían deshecho. Devuelve la entrada guardada o null
+ * si se está restaurando una foto.
+ * @param {string} descripcion Descripción corta de la acción.
+ * @returns {{ foto: object, descripcion: string } | null} La entrada guardada.
+ */
+function guardarFoto(descripcion = 'cambio') {
+    if (restaurando) return null;
+    const entrada = { foto: obtenerFotoEscena(), descripcion };
+    historial.push(entrada);
+    if (historial.length > 30) historial.shift();
+    pilaRehacer.length = 0;
+    return entrada;
+}
+
+/**
+ * Foto completa de la escena: los átomos (con su id, elemento y
+ * posición) y los enlaces (con sus dos átomos y su orden).
+ * @returns {{ atomos: Array, enlaces: Array }} La foto de la escena.
+ */
+function obtenerFotoEscena() {
+    return {
+        atomos: obtenerListaAtomos(),
+        enlaces: [...enlaces.values()].map((enlace) => ({
+            a: enlace.a,
+            b: enlace.b,
+            orden: enlace.orden,
+        })),
+    };
+}
+
+/**
+ * Reconstruye la escena desde una foto: primero los átomos con
+ * sus ids originales y después sus enlaces. Al crear cada enlace
+ * se actualizan solos los anillos de valencia, así que deshacer
+ * un enlace devuelve la valencia a los átomos.
+ * @param {{ atomos: Array, enlaces: Array }} foto La foto a restaurar.
+ */
+function restaurarFoto(foto) {
+    limpiarEscena({ confirmar: false });
+    for (const atomo of foto.atomos) {
+        agregarAtomo(atomo.elemento, atomo.posicion, atomo.id);
+    }
+    for (const enlace of foto.enlaces) {
+        crearEnlace(enlace.a, enlace.b, enlace.orden);
+    }
+}
+
+/**
+ * Quita la foto que se guardó al empezar un arrastre, cuando al
+ * final el átomo no se movió (o el movimiento se canceló).
+ */
+function descartarFotoArrastre() {
+    if (!fotoArrastrePendiente) return;
+    const indice = historial.indexOf(fotoArrastrePendiente);
+    if (indice !== -1) historial.splice(indice, 1);
+    fotoArrastrePendiente = null;
 }
 let arrastreIniciado = false;
 const rayo = new THREE.Raycaster();
@@ -298,6 +360,10 @@ function evaluarUnionAlSoltar(id, origen) {
     }
 
     // Se acerca hasta tocar al vecino y ahí se crea (o se duplica) el enlace.
+    // La foto va antes de la animación: es el estado sin ese enlace.
+    guardarFoto(resultado.accion === 'convertir-doble'
+        ? `enlace doble ${soltado.elemento}–${vecino.elemento}`
+        : `enlace ${soltado.elemento}–${vecino.elemento}`);
     const direccion = new THREE.Vector3(
         soltado.posicion.x - vecino.posicion.x,
         soltado.posicion.y - vecino.posicion.y,
@@ -361,8 +427,14 @@ function buscarPosicionLibre(radio) {
 /**
  * Agrega un átomo en la posición indicada o en un espacio libre.
  * Devuelve el id del átomo o null si no se pudo agregar.
+ * @param {string} elemento Símbolo del elemento.
+ * @param {{ x: number, y: number, z: number }} [posicion] Posición del átomo.
+ * @param {string} [idFijo] Id a usar en lugar de generar uno nuevo;
+ * solo lo usa la restauración de una foto, para que los enlaces
+ * de la foto sigan apuntando a los mismos átomos.
+ * @returns {string | null} El id del átomo.
  */
-export function agregarAtomo(elemento, posicion) {
+export function agregarAtomo(elemento, posicion, idFijo) {
     if (!Object.hasOwn(ELEMENTOS, elemento)) {
         enviarMensaje('aviso', AVISO_ELEMENTO_DESCONOCIDO);
         return null;
@@ -376,9 +448,17 @@ export function agregarAtomo(elemento, posicion) {
     const contenedor = obtenerContenedorAtomos();
     if (!contenedor) return null;
 
-    guardarFoto();
+    guardarFoto(`agregar ${elemento}`);
     const destino = posicion ?? buscarPosicionLibre(ELEMENTOS[elemento].radio);
-    const id = generarId(elemento);
+    const id = idFijo ?? generarId(elemento);
+    if (idFijo) {
+        // El contador queda por delante del id restaurado, para que
+        // el siguiente átomo nuevo no repita un id que ya existe.
+        const numero = Number.parseInt(idFijo.slice(elemento.length), 10);
+        if (Number.isSafeInteger(numero) && numero > contadores[elemento]) {
+            contadores[elemento] = numero;
+        }
+    }
     const visual = crearAtomoVisual(elemento);
 
     visual.grupo.position.set(destino.x, destino.y, destino.z);
@@ -554,10 +634,22 @@ export function seleccionarAtomo(id) {
     return seleccionado;
 }
 
-export function limpiarEscena() {
+/**
+ * Borra todos los átomos y enlaces de la escena. Con más de 2
+ * átomos pide confirmación, para no perder la escena por accidente.
+ * Las llamadas internas (deshacer y rehacer) pasan confirmar: false.
+ * @param {{ confirmar?: boolean }} [opciones] Opciones de limpieza.
+ * @returns {boolean} true si la escena se limpió, false si se canceló.
+ */
+export function limpiarEscena({ confirmar = true } = {}) {
+    if (confirmar && atomos.size > 2
+        && !window.confirm('¿Borrar todos los átomos de la escena?')) {
+        return false;
+    }
+
     ocultarTarjetaAtomo();
     limpiarVistaPrevia();
-    guardarFoto();
+    guardarFoto('limpiar la escena');
     for (const clave of [...enlaces.keys()]) {
         const [a, b] = clave.split('|');
         quitarEnlace(a, b, false);
@@ -574,6 +666,7 @@ export function limpiarEscena() {
 
     emit('escena:escena-limpia');
     setUltimaAccion('Limpiaste la escena');
+    return true;
 }
 
 export function obtenerListaAtomos() {
@@ -599,24 +692,45 @@ function liberarGrupo(grupo) {
 }
 
 /**
- * Deshace el último agregado o la última limpieza, restaurando la foto
- * anterior de la escena. Devuelve false si no hay nada que deshacer.
+ * Deshace la última acción, restaurando la foto anterior de la
+ * escena (átomos y enlaces). Guarda el estado actual en la pila
+ * de rehacer, para poder volver con rehacer(). Devuelve false
+ * si no hay nada que deshacer.
  */
 export function deshacer() {
-    const foto = historial.pop();
-    if (!foto) {
+    const entrada = historial.pop();
+    if (!entrada) {
         enviarMensaje('aviso', 'No hay nada que deshacer todavía');
         return false;
     }
 
+    pilaRehacer.push({ foto: obtenerFotoEscena(), descripcion: entrada.descripcion });
     restaurando = true;
-    limpiarEscena();
-    for (const atomo of foto) {
-        agregarAtomo(atomo.elemento, atomo.posicion);
-    }
+    restaurarFoto(entrada.foto);
     restaurando = false;
-    enviarMensaje('aviso', 'Se deshizo la última acción');
-    setUltimaAccion('Deshiciste la última acción');
+    enviarMensaje('aviso', `Deshiciste: ${entrada.descripcion}`);
+    setUltimaAccion(`Deshiciste: ${entrada.descripcion}`);
+    return true;
+}
+
+/**
+ * Rehace la última acción deshecha, restaurando la foto que
+ * guardó deshacer(). Devuelve false si no hay nada que rehacer.
+ */
+export function rehacer() {
+    const entrada = pilaRehacer.pop();
+    if (!entrada) {
+        enviarMensaje('aviso', 'No hay nada que rehacer todavía');
+        return false;
+    }
+
+    historial.push({ foto: obtenerFotoEscena(), descripcion: entrada.descripcion });
+    if (historial.length > 30) historial.shift();
+    restaurando = true;
+    restaurarFoto(entrada.foto);
+    restaurando = false;
+    enviarMensaje('aviso', `Rehiciste: ${entrada.descripcion}`);
+    setUltimaAccion(`Rehiciste: ${entrada.descripcion}`);
     return true;
 }
 
@@ -989,10 +1103,16 @@ export function iniciarComandosDeAtomos() {
             deshacer();
             return;
         }
+        if (intencion === 'rehacer') {
+            rehacer();
+            return;
+        }
         if (intencion === 'limpiar') {
-            limpiarEscena();
-            limpiarParticulas();
-            enviarMensaje('aviso', 'Se limpió la escena');
+            // Si se cancela la confirmación, las partículas se quedan.
+            if (limpiarEscena()) {
+                limpiarParticulas();
+                enviarMensaje('aviso', 'Se limpió la escena');
+            }
             return;
         }
         if (intencion === 'verificar') {
@@ -1078,6 +1198,10 @@ function iniciarArrastre(x, y) {
         desfase: new THREE.Vector3().subVectors(centro, impacto),
         origen: centro.clone(),
     };
+    // La foto se guarda al empezar el arrastre: durante el arrastre
+    // el átomo ya se mueve con cada pointermove, así que al soltarlo
+    // sería tarde para guardar la posición de antes.
+    fotoArrastrePendiente = guardarFoto(`mover ${id}`);
     seleccionarAtomo(id);
     resaltarPorDelante(atomo, true);
     actualizarVistaPrevia(id);
@@ -1115,6 +1239,13 @@ function terminarArrastre(id) {
     resaltarPorDelante(atomo, false);
     const p = atomo.grupo.position.clone();
     moverAtomo(id, { x: p.x, y: p.y, z: p.z });
+    // Si al final no se movió, la foto del arrastre no sirve:
+    // deshacerla no cambiaría nada. Si sí se movió, se queda.
+    if (arrastreActual?.origen && p.distanceTo(arrastreActual.origen) < 0.001) {
+        descartarFotoArrastre();
+    } else {
+        fotoArrastrePendiente = null;
+    }
     evaluarUnionAlSoltar(id, arrastreActual?.origen ?? p);
 }
 
@@ -1148,6 +1279,9 @@ function iniciarArrastreTeclado(id) {
     if (!atomo) return;
 
     arrastre = { id, teclado: true, origen: atomo.grupo.position.clone() };
+    // Igual que con el mouse: la foto va al empezar, porque cada
+    // flecha ya mueve el átomo en el momento.
+    fotoArrastrePendiente = guardarFoto(`mover ${id}`);
     resaltarPorDelante(atomo, true);
     actualizarVistaPrevia(id);
     enviarMensaje('aviso', `${id} agarrado. Flechas para moverlo, Enter para soltarlo, Escape para cancelar`);
@@ -1182,6 +1316,9 @@ function cancelarArrastreTeclado() {
     for (const otroId of atomo.enlaces) {
         actualizarEnlace(id, otroId);
     }
+    // El átomo volvió a su sitio: el movimiento no ocurrió y su
+    // foto no debe quedarse en el historial.
+    descartarFotoArrastre();
     resaltarPorDelante(atomo, false);
     enviarMensaje('aviso', `Movimiento de ${id} cancelado`);
 }

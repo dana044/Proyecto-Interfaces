@@ -1,6 +1,6 @@
 import { on } from './bus.js';
 import { alternarMicrofono } from './voice.js';
-import { agregarAtomo, agregarParticula, deshacer, limpiarEscena, limpiarParticulas, quitarParticula, verificarMolecula } from './atoms.js';
+import { agregarAtomo, agregarParticula, deshacer, limpiarEscena, limpiarParticulas, quitarParticula, rehacer, verificarMolecula } from './atoms.js';
 import { ELEMENTOS } from './elementos.js';
 import { setUltimaAccion } from './state.js';
 
@@ -90,16 +90,19 @@ export function iniciarInterfaz() {
     });
   });
 
-  // Botones de respaldo: Deshacer, Limpiar y Verificar no tenían ningún
-  // listener y el clic no hacía nada. Ahora sí hacen lo que prometen.
+  // Botones de respaldo: Deshacer, Rehacer, Limpiar y Verificar no
+  // tenían ningún listener y el clic no hacía nada. Ahora sí hacen
+  // lo que prometen.
   const botonDeshacer = document.querySelector('[data-accion="deshacer"]');
+  const botonRehacer = document.querySelector('[data-accion="rehacer"]');
   const botonLimpiar = document.querySelector('[data-accion="limpiar"]');
   const botonVerificar = document.querySelector('[data-accion="verificar"]');
   botonDeshacer?.addEventListener('click', () => deshacer());
+  botonRehacer?.addEventListener('click', () => rehacer());
   botonLimpiar?.addEventListener('click', () => {
-    if (!window.confirm('¿Borrar todos los átomos de la escena?')) return;
-    limpiarEscena();
-    limpiarParticulas();
+    // La confirmación vive en limpiarEscena(): solo pregunta con
+    // más de 2 átomos, y si se cancela no se borran las partículas.
+    if (limpiarEscena()) limpiarParticulas();
   });
   botonVerificar?.addEventListener('click', () => verificarMolecula());
 
@@ -117,6 +120,23 @@ export function iniciarInterfaz() {
 
     evento.preventDefault();
     alternarMicrofono();
+  });
+
+  // Ctrl+Z deshace y Ctrl+Y (o Ctrl+Shift+Z) rehace, en toda la
+  // página. Se ignoran en campos de texto, como el Espacio de arriba.
+  document.addEventListener('keydown', (evento) => {
+    if (evento.defaultPrevented || evento.repeat || evento.isComposing
+      || evento.altKey || !(evento.ctrlKey || evento.metaKey)) return;
+
+    if (evento.code !== 'KeyZ' && evento.code !== 'KeyY') return;
+    const objetivo = evento.target;
+    if (objetivo instanceof HTMLElement && (objetivo.isContentEditable
+      || objetivo.closest('input, textarea, select, [contenteditable]'))) return;
+    if (document.querySelector('dialog[open]')) return;
+
+    evento.preventDefault();
+    if (evento.code === 'KeyY' || evento.shiftKey) rehacer();
+    else deshacer();
   });
 
   // El estado del micrófono vive en su propio botón: un punto de

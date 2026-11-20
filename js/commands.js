@@ -58,7 +58,7 @@ function interpretarAgregar(frase) {
     const cantidad = palabraCantidad === undefined
         ? 1
         : cantidades.get(palabraCantidad)
-            ?? (/^\d+$/.test(palabraCantidad) ? Number(palabraCantidad) : NaN);
+        ?? (/^\d+$/.test(palabraCantidad) ? Number(palabraCantidad) : NaN);
 
     if (Number.isNaN(cantidad) || cantidad < 1) return;
 
@@ -100,6 +100,11 @@ function interpretarVoz({ texto }) {
         return;
     }
 
+    if (frase === 'rehacer' || frase === 'rehaz') {
+        emit('voz:comando', { intencion: 'rehacer', parametros: {} });
+        return;
+    }
+
     if (frase === 'limpiar' || frase === 'limpia la escena') {
         emit('voz:comando', { intencion: 'limpiar', parametros: {} });
         return;
@@ -111,7 +116,7 @@ function interpretarVoz({ texto }) {
     }
 
     if (frase === 'ayuda') {
-        responder('Puedes decir: agrega oxígeno, agrega dos hidrógenos, deshacer, limpiar o verificar.');
+        responder('Puedes decir: agrega oxígeno, agrega dos hidrógenos, deshacer, rehacer, limpiar o verificar.');
         return;
     }
 
