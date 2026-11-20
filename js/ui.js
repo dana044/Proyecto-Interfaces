@@ -1,6 +1,6 @@
 import { on } from './bus.js';
 import { alternarMicrofono } from './voice.js';
-import { agregarAtomo, deshacer, limpiarEscena, verificarMolecula } from './atoms.js';
+import { agregarAtomo, agregarParticula, deshacer, limpiarEscena, limpiarParticulas, quitarParticula, verificarMolecula } from './atoms.js';
 import { ELEMENTOS } from './elementos.js';
 import { setUltimaAccion } from './state.js';
 
@@ -84,6 +84,15 @@ export function iniciarInterfaz() {
   const valor = indicador.querySelector('.valor');
   if (!valor) return;
 
+  // Botones del modelo de Bohr: agregar y quitar partículas.
+  document.querySelectorAll('[data-particula]').forEach((boton) => {
+    boton.addEventListener('click', () => {
+      const tipo = boton.dataset.particula;
+      if (boton.dataset.accionParticula === 'quitar') quitarParticula(tipo);
+      else agregarParticula(tipo);
+    });
+  });
+
   // Botones de respaldo: Deshacer, Limpiar y Verificar no tenían ningún
   // listener y el clic no hacía nada. Ahora sí hacen lo que prometen.
   const botonDeshacer = document.querySelector('[data-accion="deshacer"]');
@@ -93,6 +102,7 @@ export function iniciarInterfaz() {
   botonLimpiar?.addEventListener('click', () => {
     if (!window.confirm('¿Borrar todos los átomos de la escena?')) return;
     limpiarEscena();
+    limpiarParticulas();
   });
   botonVerificar?.addEventListener('click', () => verificarMolecula());
 
@@ -151,6 +161,22 @@ export function iniciarInterfaz() {
   });
   on('escena:atomo-movido', ({ id }) => {
     if (id) setUltimaAccion(`Moviste ${id}`);
+  });
+
+  // Contador del modelo de Bohr en el panel de información y en las
+  // filas de partículas del panel de átomos.
+  on('escena:particulas-cambiadas', ({ protones, neutrones, electrones }) => {
+    const panelInfo = document.querySelector('#panel-info');
+    if (!panelInfo) return;
+    const escribir = (campo, numero) => {
+      const elemento = panelInfo.querySelector(`[data-campo="${campo}"]`);
+      if (elemento) elemento.textContent = String(numero);
+      const fila = document.querySelector(`[data-conteo-particula="${campo}"]`);
+      if (fila) fila.textContent = String(numero);
+    };
+    escribir('protones', protones);
+    escribir('neutrones', neutrones);
+    escribir('electrones', electrones);
   });
 
   // Panel de información de la molécula: antes sus campos (fórmula,

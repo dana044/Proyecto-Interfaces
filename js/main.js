@@ -12,7 +12,7 @@ import { iniciarGestos, detenerGestos } from './gestures.js';
 import { iniciarVoz } from './voice.js';
 import { iniciarInterfaz } from './ui.js';
 import { iniciarComandos } from './commands.js';
-import { iniciarComandosDeAtomos, iniciarArrastreDeAtomos } from './atoms.js';
+import { iniciarComandosDeAtomos, iniciarArrastreDeAtomos, iniciarModeloBohr } from './atoms.js';
 import { iniciarQuimica } from './chemistry.js';
 
 /**
@@ -43,6 +43,9 @@ async function iniciarApp() {
   await iniciarModulo('bus', iniciarBus);
   await iniciarModulo('estado', iniciarEstado);
   await iniciarModulo('escena', iniciarEscena);
+  await iniciarModulo('modelo de Bohr', () => {
+    if (!iniciarModeloBohr()) throw new Error('la escena no tiene contenedor');
+  });
   await iniciarModulo('arrastre de átomos', () => {
     if (!iniciarArrastreDeAtomos()) throw new Error('la escena no tiene lienzo');
   });

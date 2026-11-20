@@ -96,6 +96,37 @@
     <aside id="panel-atomos" class="panel panel-atomos">
       <h2>Átomos</h2>
       <div id="lista-elementos" class="lista-elementos"></div>
+
+      <!-- Modelo de Bohr: arma un átomo con sus partículas -->
+      <section class="panel-bohr" aria-labelledby="titulo-bohr">
+        <h3 id="titulo-bohr">Modelo de Bohr</h3>
+        <div class="filas-particulas">
+          <div class="fila-particula fila-proton">
+            <span class="nombre-particula">Protón</span>
+            <span class="conteo-particula" data-conteo-particula="protones">0</span>
+            <button class="boton boton-particula" type="button" data-particula="proton" data-accion-particula="agregar"
+              aria-label="Agregar un protón">+</button>
+            <button class="boton boton-particula" type="button" data-particula="proton" data-accion-particula="quitar"
+              aria-label="Quitar un protón">−</button>
+          </div>
+          <div class="fila-particula fila-neutron">
+            <span class="nombre-particula">Neutrón</span>
+            <span class="conteo-particula" data-conteo-particula="neutrones">0</span>
+            <button class="boton boton-particula" type="button" data-particula="neutron" data-accion-particula="agregar"
+              aria-label="Agregar un neutrón">+</button>
+            <button class="boton boton-particula" type="button" data-particula="neutron" data-accion-particula="quitar"
+              aria-label="Quitar un neutrón">−</button>
+          </div>
+          <div class="fila-particula fila-electron">
+            <span class="nombre-particula">Electrón</span>
+            <span class="conteo-particula" data-conteo-particula="electrones">0</span>
+            <button class="boton boton-particula" type="button" data-particula="electron"
+              data-accion-particula="agregar" aria-label="Agregar un electrón">+</button>
+            <button class="boton boton-particula" type="button" data-particula="electron" data-accion-particula="quitar"
+              aria-label="Quitar un electrón">−</button>
+          </div>
+        </div>
+      </section>
     </aside>
 
     <!-- Escena 3D: Three.js crea aquí su propio canvas -->
@@ -129,6 +160,25 @@
       </dl>
       <p class="descripcion" data-campo="descripcion">Construye una molécula y verifícala para ver su información aquí.
       </p>
+
+      <!-- Contador del modelo de Bohr -->
+      <h3>Modelo de Bohr</h3>
+      <div class="contador-bohr">
+        <div class="celda-contador">
+          <span class="numero-contador" data-campo="protones">0</span>
+          <span class="etiqueta-contador">Protones</span>
+        </div>
+        <div class="celda-contador">
+          <span class="numero-contador" data-campo="neutrones">0</span>
+          <span class="etiqueta-contador">Neutrones</span>
+        </div>
+        <div class="celda-contador">
+          <span class="numero-contador" data-campo="electrones">0</span>
+          <span class="etiqueta-contador">Electrones</span>
+        </div>
+      </div>
+      <p class="aviso-modelo">Las órbitas son un modelo sencillo para aprender. En la realidad, los
+        electrones no giran en círculos alrededor del núcleo como planetas.</p>
     </aside>
 
   </main>

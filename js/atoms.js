@@ -63,8 +63,9 @@ function claveEnlace(a, b) {
  * actuales, todos son oscuros y la letra es blanca.
  * @param {string} simbolo Símbolo del elemento.
  * @param {number} color Color de la esfera, en hexadecimal.
+ * @param {number} [escala=0.5] Tamaño de la etiqueta en la escena.
  */
-function crearEtiqueta(simbolo, color) {
+function crearEtiqueta(simbolo, color, escala = 0.5) {
     const lienzo = document.createElement('canvas');
     lienzo.width = 128;
     lienzo.height = 128;
@@ -90,7 +91,7 @@ function crearEtiqueta(simbolo, color) {
         depthTest: false,
     });
     const etiqueta = new THREE.Sprite(material);
-    etiqueta.scale.set(0.5, 0.5, 1);
+    etiqueta.scale.set(escala, escala, 1);
     etiqueta.renderOrder = 2;
     return etiqueta;
 }
@@ -336,7 +337,12 @@ function buscarPosicionLibre(radio) {
                 if (Math.max(Math.abs(fila), Math.abs(columna)) !== anillo) continue;
 
                 const posicion = { x: columna * paso, y: 0, z: fila * paso };
-                const ocupada = existentes.some((atomo) => {
+                // Si el modelo de Bohr tiene partículas, el centro está
+                // ocupado por el núcleo y sus órbitas: no se pone un
+                // átomo encima.
+                const centroOcupado = obtenerConteoParticulas().total > 0
+                    && Math.hypot(posicion.x, posicion.y, posicion.z) < 2;
+                const ocupada = centroOcupado || existentes.some((atomo) => {
                     const actual = atomo.grupo.position;
                     const distancia = Math.hypot(
                         posicion.x - actual.x,
@@ -718,6 +724,265 @@ export async function verificarMolecula() {
     return encontrada;
 }
 
+/* Modelo de Bohr: protones y neutrones en el núcleo, electrones
+   en órbitas circulares. Las órbitas son un modelo sencillo para
+   aprender, no la forma real de los átomos. */
+const MAX_PARTICULAS = 30;
+const CAPACIDADES_CAPAS = [2, 8, 8];
+const RADIOS_ORBITAS = [0.9, 1.3, 1.7];
+const RADIO_PARTICULA_NUCLEO = 0.16;
+const RADIO_ELECTRON = 0.14;
+const RADIO_NUCLEO = 0.32;
+const COLOR_PROTON = 0xdc2626;
+const COLOR_NEUTRON = 0x9ca3af;
+const COLOR_ELECTRON = 0x2563eb;
+const COLOR_ORBITA = 0x9ca3af;
+
+const NOMBRES_PARTICULA = {
+    proton: { nombre: 'protón', plural: 'protones', prefijo: 'P' },
+    neutron: { nombre: 'neutrón', plural: 'neutrones', prefijo: 'N' },
+    electron: { nombre: 'electrón', plural: 'electrones', prefijo: 'E' },
+};
+
+let grupoBohr = null;
+let grupoNucleo = null;
+let grupoOrbitas = null;
+let grupoElectrones = null;
+let bohrIniciado = false;
+const particulas = { proton: [], neutron: [], electron: [] };
+const contadoresParticula = { proton: 0, neutron: 0, electron: 0 };
+
+/**
+ * Primera capa con lugar libre para un electrón nuevo, o -1 si las
+ * tres capas están llenas. Es lógica pura, sin escena, para poder
+ * probarla sin WebGL.
+ * @param {number[]} porCapa Electrones que ya hay en cada capa.
+ * @returns {number} Índice de la capa (0, 1 o 2) o -1.
+ */
+function capaConLugarLibre(porCapa) {
+    for (let capa = 0; capa < CAPACIDADES_CAPAS.length; capa++) {
+        if ((porCapa[capa] || 0) < CAPACIDADES_CAPAS[capa]) return capa;
+    }
+    return -1;
+}
+
+/** Número de partículas de cada tipo y en total. */
+export function obtenerConteoParticulas() {
+    const protones = particulas.proton.length;
+    const neutrones = particulas.neutron.length;
+    const electrones = particulas.electron.length;
+    return { protones, neutrones, electrones, total: protones + neutrones + electrones };
+}
+
+function emitirConteoParticulas() {
+    emit('escena:particulas-cambiadas', obtenerConteoParticulas());
+}
+
+/** Reparte las partículas del núcleo en una esfera pequeña. */
+function reorganizarNucleo() {
+    const nucleo = [...particulas.proton, ...particulas.neutron];
+    const total = nucleo.length;
+    nucleo.forEach((particula, indice) => {
+        if (total === 1) {
+            particula.grupo.position.set(0, 0, 0);
+            return;
+        }
+        const y = 1 - (indice / (total - 1)) * 2;
+        const radio = Math.sqrt(Math.max(1 - y * y, 0));
+        const angulo = indice * 2.39996;
+        particula.grupo.position.set(
+            Math.cos(angulo) * radio * RADIO_NUCLEO,
+            y * RADIO_NUCLEO,
+            Math.sin(angulo) * radio * RADIO_NUCLEO
+        );
+    });
+}
+
+/** Reparte los electrones en sus órbitas, en su capa. */
+function reorganizarElectrones() {
+    const porCapa = [0, 0, 0];
+    for (const electron of particulas.electron) {
+        const capa = electron.capa;
+        const enCapa = particulas.electron.filter((otro) => otro.capa === capa);
+        const indice = enCapa.indexOf(electron);
+        const angulo = (indice / enCapa.length) * Math.PI * 2 + capa * 0.5;
+        electron.grupo.position.set(
+            Math.cos(angulo) * RADIOS_ORBITAS[capa],
+            Math.sin(angulo) * RADIOS_ORBITAS[capa],
+            0
+        );
+        porCapa[capa] += 1;
+    }
+    grupoOrbitas.children.forEach((orbita, capa) => {
+        orbita.visible = porCapa[capa] > 0;
+    });
+}
+
+function crearParticulaVisual(tipo) {
+    const color = tipo === 'proton'
+        ? COLOR_PROTON
+        : tipo === 'neutron' ? COLOR_NEUTRON : COLOR_ELECTRON;
+    const radio = tipo === 'electron' ? RADIO_ELECTRON : RADIO_PARTICULA_NUCLEO;
+    const grupo = new THREE.Group();
+    const esfera = new THREE.Mesh(
+        new THREE.SphereGeometry(radio, 24, 18),
+        new THREE.MeshStandardMaterial({ color, roughness: 0.4 })
+    );
+    grupo.add(esfera);
+    if (tipo === 'proton') {
+        const signo = crearEtiqueta('+', color, 0.22);
+        signo.position.set(0, 0, radio + 0.02);
+        grupo.add(signo);
+    }
+    if (tipo === 'electron') {
+        const signo = crearEtiqueta('−', color, 0.2);
+        signo.position.set(0, 0, radio + 0.02);
+        grupo.add(signo);
+    }
+    return grupo;
+}
+
+/**
+ * Crea el grupo del modelo de Bohr en la escena: núcleo en el centro
+ * y tres órbitas. Las órbitas empiezan ocultas y aparecen cuando hay
+ * al menos un electrón en su capa.
+ * Devuelve true si el modelo quedó listo y false si falta el contenedor.
+ */
+export function iniciarModeloBohr() {
+    if (bohrIniciado) return true;
+    const contenedor = obtenerContenedorAtomos();
+    if (!contenedor) return false;
+
+    grupoBohr = new THREE.Group();
+    grupoBohr.name = 'bohr';
+    grupoBohr.userData.tipo = 'bohr';
+    grupoNucleo = new THREE.Group();
+    grupoNucleo.name = 'nucleo';
+    grupoOrbitas = new THREE.Group();
+    grupoOrbitas.name = 'orbitas';
+    grupoElectrones = new THREE.Group();
+    grupoElectrones.name = 'electrones';
+    for (const radio of RADIOS_ORBITAS) {
+        const orbita = new THREE.Mesh(
+            new THREE.TorusGeometry(radio, 0.015, 8, 64),
+            new THREE.MeshBasicMaterial({
+                color: COLOR_ORBITA, transparent: true, opacity: 0.55,
+            })
+        );
+        orbita.visible = false;
+        grupoOrbitas.add(orbita);
+    }
+    grupoBohr.add(grupoNucleo, grupoOrbitas, grupoElectrones);
+    contenedor.add(grupoBohr);
+    bohrIniciado = true;
+    return true;
+}
+
+/**
+ * Agrega una partícula al modelo de Bohr. Los protones y neutrones van
+ * al núcleo; cada electrón nuevo va a la primera capa con lugar libre.
+ * Devuelve el id de la partícula o null si no se pudo agregar.
+ * @param {string} tipo 'proton', 'neutron' o 'electron'.
+ */
+export function agregarParticula(tipo) {
+    if (!Object.hasOwn(NOMBRES_PARTICULA, tipo)) {
+        enviarMensaje('aviso', 'Esa partícula no existe. Solo hay protones, neutrones y electrones.');
+        return null;
+    }
+    if (!bohrIniciado && !iniciarModeloBohr()) return null;
+
+    const conteo = obtenerConteoParticulas();
+    if (conteo.total >= MAX_PARTICULAS) {
+        enviarMensaje('aviso', `Ya llegaste al límite de ${MAX_PARTICULAS} partículas. Quita una para agregar otra.`);
+        return null;
+    }
+
+    let capa = -1;
+    if (tipo === 'electron') {
+        const porCapa = [0, 0, 0];
+        for (const electron of particulas.electron) porCapa[electron.capa] += 1;
+        capa = capaConLugarLibre(porCapa);
+        if (capa === -1) {
+            enviarMensaje('aviso', 'Las tres capas ya están llenas. Quita un electrón para agregar otro.');
+            return null;
+        }
+    }
+
+    contadoresParticula[tipo] += 1;
+    const id = `${NOMBRES_PARTICULA[tipo].prefijo}${contadoresParticula[tipo]}`;
+    const grupo = crearParticulaVisual(tipo);
+    grupo.userData.id = id;
+    grupo.userData.tipo = 'particula';
+    grupo.userData.particula = tipo;
+    if (tipo === 'electron') {
+        grupoElectrones.add(grupo);
+    } else {
+        grupoNucleo.add(grupo);
+    }
+    const particula = { id, tipo, capa, grupo };
+    particulas[tipo].push(particula);
+    if (tipo === 'electron') reorganizarElectrones();
+    else reorganizarNucleo();
+
+    const nuevoConteo = obtenerConteoParticulas();
+    emit('escena:particula-agregada', { id, tipo, capa });
+    emitirConteoParticulas();
+    const datos = NOMBRES_PARTICULA[tipo];
+    enviarMensaje('aviso', `Agregaste un ${datos.nombre}. Ahora tienes ${nuevoConteo.protones} protones, ${nuevoConteo.neutrones} neutrones y ${nuevoConteo.electrones} electrones.`);
+    setUltimaAccion(`Agregaste un ${datos.nombre} (${id})`);
+    return id;
+}
+
+/**
+ * Quita la última partícula agregada de ese tipo. Para los electrones
+ * quita la de la capa más alta que tenga electrones.
+ * Devuelve true si quitó una y false si no había ninguna.
+ * @param {string} tipo 'proton', 'neutron' o 'electron'.
+ */
+export function quitarParticula(tipo) {
+    if (!Object.hasOwn(NOMBRES_PARTICULA, tipo)) {
+        enviarMensaje('aviso', 'Esa partícula no existe. Solo hay protones, neutrones y electrones.');
+        return false;
+    }
+    const lista = particulas[tipo];
+    if (lista.length === 0) {
+        const datos = NOMBRES_PARTICULA[tipo];
+        enviarMensaje('aviso', `No hay ${datos.plural} para quitar.`);
+        return false;
+    }
+
+    const particula = lista.pop();
+    particula.grupo.parent?.remove(particula.grupo);
+    liberarGrupo(particula.grupo);
+    if (tipo === 'electron') reorganizarElectrones();
+    else reorganizarNucleo();
+
+    const conteo = obtenerConteoParticulas();
+    const datos = NOMBRES_PARTICULA[tipo];
+    emit('escena:particula-quitada', { id: particula.id, tipo });
+    emitirConteoParticulas();
+    enviarMensaje('aviso', `Quitaste un ${datos.nombre}. Ahora tienes ${conteo.protones} protones, ${conteo.neutrones} neutrones y ${conteo.electrones} electrones.`);
+    setUltimaAccion(`Quitaste un ${datos.nombre} (${particula.id})`);
+    return true;
+}
+
+/** Quita todas las partículas del modelo de Bohr y deja el conteo en cero. */
+export function limpiarParticulas() {
+    for (const tipo of Object.keys(particulas)) {
+        for (const particula of particulas[tipo]) {
+            particula.grupo.parent?.remove(particula.grupo);
+            liberarGrupo(particula.grupo);
+        }
+        particulas[tipo] = [];
+        contadoresParticula[tipo] = 0;
+    }
+    if (grupoOrbitas) {
+        grupoOrbitas.children.forEach((orbita) => { orbita.visible = false; });
+    }
+    emitirConteoParticulas();
+    setUltimaAccion('Quitaste todas las partículas');
+}
+
 export function iniciarComandosDeAtomos() {
     on('voz:comando', ({ intencion, parametros }) => {
         if (intencion === 'deshacer') {
@@ -726,6 +991,7 @@ export function iniciarComandosDeAtomos() {
         }
         if (intencion === 'limpiar') {
             limpiarEscena();
+            limpiarParticulas();
             enviarMensaje('aviso', 'Se limpió la escena');
             return;
         }

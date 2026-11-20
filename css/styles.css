@@ -298,23 +298,27 @@ p {
 .escena {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 24px;
+  gap: 16px;
   min-height: 0;
 }
 
 /* Con el menú abierto aparece la columna de átomos */
 #menu-atomos:checked~.escena {
-  grid-template-columns: 260px minmax(0, 1fr) 320px;
+  grid-template-columns: 300px minmax(0, 1fr) 320px;
 }
 
 .panel {
   min-height: 0;
-  padding: 24px;
+  padding: 16px;
   background: var(--superficie);
   border: 1px solid var(--borde);
   border-radius: var(--radio-tarjeta);
   box-shadow: var(--sombra);
   overflow: auto;
+}
+
+.panel h2 {
+  margin-bottom: 12px;
 }
 
 /* Panel de átomos: oculto al inicio */
@@ -325,12 +329,12 @@ p {
   overflow: hidden;
 }
 
-/* Lista de átomos con scroll vertical: los 10 botones caben completos.
-   Antes esta regla vivía solo dentro del @media de pantallas chicas,
-   así que en escritorio el panel se desbordaba y se cortaban los últimos. */
+/* Lista de átomos en dos columnas: los 10 botones ocupan la mitad
+   de alto que en una sola columna y el panel deja de ser tan largo. */
 .lista-elementos {
   display: grid;
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
   min-height: 0;
   flex: 1;
   overflow-y: auto;
@@ -339,6 +343,121 @@ p {
 
 .lista-elementos .boton-atomo {
   width: 100%;
+  min-height: 44px;
+  padding: 6px 10px;
+  gap: 6px;
+  font-size: 16px;
+}
+
+/* El nombre no se parte en dos líneas: si no cabe, se recorta. */
+.lista-elementos .boton-atomo span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Modelo de Bohr: una fila compacta por partícula, con su contador
+   y los botones + y −, en lugar de seis botones grandes. */
+.panel-bohr {
+  padding-top: 12px;
+  border-top: 1px solid var(--borde);
+}
+
+.panel-bohr h3 {
+  margin: 0 0 8px;
+  font-family: var(--fuente-titulo);
+  font-size: 20px;
+}
+
+.filas-particulas {
+  display: grid;
+  gap: 8px;
+}
+
+.fila-particula {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 8px;
+  border-left: 6px solid var(--borde);
+  border-radius: 4px;
+}
+
+.fila-proton {
+  border-left-color: #DC2626;
+}
+
+.fila-neutron {
+  border-left-color: #9CA3AF;
+}
+
+.fila-electron {
+  border-left-color: #2563EB;
+}
+
+.nombre-particula {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.conteo-particula {
+  min-width: 24px;
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.fila-particula .boton-particula {
+  min-width: 36px;
+  min-height: 36px;
+  padding: 4px 10px;
+  justify-content: center;
+  font-size: 18px;
+}
+
+/* Contador del modelo de Bohr en el panel de información: tres
+   celdas en una fila, en lugar de tres filas de la lista. */
+.contador-bohr {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.celda-contador {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 4px;
+  background: var(--lienzo);
+  border-radius: 12px;
+}
+
+.numero-contador {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.etiqueta-contador {
+  font-size: 16px;
+  color: var(--texto-secundario);
+}
+
+/* Aviso del modelo de Bohr en el panel de información */
+.aviso-modelo {
+  padding: 12px 16px;
+  font-size: 16px;
+  color: var(--texto-secundario);
+  background: #FEF3C7;
+  border: 1px solid #F59E0B;
+  border-radius: 12px;
+}
+
+.panel-info h3 {
+  margin: 0 0 8px;
+  font-family: var(--fuente-titulo);
+  font-size: 20px;
 }
 
 /* Símbolos claros (H, He, Li, Be, B, F, Ne): texto oscuro sobre fondo claro.
@@ -584,8 +703,8 @@ p {
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   font-size: 16px;
   font-weight: 700;
   color: #FFFFFF;
@@ -597,7 +716,7 @@ p {
 .respaldo {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 24px;
+  gap: 16px;
 }
 
 .respaldo .boton {

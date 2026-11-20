@@ -30,17 +30,20 @@ Intenciones acordadas: agregar-atomo, deshacer, rehacer, limpiar, rotar, acercar
 
 ## Escena (js/atoms.js, js/chemistry.js, js/molecules.js)
 
-| Evento                       | Datos                       |
-| ---------------------------- | --------------------------- |
-| escena:atomo-agregado        | {id, elemento}              |
-| escena:atomo-movido          | {id, posicion}              |
-| escena:atomo-eliminado       | {id, elemento}              |
-| escena:atomo-seleccionado    | {id}                        |
-| escena:enlace-creado         | {a, b, orden}               |
-| escena:enlace-eliminado      | {a, b}                      |
-| escena:enlace-rechazado      | {motivo}                    |
-| escena:molecula-identificada | {nombre, formula, completa} |
-| escena:escena-limpia         | —                           |
+| Evento                       | Datos                                    |
+| ---------------------------- | ---------------------------------------- |
+| escena:atomo-agregado        | {id, elemento}                           |
+| escena:atomo-movido          | {id, posicion}                           |
+| escena:atomo-eliminado       | {id, elemento}                           |
+| escena:atomo-seleccionado    | {id}                                     |
+| escena:enlace-creado         | {a, b, orden}                            |
+| escena:enlace-eliminado      | {a, b}                                   |
+| escena:enlace-rechazado      | {motivo}                                 |
+| escena:particula-agregada    | {id, tipo, capa}                         |
+| escena:particula-quitada     | {id, tipo}                               |
+| escena:particulas-cambiadas  | {protones, neutrones, electrones, total} |
+| escena:molecula-identificada | {nombre, formula, completa}              |
+| escena:escena-limpia         | —                                        |
 
 ## Interfaz y estado
 
