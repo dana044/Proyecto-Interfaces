@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MolecuLab 3D</title>
+  <title>MolecuLab</title>
 
   <!-- Tipografía de la guía visual: Nunito Sans (títulos) e Inter (texto) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -32,6 +32,11 @@
        Se activa con clic en la etiqueta «Átomos» o con Tab y Espacio. -->
   <input type="checkbox" id="menu-atomos" class="solo-lector">
 
+  <!-- Interruptor del panel de información (sin JavaScript).
+       Se activa con clic en la etiqueta «Información» o con Tab y Espacio.
+       JavaScript lo marca solo cuando llega información nueva. -->
+  <input type="checkbox" id="menu-info" class="solo-lector">
+
   <header class="encabezado">
     <div class="encabezado-izq">
       <label for="menu-atomos" class="boton-menu">
@@ -45,49 +50,26 @@
           <circle cx="24" cy="24" r="4" fill="none" stroke="currentColor" stroke-width="2" />
           <path d="M14 11 9 20M18 11l5 9" stroke="currentColor" stroke-width="2" />
         </svg>
-        MolecuLab 3D
+        MolecuLab
       </h1>
     </div>
-    <span class="chip">Modo libre</span>
+    <div class="encabezado-der">
+      <label for="menu-info" class="boton-menu">
+        <span>Información</span>
+      </label>
+      <span class="chip-estado estado-aviso" id="estado-camara"><strong>Cámara</strong> <span class="valor">Sin
+          permiso</span></span>
+      <span class="chip-estado estado-aviso" id="estado-mano"><strong>Mano</strong> <span class="valor">No
+          detectada</span></span>
+    </div>
   </header>
 
-  <!-- Barra de estado: cámara, mano, micrófono y última acción -->
-  <div id="barra-estado" class="barra-estado">
-    <div id="estado-camara" class="indicador estado-aviso">
-      <span class="punto" aria-hidden="true"></span>
-      <div>
-        <strong>Cámara</strong>
-        <span class="valor">Sin permiso</span>
-      </div>
-    </div>
-    <div id="estado-mano" class="indicador estado-aviso">
-      <span class="punto" aria-hidden="true"></span>
-      <div>
-        <strong>Mano</strong>
-        <span class="valor">No detectada</span>
-      </div>
-    </div>
-    <div id="estado-microfono" class="indicador estado-aviso">
-      <span class="punto" aria-hidden="true"></span>
-      <div>
-        <strong>Micrófono</strong>
-        <span class="valor" aria-live="polite">Pausado</span>
-      </div>
-    </div>
-    <div id="estado-accion" class="indicador estado-ok">
-      <span class="punto" aria-hidden="true"></span>
-      <div>
-        <strong>Última acción</strong>
-        <span class="valor">Ninguna todavía</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Zona de mensajes: avisos, confirmaciones y errores -->
-  <div id="zona-mensajes" class="zona-mensajes" role="status" aria-live="polite">
+  <!-- Notificación emergente: avisos, confirmaciones y errores.
+       Aparece unos segundos y se puede cerrar con la ×. -->
+  <div id="zona-mensajes" class="zona-mensajes" role="status" aria-live="polite" hidden>
     <span class="icono" aria-hidden="true">i</span>
-    <p>Aquí aparecerán los avisos y las confirmaciones.</p>
-    <!-- Ejemplo: <p class="mensaje mensaje-error">Error: el hidrógeno ya completó su valencia.</p> -->
+    <p></p>
+    <button class="cerrar-mensaje" type="button" aria-label="Cerrar aviso">×</button>
   </div>
 
   <main class="escena">
@@ -198,9 +180,10 @@
       Verificar molécula
       <span class="solo-lector">Pulgar arriba, voz o clic</span>
     </button>
-    <button class="boton tip" data-tip="Activa o pausa el micrófono · Tecla Espacio / Clic" data-accion="microfono"
-      aria-keyshortcuts="Space">
-      Micrófono
+    <button class="boton tip estado-aviso" data-tip="Activa o pausa el micrófono · Tecla Espacio / Clic"
+      data-accion="microfono" aria-keyshortcuts="Space">
+      <span class="punto-estado" aria-hidden="true"></span>
+      Micrófono · <span class="estado-boton">Pausado</span>
       <span class="solo-lector">Tecla Espacio o clic</span>
     </button>
   </footer>

@@ -1,4 +1,4 @@
-/* MolecuLab 3D · css/styles.css (versión 2)
+/* MolecuLab · css/styles.css (versión 2)
    Valores de: docs/guia_visual.pdf v1.0 */
 
 :root {
@@ -52,7 +52,7 @@ body {
 
 body {
   display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 16px;
   height: 100vh;
   padding: 16px 24px;
@@ -122,13 +122,28 @@ p {
   color: var(--accion);
 }
 
-.chip {
+.encabezado-der {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Pastillas de estado de cámara y mano en el encabezado */
+.chip-estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 8px 16px;
   font-size: 16px;
-  font-weight: 600;
-  color: var(--accion-presionado);
-  background: #EDE9FE;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
   border-radius: 999px;
+  box-shadow: var(--sombra);
+}
+
+.chip-estado .valor {
+  font-weight: 600;
+  color: var(--estado);
 }
 
 /* Botón de menú (hamburguesa) */
@@ -154,14 +169,24 @@ p {
   border-color: var(--accion-hover);
 }
 
-/* Menú abierto: la etiqueta se rellena */
-#menu-atomos:checked~.encabezado .boton-menu {
+/* Menú abierto: su etiqueta se rellena */
+#menu-atomos:checked~.encabezado label[for="menu-atomos"] {
+  color: #FFFFFF;
+  background: var(--accion);
+}
+
+#menu-info:checked~.encabezado label[for="menu-info"] {
   color: #FFFFFF;
   background: var(--accion);
 }
 
 /* Foco de teclado sobre el interruptor oculto, mostrado en la etiqueta */
-#menu-atomos:focus-visible~.encabezado .boton-menu {
+#menu-atomos:focus-visible~.encabezado label[for="menu-atomos"] {
+  outline: 3px solid var(--accion);
+  outline-offset: 3px;
+}
+
+#menu-info:focus-visible~.encabezado label[for="menu-info"] {
   outline: 3px solid var(--accion);
   outline-offset: 3px;
 }
@@ -194,44 +219,8 @@ p {
   top: 6px;
 }
 
-/* Barra de estado */
-
-.barra-estado {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.indicador {
-  --estado: var(--aviso);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  font-size: 16px;
-  background: var(--superficie);
-  border: 1px solid var(--borde);
-  border-radius: var(--radio-tarjeta);
-  box-shadow: var(--sombra);
-}
-
-.indicador strong {
-  display: block;
-  font-weight: 600;
-}
-
-.indicador .valor {
-  color: var(--estado);
-}
-
-.indicador .punto {
-  flex-shrink: 0;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--estado);
-}
-
+/* Colores de estado: los usan las pastillas del encabezado y el
+   botón del micrófono para mostrar su estado con un color. */
 .estado-ok {
   --estado: var(--ok);
 }
@@ -244,21 +233,49 @@ p {
   --estado: var(--error);
 }
 
-/* Zona de mensajes */
-
+/* Notificación emergente: aparece abajo a la derecha unos segundos
+   y se puede cerrar con la ×. Oculta por defecto. */
 .zona-mensajes {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 50;
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 56px;
-  padding: 12px 24px;
+  max-width: 380px;
+  padding: 12px 16px;
   background: var(--superficie);
-  border: 2px dashed var(--borde);
+  border: 1px solid var(--borde);
   border-radius: var(--radio-tarjeta);
+  box-shadow: 0 8px 24px rgba(32, 35, 49, 0.2);
+}
+
+.zona-mensajes[hidden] {
+  display: none;
 }
 
 .zona-mensajes p {
+  flex: 1;
   font-size: 18px;
+}
+
+.cerrar-mensaje {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--texto-secundario);
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.cerrar-mensaje:hover {
+  color: var(--texto);
+  background: var(--lienzo);
 }
 
 .icono {
@@ -293,18 +310,28 @@ p {
   --estado: var(--error);
 }
 
-/* Escena principal */
-
+/* Escena principal: sin paneles laterales abiertos solo está el lienzo.
+   Cada panel que se abre añade su columna. */
 .escena {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   min-height: 0;
 }
 
 /* Con el menú abierto aparece la columna de átomos */
 #menu-atomos:checked~.escena {
-  grid-template-columns: 300px minmax(0, 1fr) 320px;
+  grid-template-columns: 340px minmax(0, 1fr);
+}
+
+/* Con el panel de información abierto aparece su columna */
+#menu-info:checked~.escena {
+  grid-template-columns: minmax(0, 1fr) 320px;
+}
+
+/* Con los dos paneles abiertos aparecen las dos columnas */
+#menu-atomos:checked~#menu-info:checked~.escena {
+  grid-template-columns: 340px minmax(0, 1fr) 320px;
 }
 
 .panel {
@@ -470,6 +497,16 @@ p {
 
 #menu-atomos:checked~.escena .panel-atomos {
   display: flex;
+}
+
+/* Panel de información: oculto al inicio, se abre con «Información»
+   o solo cuando llega información nueva. */
+.panel-info {
+  display: none;
+}
+
+#menu-info:checked~.escena .panel-info {
+  display: block;
 }
 
 .panel-info dl {
@@ -691,6 +728,21 @@ p {
   cursor: not-allowed;
 }
 
+/* Estado del micrófono dentro de su botón: un punto de color y el
+   estado en texto (Escuchando, Pausado o Error). */
+.boton .punto-estado {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--estado);
+}
+
+.boton .estado-boton {
+  font-weight: 400;
+  color: var(--texto-secundario);
+}
+
 .boton-atomo {
   width: 100%;
   justify-content: flex-start;
@@ -732,12 +784,10 @@ p {
     min-height: 100vh;
   }
 
-  .barra-estado {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .escena,
-  #menu-atomos:checked~.escena {
+  #menu-atomos:checked~.escena,
+  #menu-info:checked~.escena,
+  #menu-atomos:checked~#menu-info:checked~.escena {
     grid-template-columns: 1fr;
   }
 
@@ -751,5 +801,12 @@ p {
 
   .lista-elementos {
     max-height: 60vh;
+  }
+
+  .zona-mensajes {
+    right: 16px;
+    bottom: 16px;
+    left: 16px;
+    max-width: none;
   }
 }

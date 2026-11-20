@@ -17,8 +17,8 @@ const estadosCamara = {
 };
 
 /**
- * Actualiza un indicador de la barra de estado (#estado-camara,
- * #estado-mano o #estado-microfono) con su texto y su color.
+ * Actualiza una pastilla de estado del encabezado (#estado-camara
+ * o #estado-mano) con su texto y su color.
  * @param {Element | null} indicador
  * @param {{ texto: string, clase: string }} datos
  */
@@ -71,7 +71,6 @@ function iniciarPanelAtomos() {
 
 export function iniciarInterfaz() {
   const microfono = document.querySelector('[data-accion="microfono"]');
-  const indicador = document.querySelector('#estado-microfono');
   const mensajes = document.querySelector('#zona-mensajes');
   const indicadorCamara = document.querySelector('#estado-camara');
   const indicadorMano = document.querySelector('#estado-mano');
@@ -80,9 +79,7 @@ export function iniciarInterfaz() {
 
   // Si falta un elemento de la página, no se rompe toda la interfaz:
   // antes un solo elemento ausente dejaba mudos la barra y los mensajes.
-  if (!microfono || !indicador || !mensajes || !indicadorCamara || !indicadorMano) return;
-  const valor = indicador.querySelector('.valor');
-  if (!valor) return;
+  if (!microfono || !mensajes || !indicadorCamara || !indicadorMano) return;
 
   // Botones del modelo de Bohr: agregar y quitar partículas.
   document.querySelectorAll('[data-particula]').forEach((boton) => {
@@ -122,12 +119,15 @@ export function iniciarInterfaz() {
     alternarMicrofono();
   });
 
+  // El estado del micrófono vive en su propio botón: un punto de
+  // color y el estado en texto (Escuchando, Pausado o Error).
   on('estado:microfono', ({ estado }) => {
     const datos = estadosMicrofono[estado];
     if (!datos) return;
-    indicador.classList.remove('estado-ok', 'estado-aviso', 'estado-error');
-    indicador.classList.add(datos.clase);
-    valor.textContent = datos.texto;
+    microfono.classList.remove('estado-ok', 'estado-aviso', 'estado-error');
+    microfono.classList.add(datos.clase);
+    const textoEstado = microfono.querySelector('.estado-boton');
+    if (textoEstado) textoEstado.textContent = datos.texto;
   });
 
   on('estado:camara', ({ estado }) => {
@@ -143,14 +143,31 @@ export function iniciarInterfaz() {
       : { texto: `${numero} detectada${numero > 1 ? 's' : ''}`, clase: 'estado-ok' });
   });
 
-  on('ui:mensaje', ({ tipo, texto }) => {
-    const aviso = document.createElement('p');
-    aviso.classList.add('mensaje');
-    if (['correcto', 'aviso', 'error'].includes(tipo)) {
-      aviso.classList.add(`mensaje-${tipo}`);
+  // Notificación emergente: aparece 6 segundos y se puede cerrar
+  // con la ×. Un aviso nuevo reinicia el tiempo.
+  const parrafoMensaje = mensajes.querySelector('p');
+  const botonCerrarMensaje = mensajes.querySelector('.cerrar-mensaje');
+  let temporizadorMensaje = null;
+  const ocultarMensaje = () => {
+    if (temporizadorMensaje !== null) {
+      clearTimeout(temporizadorMensaje);
+      temporizadorMensaje = null;
     }
-    aviso.textContent = texto;
-    mensajes.replaceChildren(aviso);
+    mensajes.hidden = true;
+  };
+  botonCerrarMensaje?.addEventListener('click', ocultarMensaje);
+  parrafoMensaje?.classList.add('mensaje');
+
+  on('ui:mensaje', ({ tipo, texto }) => {
+    if (!parrafoMensaje) return;
+    parrafoMensaje.classList.remove('mensaje-correcto', 'mensaje-aviso', 'mensaje-error');
+    if (['correcto', 'aviso', 'error'].includes(tipo)) {
+      parrafoMensaje.classList.add(`mensaje-${tipo}`);
+    }
+    parrafoMensaje.textContent = texto;
+    mensajes.hidden = false;
+    if (temporizadorMensaje !== null) clearTimeout(temporizadorMensaje);
+    temporizadorMensaje = setTimeout(ocultarMensaje, 6000);
     setUltimaAccion(texto);
   });
 
@@ -177,6 +194,7 @@ export function iniciarInterfaz() {
     escribir('protones', protones);
     escribir('neutrones', neutrones);
     escribir('electrones', electrones);
+    if (protones + neutrones + electrones > 0) mostrarPanelInfo();
   });
 
   // Panel de información de la molécula: antes sus campos (fórmula,
@@ -192,5 +210,16 @@ export function iniciarInterfaz() {
     escribir('nombre', nombre);
     escribir('geometria', geometria);
     escribir('descripcion', descripcion);
+    mostrarPanelInfo();
   });
+}
+
+/**
+ * Muestra el panel de información: marca su interruptor, que es lo
+ * mismo que pulsar la etiqueta «Información». Si la usuaria lo
+ * oculta después, se queda oculto hasta que llegue información nueva.
+ */
+function mostrarPanelInfo() {
+  const interruptor = document.querySelector('#menu-info');
+  if (interruptor) interruptor.checked = true;
 }
