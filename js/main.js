@@ -13,6 +13,7 @@ import { iniciarVoz } from './voice.js';
 import { iniciarInterfaz } from './ui.js';
 import { iniciarComandos } from './commands.js';
 import { iniciarComandosDeAtomos, iniciarArrastreDeAtomos } from './atoms.js';
+import { iniciarQuimica } from './chemistry.js';
 
 /**
  * Intenta iniciar un módulo. Si falla, emite un mensaje de error
@@ -45,6 +46,7 @@ async function iniciarApp() {
   await iniciarModulo('arrastre de átomos', () => {
     if (!iniciarArrastreDeAtomos()) throw new Error('la escena no tiene lienzo');
   });
+  await iniciarModulo('química', iniciarQuimica);
   await iniciarModulo('gestos', iniciarGestos);
   await iniciarModulo('comandos de átomos', iniciarComandosDeAtomos);
   await iniciarModulo('comandos de voz', iniciarComandos);

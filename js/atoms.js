@@ -9,6 +9,16 @@ import { obtenerCamara, obtenerContenedorAtomos, obtenerLienzo } from './scene.j
 import { emit, on } from './bus.js';
 import { AVISO_ELEMENTO_DESCONOCIDO, ELEMENTOS, MAX_ATOMOS } from './elementos.js';
 import { setUltimaAccion } from './state.js';
+import {
+    actualizarAnilloValencia,
+    animarHasta,
+    animarSacudida,
+    buscarVecinoMasCercano,
+    crearAnilloValencia,
+    enlacesUsados,
+    evaluarUnion,
+    valenciaDe,
+} from './chemistry.js';
 
 const ALTURA_ENLACE_DOBLE = 0.08;
 const FACTOR_TOLERANCIA_PELLIZCO = 1.5;
@@ -25,7 +35,7 @@ const contadores = Object.fromEntries(
 let seleccionado = null;
 let arrastre = null;
 
-/* Historial para Deshacer (HU-16, versión mínima): fotos de la escena
+/* Historial para Deshacer (versión mínima): fotos de la escena
    antes de cada agregado y de cada limpieza. Solo deshace agregar y
    limpiar; mover átomos con el arrastre todavía no se deshace. */
 const historial = [];
@@ -112,7 +122,12 @@ function crearAtomoVisual(elemento) {
     etiqueta.position.set(0, config.radio + 0.25, 0);
     grupo.add(etiqueta);
 
-    return { grupo, esfera, borde, radio: config.radio };
+    // Aro de valencia (js/chemistry.js): verde si la valencia está
+    // completa, gris con un punto por cada enlace que aún le queda.
+    const anillo = crearAnilloValencia(config.radio, config.valencia);
+    grupo.add(anillo);
+
+    return { grupo, esfera, borde, anillo, radio: config.radio };
 }
 
 function generarId(elemento) {
@@ -122,6 +137,89 @@ function generarId(elemento) {
 
 function enviarMensaje(tipo, texto) {
     emit('ui:mensaje', { tipo, texto });
+}
+
+/** Suma de órdenes de enlace que ya tiene un átomo (su valencia usada). */
+function valenciaUsada(id) {
+    return enlacesUsados(id, [...enlaces.values()]);
+}
+
+/** Redibuja el aro de valencia de un átomo según sus enlaces actuales. */
+function actualizarAnillo(id) {
+    const atomo = atomos.get(id);
+    if (!atomo || !atomo.anillo) return;
+    const libres = Math.max(valenciaDe(atomo.elemento) - valenciaUsada(id), 0);
+    actualizarAnilloValencia(atomo.anillo, atomo.radio, libres);
+}
+
+/**
+ * Al soltar un átomo, evalúa si se une al átomo más cercano
+ * (js/chemistry.js). Se llama desde terminarArrastre(), así que
+ * vale para mouse, pellizco y teclado.
+ */
+function evaluarUnionAlSoltar(id, origen) {
+    const atomo = atomos.get(id);
+    if (!atomo) return;
+
+    const lista = obtenerListaAtomos();
+    const soltado = lista.find((item) => item.id === id);
+    if (!soltado) return;
+
+    const cercano = buscarVecinoMasCercano(soltado, lista);
+    if (!cercano) return;
+
+    const vecino = cercano.vecino;
+    const ordenActual = enlaces.get(claveEnlace(id, vecino.id))?.orden ?? 0;
+    const resultado = evaluarUnion({
+        idA: id,
+        elementoA: soltado.elemento,
+        idB: vecino.id,
+        elementoB: vecino.elemento,
+        ordenActual,
+        enlaces: [...enlaces.values()],
+    });
+
+    // Ya tienen un enlace doble: solo estaba moviendo la molécula.
+    if (resultado.accion === 'nada') return;
+
+    if (!resultado.ok) {
+        emit('escena:enlace-rechazado', { motivo: resultado.motivo });
+        enviarMensaje('aviso', resultado.motivo);
+        setUltimaAccion(`Enlace rechazado: ${resultado.motivo}`);
+        // Se sacude y vuelve a su sitio antes del arrastre.
+        animarSacudida(atomo.grupo, origen).then(() => {
+            moverAtomo(id, { x: origen.x, y: origen.y, z: origen.z });
+        });
+        return;
+    }
+
+    // Se acerca hasta tocar al vecino y ahí se crea (o se duplica) el enlace.
+    const direccion = new THREE.Vector3(
+        soltado.posicion.x - vecino.posicion.x,
+        soltado.posicion.y - vecino.posicion.y,
+        soltado.posicion.z - vecino.posicion.z
+    );
+    if (direccion.lengthSq() === 0) direccion.set(1, 0, 0);
+    direccion.normalize();
+    const distanciaContacto = atomo.radio + (ELEMENTOS[vecino.elemento]?.radio ?? 0.4);
+    const destino = {
+        x: vecino.posicion.x + direccion.x * distanciaContacto,
+        y: vecino.posicion.y + direccion.y * distanciaContacto,
+        z: vecino.posicion.z + direccion.z * distanciaContacto,
+    };
+
+    animarHasta(atomo.grupo, destino).then(() => {
+        moverAtomo(id, destino);
+        if (crearEnlace(id, vecino.id, resultado.nuevoOrden)) {
+            const accion = resultado.accion === 'convertir-doble'
+                ? 'Convertiste el enlace en doble'
+                : 'Creaste un enlace';
+            setUltimaAccion(`${accion} entre ${id} y ${vecino.id}`);
+            enviarMensaje('correcto', resultado.nuevoOrden === 2
+                ? 'Enlace doble creado: comparten 2 electrones cada uno.'
+                : 'Enlace creado: comparten 1 electrón cada uno.');
+        }
+    });
 }
 
 function buscarPosicionLibre(radio) {
@@ -185,6 +283,7 @@ export function agregarAtomo(elemento, posicion) {
         grupo: visual.grupo,
         esfera: visual.esfera,
         borde: visual.borde,
+        anillo: visual.anillo,
         radio: visual.radio,
         enlaces: new Set(),
     });
@@ -235,7 +334,9 @@ export function crearEnlace(idA, idB, orden = 1) {
     if (!atomos.has(idA) || !atomos.has(idB) || idA === idB) return false;
 
     const clave = claveEnlace(idA, idB);
-    if (enlaces.has(clave)) quitarEnlace(idA, idB);
+    // Al convertir un enlace simple en doble no se emite
+    // escena:enlace-eliminado: solo se emite el creado con orden 2.
+    if (enlaces.has(clave)) quitarEnlace(idA, idB, false);
 
     const grupo = new THREE.Group();
     grupo.userData.tipo = 'enlace';
@@ -264,6 +365,8 @@ export function crearEnlace(idA, idB, orden = 1) {
     atomos.get(idB).enlaces.add(idA);
 
     actualizarEnlace(idA, idB);
+    actualizarAnillo(idA);
+    actualizarAnillo(idB);
     emit('escena:enlace-creado', { a: idA, b: idB, orden: cantidad });
     return true;
 }
@@ -278,6 +381,8 @@ function quitarEnlace(idA, idB, emitirEvento = true) {
     enlaces.delete(clave);
     atomos.get(idA)?.enlaces.delete(idB);
     atomos.get(idB)?.enlaces.delete(idA);
+    if (atomos.has(idA)) actualizarAnillo(idA);
+    if (atomos.has(idB)) actualizarAnillo(idB);
     if (emitirEvento) emit('escena:enlace-eliminado', { a: idA, b: idB });
 }
 
@@ -406,8 +511,7 @@ function mismoConteo(a, b) {
 
 /**
  * Verifica la molécula construida comparando sus átomos con el catálogo
- * (data/moleculas.json). Versión provisional hasta HU-15/HU-22: como los
- * enlaces todavía no se crean en la escena, la comparación es por
+ * (data/moleculas.json). Versión provisional: la comparación es por
  * cantidad de átomos de cada elemento, no por enlaces ni valencias.
  * Si coincide, emite escena:molecula-identificada y devuelve la molécula;
  * si no, avisa que todavía no es una molécula completa del catálogo.
@@ -553,6 +657,7 @@ function iniciarArrastre(x, y) {
         id,
         plano,
         desfase: new THREE.Vector3().subVectors(centro, impacto),
+        origen: centro.clone(),
     };
     seleccionarAtomo(id);
     resaltarPorDelante(atomo, true);
@@ -579,13 +684,15 @@ function moverArrastre(x, y) {
 }
 
 function terminarArrastre(id) {
+    const arrastreActual = arrastre;
     arrastre = null;
     const atomo = atomos.get(id);
     if (!atomo) return;
 
     resaltarPorDelante(atomo, false);
-    const p = atomo.grupo.position;
+    const p = atomo.grupo.position.clone();
     moverAtomo(id, { x: p.x, y: p.y, z: p.z });
+    evaluarUnionAlSoltar(id, arrastreActual?.origen ?? p);
 }
 
 function soltarArrastre(x, y) {
