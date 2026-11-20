@@ -203,25 +203,43 @@ function actualizarManos(resultado) {
  */
 function dibujarManos(resultado) {
   if (!video || !lienzo || !contexto) return;
+  if (!video.videoWidth || !video.videoHeight) return;
 
-  if (lienzo.width !== video.videoWidth || lienzo.height !== video.videoHeight) {
-    lienzo.width = video.videoWidth || lienzo.width;
-    lienzo.height = video.videoHeight || lienzo.height;
+  // Se dibuja al tamaño visible (200x150), no al del video: con 1280 px
+  // de ancho una línea de 3 px salía de menos de medio píxel en pantalla.
+  const anchoVisible = lienzo.clientWidth || video.videoWidth;
+  const altoVisible = lienzo.clientHeight || video.videoHeight;
+
+  if (lienzo.width !== anchoVisible || lienzo.height !== altoVisible) {
+    lienzo.width = anchoVisible;
+    lienzo.height = altoVisible;
   }
 
   contexto.clearRect(0, 0, lienzo.width, lienzo.height);
 
-  for (const puntos of resultado.landmarks || []) {
-    const aPixeles = (punto) => ({
-      x: punto.x * lienzo.width,
-      y: punto.y * lienzo.height,
-    });
+  // El video recorta los lados (object-fit: cover en caja 4/3); se aplica
+  // el mismo recorte para que el esqueleto caiga sobre la mano.
+  const escala = Math.max(
+    lienzo.width / video.videoWidth,
+    lienzo.height / video.videoHeight,
+  );
+  const desplazamientoX = (lienzo.width - video.videoWidth * escala) / 2;
+  const desplazamientoY = (lienzo.height - video.videoHeight * escala) / 2;
 
+  const aPixeles = (punto) => ({
+    x: desplazamientoX + punto.x * video.videoWidth * escala,
+    y: desplazamientoY + punto.y * video.videoHeight * escala,
+  });
+
+  const grosorLinea = Math.max(3, Math.round(lienzo.width * 0.025));
+  const radioPunto = Math.max(3, Math.round(lienzo.width * 0.02));
+
+  for (const puntos of resultado.landmarks || []) {
     contexto.strokeStyle = '#00FF00';
-    contexto.lineWidth = 3;
-    for (const [inicio, fin] of HandLandmarker.HAND_CONNECTIONS) {
-      const a = aPixeles(puntos[inicio]);
-      const b = aPixeles(puntos[fin]);
+    contexto.lineWidth = grosorLinea;
+    for (const conexion of HandLandmarker.HAND_CONNECTIONS) {
+      const a = aPixeles(puntos[conexion.start]);
+      const b = aPixeles(puntos[conexion.end]);
       contexto.beginPath();
       contexto.moveTo(a.x, a.y);
       contexto.lineTo(b.x, b.y);
@@ -232,7 +250,7 @@ function dibujarManos(resultado) {
     for (const punto of puntos) {
       const { x, y } = aPixeles(punto);
       contexto.beginPath();
-      contexto.arc(x, y, 4, 0, 2 * Math.PI);
+      contexto.arc(x, y, radioPunto, 0, 2 * Math.PI);
       contexto.fill();
     }
   }
