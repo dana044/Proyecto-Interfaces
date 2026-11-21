@@ -2,6 +2,7 @@
  * @file atoms.js
  * @description Átomos, enlaces y arrastre en la escena 3D de MolecuLab.
  * @author Citlaly Morales Viveros
+ * @author Stephanie Elizdeth Hernández Prieto
  */
 
 import * as THREE from 'three';
@@ -21,7 +22,11 @@ import {
 } from './chemistry.js';
 import { calcularGeometria, identificarMolecula } from './molecules.js';
 
-const ALTURA_ENLACE_DOBLE = 0.08;
+/** Separación de cada cilindro del centro en un enlace doble: los
+ * dos cilindros tienen radio 0.08, así que con menos de 0.08 se
+ * tocan y se ven como una sola barra gruesa; con 0.16 sus centros
+ * quedan a 0.32 y queda un hueco claro de 0.16 entre ellos. */
+const ALTURA_ENLACE_DOBLE = 0.16;
 const FACTOR_TOLERANCIA_PELLIZCO = 1.5;
 const PASO_TECLADO = 0.1;
 const COLOR_RESALTADO = 0xfacc15;
@@ -682,6 +687,18 @@ export function obtenerListaAtomos() {
     }));
 }
 
+/**
+ * Lista de enlaces de la escena, con sus dos átomos y su orden
+ * (1 simple, 2 doble). Es solo lectura: no cambia la escena.
+ */
+export function obtenerListaEnlaces() {
+    return [...enlaces.values()].map((enlace) => ({
+        a: enlace.a,
+        b: enlace.b,
+        orden: enlace.orden,
+    }));
+}
+
 function liberarGrupo(grupo) {
     grupo.traverse((objeto) => {
         if (objeto.geometry) objeto.geometry.dispose();
@@ -905,11 +922,29 @@ export async function verificarMolecula() {
     }
 
     if (resultado.estado === 'imposible') {
+        // También se emite el evento, con completa: false y sin
+        // molécula, para que el modo reto cuente el intento fallido.
+        emit('escena:molecula-identificada', {
+            nombre: null,
+            formula: null,
+            completa: false,
+            geometria: null,
+            descripcion: null,
+        });
         enviarMensaje('aviso', resultado.motivo);
         setUltimaAccion('Verificación: combinación imposible');
         return null;
     }
 
+    // También se emite el evento, con completa: false y sin
+    // molécula, para que el modo reto cuente el intento fallido.
+    emit('escena:molecula-identificada', {
+        nombre: null,
+        formula: null,
+        completa: false,
+        geometria: null,
+        descripcion: null,
+    });
     enviarMensaje('aviso', resultado.mensaje);
     setUltimaAccion('Verificación: molécula no reconocida');
     return null;

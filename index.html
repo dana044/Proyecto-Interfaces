@@ -131,6 +131,24 @@
 
     <!-- Información de la molécula identificada -->
     <aside id="panel-info" class="panel panel-info" aria-labelledby="titulo-info">
+      <!-- Modo reto: solo se ve en modo reto. La pantalla completa
+           del reto la hace Stephanie; esto es lo mínimo para que la
+           lógica se pueda probar en el navegador. -->
+      <section id="panel-reto" class="panel-reto" aria-labelledby="titulo-reto" hidden>
+        <h3 id="titulo-reto" data-campo-reto="titulo">Reto 1 de 6</h3>
+        <p class="reto-formula" data-campo-reto="formula">—</p>
+        <p class="reto-sugerencia" data-campo-reto="sugerencia"></p>
+        <p class="reto-progreso">
+          <span data-campo-reto="estrellas">☆☆☆☆☆☆</span> ·
+          <span data-campo-reto="intentos">Intentos: 0</span> ·
+          <span data-campo-reto="tiempo">Tiempo: 0:00</span>
+        </p>
+        <div class="reto-botones">
+          <button class="boton" type="button" data-accion="ayuda-reto">Ayuda</button>
+          <button class="boton" type="button" data-accion="salir-reto">Salir al modo libre</button>
+        </div>
+      </section>
+
       <h2 id="titulo-info">Molécula</h2>
       <dl>
         <dt>Fórmula</dt>
@@ -177,6 +195,10 @@
     </button>
     <button class="boton tip" data-tip="Borra la escena, con confirmación · Voz / Clic" data-accion="limpiar">
       Limpiar
+      <span class="solo-lector">Voz o clic</span>
+    </button>
+    <button class="boton tip" data-tip="Entra al modo reto «construye una molécula» · Voz / Clic" data-accion="reto">
+      Modo reto
       <span class="solo-lector">Voz o clic</span>
     </button>
     <button class="boton boton-principal tip" data-tip="Verifica la molécula · Pulgar arriba (1 seg) / Voz / Clic"

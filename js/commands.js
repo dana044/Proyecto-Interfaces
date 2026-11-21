@@ -1,5 +1,12 @@
+/**
+ * @file commands.js
+ * @author Stephanie Elizdeth Hernández Prieto
+ * @author Citlaly Morales Viveros
+ */
+
 import { emit, on } from './bus.js';
 import { hablar } from './voice.js';
+import { estado } from './state.js';
 import { AVISO_ELEMENTO_DESCONOCIDO, ELEMENTOS, MAX_ATOMOS } from './elementos.js';
 import { GLOSARIO } from './glosario.js';
 
@@ -115,8 +122,24 @@ function interpretarVoz({ texto }) {
         return;
     }
 
+    if (frase === 'modo reto') {
+        emit('voz:comando', { intencion: 'modo-reto', parametros: {} });
+        return;
+    }
+
+    if (frase === 'modo libre') {
+        emit('voz:comando', { intencion: 'modo-libre', parametros: {} });
+        return;
+    }
+
     if (frase === 'ayuda') {
-        responder('Puedes decir: agrega oxígeno, agrega dos hidrógenos, deshacer, rehacer, limpiar o verificar.');
+        // En modo reto la pista la da el reto (sugerencia o pista
+        // directa); en modo libre, la ayuda general de voz.
+        if (estado.modo === 'reto') {
+            emit('voz:comando', { intencion: 'ayuda', parametros: {} });
+            return;
+        }
+        responder('Puedes decir: agrega oxígeno, agrega dos hidrógenos, deshacer, rehacer, limpiar, verificar o modo reto.');
         return;
     }
 

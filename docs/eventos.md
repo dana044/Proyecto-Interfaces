@@ -45,6 +45,23 @@ Intenciones acordadas: agregar-atomo, deshacer, rehacer, limpiar, rotar, acercar
 | escena:molecula-identificada | {nombre, formula, completa}              |
 | escena:escena-limpia         | —                                        |
 
+Una verificación fallida (molécula incompleta, desconocida o
+imposible) también emite `escena:molecula-identificada`, con
+`completa: false`; en los dos últimos casos sin nombre ni fórmula,
+para que el modo reto cuente el intento fallido.
+
+## Reto (js/reto.js)
+
+| Evento           | Datos                                                                                                  |
+| ---------------- | ------------------------------------------------------------------------------------------------------ |
+| reto:actualizado | {activo, indice, total, titulo, nombre, formula, sugerencia, estrellas, intentos, tiempoMs, terminado} |
+
+`reto:actualizado` se emite al entrar o salir del modo reto, al
+verificar, al avanzar de reto y al cambiar la escena en modo reto,
+para que la interfaz muestre el reto actual y su progreso. Las
+intenciones de voz `modo-reto`, `modo-libre` y `ayuda` (en modo
+reto, la pista del reto) llegan por `voz:comando`.
+
 ## Interfaz y estado
 
 | Evento           | Datos         |

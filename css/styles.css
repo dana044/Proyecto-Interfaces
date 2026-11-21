@@ -763,11 +763,52 @@ p {
   border-radius: 50%;
 }
 
+/* Panel del modo reto: la fórmula grande, la sugerencia y el
+   progreso (estrellas, intentos y tiempo). Solo se ve en modo reto. */
+.panel-reto {
+  padding: 12px;
+  margin-bottom: 16px;
+  background: var(--lienzo);
+  border-radius: var(--radio-tarjeta);
+}
+
+.panel-reto h3 {
+  margin: 0 0 4px;
+}
+
+.reto-formula {
+  margin: 0 0 4px;
+  font-family: var(--fuente-titulo);
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.reto-sugerencia {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.reto-progreso {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.reto-botones {
+  display: flex;
+  gap: 8px;
+}
+
+.reto-botones .boton {
+  flex: 1;
+  justify-content: center;
+}
+
 /* Acciones de respaldo */
 
 .respaldo {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 16px;
 }
 

@@ -1,8 +1,16 @@
+/**
+ * @file ui.js
+ * @author Stephanie Elizdeth Hernández Prieto
+ * @author Dana Carmona Santamaria
+ * @author Citlaly Morales Viveros
+ */
+
 import { on } from './bus.js';
 import { alternarMicrofono } from './voice.js';
 import { agregarAtomo, agregarParticula, deshacer, limpiarEscena, limpiarParticulas, quitarParticula, rehacer, verificarMolecula } from './atoms.js';
+import { darPista, entrarModoReto, formatearTiempo, salirModoReto } from './reto.js';
 import { ELEMENTOS } from './elementos.js';
-import { setUltimaAccion } from './state.js';
+import { estado, setUltimaAccion } from './state.js';
 
 const estadosMicrofono = {
   escuchando: { texto: 'Escuchando', clase: 'estado-ok' },
@@ -97,6 +105,9 @@ export function iniciarInterfaz() {
   const botonRehacer = document.querySelector('[data-accion="rehacer"]');
   const botonLimpiar = document.querySelector('[data-accion="limpiar"]');
   const botonVerificar = document.querySelector('[data-accion="verificar"]');
+  const botonReto = document.querySelector('[data-accion="reto"]');
+  const botonAyudaReto = document.querySelector('[data-accion="ayuda-reto"]');
+  const botonSalirReto = document.querySelector('[data-accion="salir-reto"]');
   botonDeshacer?.addEventListener('click', () => deshacer());
   botonRehacer?.addEventListener('click', () => rehacer());
   botonLimpiar?.addEventListener('click', () => {
@@ -105,6 +116,14 @@ export function iniciarInterfaz() {
     if (limpiarEscena()) limpiarParticulas();
   });
   botonVerificar?.addEventListener('click', () => verificarMolecula());
+  // El botón de reto alterna entre entrar y salir del modo reto;
+  // su texto cambia con el evento reto:actualizado.
+  botonReto?.addEventListener('click', () => {
+    if (estado.modo === 'reto') salirModoReto();
+    else entrarModoReto();
+  });
+  botonAyudaReto?.addEventListener('click', () => darPista());
+  botonSalirReto?.addEventListener('click', () => salirModoReto());
 
   microfono.addEventListener('click', alternarMicrofono);
   document.addEventListener('keydown', (evento) => {
@@ -230,6 +249,33 @@ export function iniciarInterfaz() {
     escribir('nombre', nombre);
     escribir('geometria', geometria);
     escribir('descripcion', descripcion);
+    // Solo se abre el panel cuando hay una molécula que mostrar: en
+    // una verificación fallida sin molécula no hay nada nuevo.
+    if (nombre || formula) mostrarPanelInfo();
+  });
+
+  // Panel del modo reto: muestra el reto actual, su fórmula, la
+  // sugerencia, las estrellas, los intentos y el tiempo. Solo se
+  // ve en modo reto; la pantalla completa del reto es de Stephanie.
+  on('reto:actualizado', ({ activo, titulo, formula, sugerencia, estrellas, intentos, tiempoMs, total, terminado }) => {
+    const panelReto = document.querySelector('#panel-reto');
+    const botonReto = document.querySelector('[data-accion="reto"]');
+    if (botonReto) botonReto.textContent = activo ? 'Modo libre' : 'Modo reto';
+    if (!panelReto) return;
+    panelReto.hidden = !activo;
+    if (!activo) return;
+    const escribir = (campo, texto) => {
+      const elemento = panelReto.querySelector(`[data-campo-reto="${campo}"]`);
+      if (elemento) elemento.textContent = texto;
+    };
+    escribir('titulo', titulo);
+    escribir('formula', formula || '—');
+    escribir('sugerencia', terminado
+      ? '¡Terminaste los 6 retos! Entra de nuevo al modo reto para volver a empezar.'
+      : sugerencia);
+    escribir('estrellas', '★'.repeat(estrellas) + '☆'.repeat(Math.max(0, total - estrellas)));
+    escribir('intentos', `Intentos: ${intentos}`);
+    escribir('tiempo', `Tiempo: ${formatearTiempo(tiempoMs || 0)}`);
     mostrarPanelInfo();
   });
 }

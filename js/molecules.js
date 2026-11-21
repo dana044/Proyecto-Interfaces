@@ -62,9 +62,13 @@ function construirAdyacencia(enlaces) {
  * @param {Array<{ a: string, b: string, orden: number }>} enlacesOrigen Enlaces del origen.
  * @param {Array<{ id: string, elemento: string }>} destino Átomos disponibles.
  * @param {Array<{ a: string, b: string, orden: number }>} enlacesDestino Enlaces del destino.
+ * @param {boolean} [ignorarOrden=false] Si es true, basta con que el
+ *   enlace exista, sin importar su orden: un enlace simple en la
+ *   escena puede ser el doble que pide el catálogo, y eso se dirá
+ *   como falta al comparar después.
  * @returns {Map<string, string> | null} Mapeo de id de origen a id de destino.
  */
-function buscarMapeo(origen, enlacesOrigen, destino, enlacesDestino) {
+function buscarMapeo(origen, enlacesOrigen, destino, enlacesDestino, ignorarOrden = false) {
     const adyacenciaOrigen = construirAdyacencia(enlacesOrigen);
     const adyacenciaDestino = construirAdyacencia(enlacesDestino);
     const porElemento = new Map();
@@ -89,12 +93,14 @@ function buscarMapeo(origen, enlacesOrigen, destino, enlacesDestino) {
         for (const candidato of porElemento.get(atomo.elemento) || []) {
             if (usados.has(candidato)) continue;
             // Cada enlace con un átomo ya colocado tiene que existir
-            // en el destino, con el mismo orden.
+            // en el destino, con el mismo orden (o solo existir, si
+            // se ignora el orden).
             let compatible = true;
             for (const [vecino, orden] of adyacenciaOrigen.get(atomo.id) || []) {
                 const vecinoMapeado = mapeo.get(vecino);
                 if (vecinoMapeado === undefined) continue;
-                if ((adyacenciaDestino.get(candidato)?.get(vecinoMapeado)) !== orden) {
+                const ordenDestino = adyacenciaDestino.get(candidato)?.get(vecinoMapeado);
+                if (ordenDestino === undefined || (!ignorarOrden && ordenDestino !== orden)) {
                     compatible = false;
                     break;
                 }
@@ -183,6 +189,28 @@ function articuloPara(nombre) {
 }
 
 /**
+ * Describe un enlace que hace falta, sin el verbo («el oxígeno con
+ * 2 hidrógenos», «los 2 oxígenos entre sí con un enlace doble»):
+ * quien lo usa pone «unir» o «Une» delante, según la frase.
+ * @param {string} a Elemento de un extremo del enlace.
+ * @param {string} b Elemento del otro extremo.
+ * @param {number} orden 1 para simple, 2 para doble.
+ * @param {number} cantidad Cuántos enlaces iguales hacen falta.
+ * @returns {string} La descripción del enlace.
+ */
+export function descripcionEnlace(a, b, orden, cantidad) {
+    const doble = orden === 2 ? ' con un enlace doble' : '';
+    if (a === b) {
+        return `los ${cantidad + 1} ${ELEMENTOS[a]?.plural ?? a} entre sí${doble}`;
+    }
+    const nombreA = ELEMENTOS[a]?.nombre.toLowerCase() ?? a;
+    if (cantidad === 1) {
+        return `el ${nombreA} con un ${ELEMENTOS[b]?.nombre.toLowerCase() ?? b}${doble}`;
+    }
+    return `el ${nombreA} con ${cantidad} ${ELEMENTOS[b]?.plural ?? b}${doble}`;
+}
+
+/**
  * Frase en palabras sencillas con lo que le falta a la escena para
  * ser la molécula indicada.
  * @param {object} molecula Molécula del catálogo.
@@ -204,13 +232,9 @@ function mensajeFalta(molecula, falta) {
             : 'Te faltan';
         return `${verbo} ${partes.join(' y ')} para ${articulo} ${nombre}.`;
     }
-    const partes = falta.enlaces.map(({ a, b, cantidad }) => {
-        const nombreA = ELEMENTOS[a]?.nombre.toLowerCase() ?? a;
-        const pluralB = ELEMENTOS[b]?.plural ?? b;
-        return cantidad === 1
-            ? `unir el ${nombreA} con 1 ${ELEMENTOS[b]?.nombre.toLowerCase() ?? b}`
-            : `unir el ${nombreA} con ${cantidad} ${pluralB}`;
-    });
+    const partes = falta.enlaces.map(({ a, b, orden, cantidad }) => (
+        `unir ${descripcionEnlace(a, b, orden || 1, cantidad)}`
+    ));
     const deFrase = articulo === 'el' ? `del ${nombre}` : `de la ${nombre}`;
     return `Ya tienes todos los átomos ${deFrase}. Te falta ${partes.join(' y ')}.`;
 }
@@ -259,12 +283,16 @@ export function identificarMolecula(escena, moleculas) {
     }
 
     // Molécula incompleta: lo armado cabe dentro de una del catálogo.
+    // El orden del enlace no se exige aquí: un enlace simple donde
+    // el catálogo pide uno doble también es un avance, y al comparar
+    // después se dirá que falta el doble (antes, un O–O simple se
+    // tomaba por peróxido de hidrógeno y el oxígeno quedaba fuera).
     // Se elige la que menos átomos le faltan, y luego la que menos enlaces.
     let mejor = null;
     for (const molecula of moleculas || []) {
         const atomosCatalogo = molecula.atomos || [];
         if (atomosEscena.length > atomosCatalogo.length) continue;
-        const mapeo = buscarMapeo(atomosEscena, enlacesEscena, atomosCatalogo, enlacesDeCatalogo(molecula));
+        const mapeo = buscarMapeo(atomosEscena, enlacesEscena, atomosCatalogo, enlacesDeCatalogo(molecula), true);
         if (!mapeo) continue;
         const falta = calcularFalta(mapeo, molecula, enlacesEscena);
         const faltanAtomos = falta.atomos.reduce((total, { cantidad }) => total + cantidad, 0);
