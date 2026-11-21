@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MolecuLab</title>
+  <link rel="icon" href="data:,">
 
   <!-- Tipografía de la guía visual: Nunito Sans (títulos) e Inter (texto) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -61,6 +62,8 @@
           permiso</span></span>
       <span class="chip-estado estado-aviso" id="estado-mano"><strong>Mano</strong> <span class="valor">No
           detectada</span></span>
+      <span class="chip-estado estado-ok" id="estado-accion"><strong>Última acción</strong> <span class="valor">Ninguna
+          todavía</span></span>
     </div>
   </header>
 
@@ -71,6 +74,9 @@
     <p></p>
     <button class="cerrar-mensaje" type="button" aria-label="Cerrar aviso">×</button>
   </div>
+
+  <!-- Subtítulo en vivo: lo que el micrófono entendió, 2 segundos. -->
+  <p id="subtitulo-voz" class="subtitulo-voz" aria-live="polite" hidden></p>
 
   <main class="escena">
 
@@ -85,6 +91,7 @@
         <div class="filas-particulas">
           <div class="fila-particula fila-proton">
             <span class="nombre-particula">Protón</span>
+            <span class="carga-particula">+1</span>
             <span class="conteo-particula" data-conteo-particula="protones">0</span>
             <button class="boton boton-particula" type="button" data-particula="proton" data-accion-particula="agregar"
               aria-label="Agregar un protón">+</button>
@@ -93,6 +100,7 @@
           </div>
           <div class="fila-particula fila-neutron">
             <span class="nombre-particula">Neutrón</span>
+            <span class="carga-particula">0</span>
             <span class="conteo-particula" data-conteo-particula="neutrones">0</span>
             <button class="boton boton-particula" type="button" data-particula="neutron" data-accion-particula="agregar"
               aria-label="Agregar un neutrón">+</button>
@@ -101,6 +109,7 @@
           </div>
           <div class="fila-particula fila-electron">
             <span class="nombre-particula">Electrón</span>
+            <span class="carga-particula">−1</span>
             <span class="conteo-particula" data-conteo-particula="electrones">0</span>
             <button class="boton boton-particula" type="button" data-particula="electron"
               data-accion-particula="agregar" aria-label="Agregar un electrón">+</button>
@@ -144,7 +153,7 @@
           <span data-campo-reto="tiempo">Tiempo: 0:00</span>
         </p>
         <div class="reto-botones">
-          <button class="boton" type="button" data-accion="ayuda-reto">Ayuda</button>
+          <button class="boton" type="button" data-accion="ayuda-reto">Ver pista</button>
           <button class="boton" type="button" data-accion="salir-reto">Salir al modo libre</button>
         </div>
       </section>
@@ -157,7 +166,11 @@
         <dd data-campo="nombre">—</dd>
         <dt>Geometría</dt>
         <dd data-campo="geometria">—</dd>
+        <dt>Dato curioso</dt>
+        <dd data-campo="dato-curioso">—</dd>
       </dl>
+      <p class="aviso-molecula" data-campo="faltante" hidden></p>
+      <p class="explicacion-enlace" data-campo="enlace-explicacion" hidden></p>
       <p class="descripcion" data-campo="descripcion">Construye una molécula y verifícala para ver su información aquí.
       </p>
 
@@ -214,6 +227,7 @@
       Micrófono · <span class="estado-boton">Pausado</span>
       <span class="solo-lector">Tecla Espacio o clic</span>
     </button>
+    <button type="button" class="boton" data-accion="silenciar-sonidos" aria-pressed="false">Silenciar tonos</button>
   </footer>
 
   <script type="module" src="js/main.js"></script>

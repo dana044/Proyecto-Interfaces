@@ -6,7 +6,7 @@
  */
 
 import * as THREE from 'three';
-import { obtenerCamara, obtenerContenedorAtomos, obtenerLienzo } from './scene.js';
+import { acercar, obtenerCamara, obtenerContenedorAtomos, obtenerLienzo, rotarVista } from './scene.js';
 import { emit, on } from './bus.js';
 import { AVISO_ELEMENTO_DESCONOCIDO, ELEMENTOS, MAX_ATOMOS } from './elementos.js';
 import { setUltimaAccion } from './state.js';
@@ -104,7 +104,7 @@ function restaurarFoto(foto) {
         agregarAtomo(atomo.elemento, atomo.posicion, atomo.id);
     }
     for (const enlace of foto.enlaces) {
-        crearEnlace(enlace.a, enlace.b, enlace.orden);
+        crearEnlace(enlace.a, enlace.b, enlace.orden, { explicar: false });
     }
 }
 
@@ -528,8 +528,13 @@ export function eliminarAtomo(id, emitirEvento = true) {
     return true;
 }
 
-/** Dibuja un enlace simple o doble entre dos átomos. */
-export function crearEnlace(idA, idB, orden = 1) {
+/**
+ * Dibuja un enlace simple o doble entre dos átomos. Al formarse de
+ * verdad (no al restaurar una foto con deshacer/rehacer), emite
+ * escena:electrones-compartidos para que se explique, se lea en voz
+ * y se animen los electrones que se comparten.
+ */
+export function crearEnlace(idA, idB, orden = 1, { explicar = true } = {}) {
     if (!atomos.has(idA) || !atomos.has(idB) || idA === idB) return false;
 
     const clave = claveEnlace(idA, idB);
@@ -567,6 +572,15 @@ export function crearEnlace(idA, idB, orden = 1) {
     actualizarAnillo(idA);
     actualizarAnillo(idB);
     emit('escena:enlace-creado', { a: idA, b: idB, orden: cantidad });
+    if (explicar) {
+        emit('escena:electrones-compartidos', {
+            a: idA,
+            b: idB,
+            pares: cantidad,
+            elementoA: atomos.get(idA)?.elemento,
+            elementoB: atomos.get(idB)?.elemento,
+        });
+    }
     return true;
 }
 
@@ -892,6 +906,7 @@ export async function verificarMolecula() {
             completa: true,
             geometria: molecula.geometria,
             descripcion: molecula.descripcion,
+            datoCurioso: molecula.dato_curioso ?? null,
         });
         const destinos = calcularGeometria(molecula, mapeo);
         const hayQueMover = Object.entries(destinos).some(([id, destino]) => {
@@ -915,6 +930,9 @@ export async function verificarMolecula() {
             completa: false,
             geometria: molecula.geometria,
             descripcion: molecula.descripcion,
+            falta: resultado.falta,
+            datoCurioso: molecula.dato_curioso ?? null,
+            mensaje,
         });
         enviarMensaje('aviso', mensaje);
         setUltimaAccion('Verificación: molécula incompleta');
@@ -1209,10 +1227,91 @@ export function limpiarParticulas() {
     setUltimaAccion('Quitaste todas las partículas');
 }
 
+/**
+ * Resalta el electrón de la capa externa de un átomo: los puntos
+ * blancos de su aro de valencia se vuelven dorados durante 1 s y
+ * luego el aro se reconstruye con su color normal.
+ */
+function resaltarAnillo(id) {
+    const atomo = atomos.get(id);
+    if (!atomo?.anillo) return;
+    atomo.anillo.children.forEach((objeto) => {
+        if (objeto.geometry?.type === 'SphereGeometry') {
+            objeto.material.color.setHex(COLOR_RESALTADO);
+        }
+    });
+    setTimeout(() => actualizarAnillo(id), 1000);
+}
+
+/**
+ * Anima los electrones compartidos al formarse un enlace: un punto
+ * dorado por cada par viaja entre los dos átomos durante 1 s (ida y
+ * vuelta). Los dos pares van uno a cada lado del enlace, como los
+ * dos cilindros del enlace doble; con un par, va centrado. Esta
+ * animación es la parte que la HU asigna a Citlaly: vive aquí
+ * porque este módulo tiene los átomos y la escena, y escucha el
+ * mismo evento escena:electrones-compartidos que puede usar
+ * cualquier otra animación en su lugar.
+ */
+async function animarElectronesCompartidos(a, b, pares) {
+    const atomoA = atomos.get(a);
+    const atomoB = atomos.get(b);
+    const contenedor = obtenerContenedorAtomos();
+    if (!atomoA || !atomoB || !contenedor) return;
+
+    const pA = atomoA.grupo.position.clone();
+    const pB = atomoB.grupo.position.clone();
+    const normal = new THREE.Vector3().subVectors(pB, pA).normalize();
+    const eje = Math.abs(normal.dot(EJE_UP)) > 0.99
+        ? new THREE.Vector3(1, 0, 0)
+        : EJE_UP;
+    const desplazamiento = new THREE.Vector3()
+        .crossVectors(normal, eje)
+        .normalize()
+        .multiplyScalar(ALTURA_ENLACE_DOBLE);
+
+    resaltarAnillo(a);
+    resaltarAnillo(b);
+
+    const animaciones = [];
+    for (let i = 0; i < pares; i++) {
+        const separacion = pares === 2 ? (i === 0 ? 1 : -1) : 0;
+        const inicio = pA.clone()
+            .addScaledVector(normal, atomoA.radio + 0.1)
+            .addScaledVector(desplazamiento, separacion);
+        const fin = pB.clone()
+            .addScaledVector(normal, -(atomoB.radio + 0.1))
+            .addScaledVector(desplazamiento, separacion);
+        const punto = new THREE.Mesh(
+            new THREE.SphereGeometry(0.09, 12, 8),
+            new THREE.MeshBasicMaterial({ color: COLOR_RESALTADO }),
+        );
+        // El segundo par empieza en el otro extremo: se cruzan a
+        // mitad de camino, como dos electrones que se mueven entre
+        // los dos átomos.
+        const ida = i % 2 === 0 ? inicio : fin;
+        const vuelta = i % 2 === 0 ? fin : inicio;
+        punto.position.copy(ida);
+        contenedor.add(punto);
+        animaciones.push((async () => {
+            await animarHasta(punto, vuelta, 500);
+            await animarHasta(punto, ida, 500);
+            contenedor.remove(punto);
+            liberarGrupo(punto);
+        })());
+    }
+    await Promise.all(animaciones);
+}
+
 export function iniciarComandosDeAtomos() {
     // Pulgar arriba un segundo: verifica la molécula construida.
     on('gesto:listo', () => {
         verificarMolecula();
+    });
+    // Electrones compartidos al formarse un enlace: la animación de
+    // 1 s entre los dos átomos y el resaltado de su capa externa.
+    on('escena:electrones-compartidos', ({ a, b, pares }) => {
+        void animarElectronesCompartidos(a, b, pares);
     });
     on('voz:comando', ({ intencion, parametros }) => {
         if (intencion === 'deshacer') {
@@ -1233,6 +1332,35 @@ export function iniciarComandosDeAtomos() {
         }
         if (intencion === 'verificar') {
             verificarMolecula();
+            return;
+        }
+        if (intencion === 'rotar') {
+            // Un cuarto de vuelta: rotarVista(0.5) es media vuelta.
+            const direccion = parametros?.direccion === 'izquierda' ? -0.25 : 0.25;
+            rotarVista(direccion, 0);
+            return;
+        }
+        if (intencion === 'acercar') {
+            acercar(1.25);
+            return;
+        }
+        if (intencion === 'alejar') {
+            acercar(0.8);
+            return;
+        }
+        if (intencion === 'agregar-particula' || intencion === 'quitar-particula') {
+            const { tipo, cantidad } = parametros ?? {};
+            if (!Object.hasOwn(NOMBRES_PARTICULA, tipo)) return;
+            if (!Number.isSafeInteger(cantidad) || cantidad < 1) return;
+            // agregarParticula y quitarParticula ya avisan al llegar
+            // al límite de 30 y confirman cada acción: al fallar una,
+            // se para para no repetir el mismo aviso.
+            for (let i = 0; i < cantidad; i++) {
+                const ok = intencion === 'quitar-particula'
+                    ? quitarParticula(tipo)
+                    : agregarParticula(tipo);
+                if (!ok) break;
+            }
             return;
         }
         if (intencion !== 'agregar-atomo') return;
@@ -1400,7 +1528,7 @@ function iniciarArrastreTeclado(id) {
     fotoArrastrePendiente = guardarFoto(`mover ${id}`);
     resaltarPorDelante(atomo, true);
     actualizarVistaPrevia(id);
-    enviarMensaje('aviso', `${id} agarrado. Flechas para moverlo, Enter para soltarlo, Escape para cancelar`);
+    enviarMensaje('aviso', `Agarraste un ${ELEMENTOS[atomo.elemento].nombre.toLowerCase()}. Flechas para moverlo, Enter para soltarlo, Escape para cancelar`);
 }
 
 function desplazarAtomoTeclado(id, dx, dy) {

@@ -6,7 +6,7 @@
  */
 
 import { on } from './bus.js';
-import { alternarMicrofono } from './voice.js';
+import { alternarMicrofono, detenerLocucion, hablar } from './voice.js';
 import { agregarAtomo, agregarParticula, deshacer, limpiarEscena, limpiarParticulas, quitarParticula, rehacer, verificarMolecula } from './atoms.js';
 import { darPista, entrarModoReto, formatearTiempo, salirModoReto } from './reto.js';
 import { identificarElemento } from './chemistry.js';
@@ -24,6 +24,29 @@ const estadosCamara = {
   denegada: { texto: 'Denegada', clase: 'estado-error' },
   'sin-dispositivo': { texto: 'Sin cámara', clase: 'estado-error' },
 };
+
+// Tonos del enlace: 660 Hz al crear uno válido, 180 Hz al rechazarlo.
+// El botón "Silenciar tonos" los apaga y también para cualquier
+// respuesta hablada en curso.
+let tonosSilenciados = false;
+let contextoAudio = null;
+function tono(frecuencia) {
+  if (tonosSilenciados) return;
+  try {
+    contextoAudio ??= new (window.AudioContext || window.webkitAudioContext)();
+    if (contextoAudio.state === 'suspended') void contextoAudio.resume();
+    const oscilador = contextoAudio.createOscillator();
+    const ganancia = contextoAudio.createGain();
+    oscilador.type = 'sine';
+    oscilador.frequency.value = frecuencia;
+    ganancia.gain.value = 0.08;
+    oscilador.connect(ganancia).connect(contextoAudio.destination);
+    oscilador.start();
+    oscilador.stop(contextoAudio.currentTime + 0.15);
+  } catch {
+    // Sin audio, la app sigue: el aviso escrito ya está en pantalla.
+  }
+}
 
 /**
  * Actualiza una pastilla de estado del encabezado (#estado-camara
@@ -126,6 +149,14 @@ export function iniciarInterfaz() {
   botonAyudaReto?.addEventListener('click', () => darPista());
   botonSalirReto?.addEventListener('click', () => salirModoReto());
 
+  const botonSilenciar = document.querySelector('[data-accion="silenciar-sonidos"]');
+  botonSilenciar?.addEventListener('click', () => {
+    tonosSilenciados = !tonosSilenciados;
+    botonSilenciar.setAttribute('aria-pressed', String(tonosSilenciados));
+    botonSilenciar.textContent = tonosSilenciados ? 'Activar tonos' : 'Silenciar tonos';
+    detenerLocucion();
+  });
+
   microfono.addEventListener('click', alternarMicrofono);
   document.addEventListener('keydown', (evento) => {
     if (evento.code !== 'Space' || evento.defaultPrevented || evento.repeat
@@ -178,12 +209,17 @@ export function iniciarInterfaz() {
 
   on('estado:manos', ({ cantidad }) => {
     const numero = Number(cantidad) || 0;
-    actualizarIndicador(indicadorMano, numero === 0
-      ? { texto: 'No detectada', clase: 'estado-aviso' }
-      : { texto: `${numero} detectada${numero > 1 ? 's' : ''}`, clase: 'estado-ok' });
+    actualizarIndicador(indicadorMano, {
+      texto: `Manos detectadas: ${numero}`,
+      clase: numero === 0 ? 'estado-aviso' : 'estado-ok',
+    });
   });
 
-  // Notificación emergente: aparece 6 segundos y se puede cerrar
+  // Tonos al crear o al rechazar un enlace.
+  on('escena:enlace-creado', () => tono(660));
+  on('escena:enlace-eliminado', () => tono(180));
+
+  // Notificación emergente: aparece 4 segundos y se puede cerrar
   // con la ×. Un aviso nuevo reinicia el tiempo.
   const parrafoMensaje = mensajes.querySelector('p');
   const botonCerrarMensaje = mensajes.querySelector('.cerrar-mensaje');
@@ -207,8 +243,20 @@ export function iniciarInterfaz() {
     parrafoMensaje.textContent = texto;
     mensajes.hidden = false;
     if (temporizadorMensaje !== null) clearTimeout(temporizadorMensaje);
-    temporizadorMensaje = setTimeout(ocultarMensaje, 6000);
+    temporizadorMensaje = setTimeout(ocultarMensaje, 4000);
     setUltimaAccion(texto);
+  });
+
+  // Subtítulo en vivo: lo que el micrófono entendió, 2 segundos.
+  // Es la confirmación visual de que la voz se escuchó bien.
+  const subtitulo = document.querySelector('#subtitulo-voz');
+  let temporizadorSubtitulo = null;
+  on('voz:texto', ({ texto }) => {
+    if (!subtitulo || !texto) return;
+    subtitulo.textContent = `Escuché: «${texto}»`;
+    subtitulo.hidden = false;
+    if (temporizadorSubtitulo !== null) clearTimeout(temporizadorSubtitulo);
+    temporizadorSubtitulo = setTimeout(() => { subtitulo.hidden = true; }, 2000);
   });
 
   // La última acción también se actualiza al seleccionar o mover un átomo.
@@ -251,9 +299,57 @@ export function iniciarInterfaz() {
     if (protones + neutrones + electrones > 0) mostrarPanelInfo();
   });
 
+  // Explicación del enlace: al formarse, el panel dice qué
+  // electrones comparten los dos átomos y la app lo lee en voz.
+  // Ejemplo: "El oxígeno y el hidrógeno comparten 1 par de
+  // electrones" (enlace doble: 2 pares).
+  on('escena:electrones-compartidos', ({ elementoA, elementoB, pares }) => {
+    const panelInfo = document.querySelector('#panel-info');
+    if (!panelInfo) return;
+    const nombreA = ELEMENTOS[elementoA]?.nombre.toLowerCase();
+    const nombreB = ELEMENTOS[elementoB]?.nombre.toLowerCase();
+    if (!nombreA || !nombreB || !pares) return;
+    const texto = `El ${nombreA} y el ${nombreB} comparten `
+      + (pares === 1 ? '1 par de electrones.' : `${pares} pares de electrones.`);
+    const explicacion = panelInfo.querySelector('[data-campo="enlace-explicacion"]');
+    if (explicacion) {
+      explicacion.textContent = texto;
+      explicacion.hidden = false;
+    }
+    mostrarPanelInfo();
+    hablar(texto);
+  });
+
   // Panel de información de la molécula: antes sus campos (fórmula,
   // nombre, geometría, descripción) no los escribía ningún JS.
-  on('escena:molecula-identificada', ({ nombre, formula, geometria, descripcion }) => {
+  function limpiarPanelInfo() {
+    const panelInfo = document.querySelector('#panel-info');
+    if (!panelInfo) return;
+    for (const campo of ['formula', 'nombre', 'geometria', 'descripcion', 'dato-curioso']) {
+      const elemento = panelInfo.querySelector(`[data-campo="${campo}"]`);
+      if (elemento) elemento.textContent = campo === 'descripcion'
+        ? 'Construye una molécula y verifícala para ver su información aquí.'
+        : '—';
+    }
+    const faltante = panelInfo.querySelector('[data-campo="faltante"]');
+    if (faltante) faltante.hidden = true;
+    const explicacion = panelInfo.querySelector('[data-campo="enlace-explicacion"]');
+    if (explicacion) {
+      explicacion.textContent = '';
+      explicacion.hidden = true;
+    }
+  }
+
+  // Cuando cambia la escena, lo identificado ya no vale: se limpia
+  // el panel para no mostrar la molécula anterior como si fuera esta.
+  for (const evento of [
+    'escena:atomo-agregado', 'escena:atomo-eliminado',
+    'escena:enlace-creado', 'escena:enlace-eliminado', 'escena:escena-limpia',
+  ]) {
+    on(evento, limpiarPanelInfo);
+  }
+
+  on('escena:molecula-identificada', ({ nombre, formula, geometria, descripcion, completa, datoCurioso, mensaje }) => {
     const panelInfo = document.querySelector('#panel-info');
     if (!panelInfo) return;
     const escribir = (campo, texto) => {
@@ -264,6 +360,18 @@ export function iniciarInterfaz() {
     escribir('nombre', nombre);
     escribir('geometria', geometria);
     escribir('descripcion', descripcion);
+    escribir('dato-curioso', datoCurioso);
+    // Incompleta: lo que falta se ve en ámbar en el panel, no solo
+    // en el aviso que desaparece a los 4 segundos.
+    const faltante = panelInfo.querySelector('[data-campo="faltante"]');
+    if (faltante) {
+      if (completa === false && mensaje) {
+        faltante.textContent = mensaje;
+        faltante.hidden = false;
+      } else {
+        faltante.hidden = true;
+      }
+    }
     // Solo se abre el panel cuando hay una molécula que mostrar: en
     // una verificación fallida sin molécula no hay nada nuevo.
     if (nombre || formula) mostrarPanelInfo();

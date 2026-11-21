@@ -37,6 +37,7 @@ Intenciones acordadas: agregar-atomo, deshacer, rehacer, limpiar, rotar, acercar
 | escena:atomo-eliminado       | {id, elemento}                           |
 | escena:atomo-seleccionado    | {id}                                     |
 | escena:enlace-creado         | {a, b, orden}                            |
+| escena:electrones-compartidos | {a, b, pares, elementoA, elementoB}      |
 | escena:enlace-eliminado      | {a, b}                                   |
 | escena:enlace-rechazado      | {motivo}                                 |
 | escena:particula-agregada    | {id, tipo, capa}                         |

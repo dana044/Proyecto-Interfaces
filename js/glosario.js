@@ -1,6 +1,8 @@
 export const GLOSARIO = new Map([
     ['molecula', 'Una molécula es un conjunto de dos o más átomos unidos por enlaces químicos.'],
     ['atomo', 'Un átomo es una unidad de un elemento químico. Tiene un núcleo y electrones a su alrededor.'],
+    ['enlace', 'Un enlace es la unión entre dos átomos que comparten electrones. Por ejemplo, en el agua el oxígeno comparte un par de electrones con cada hidrógeno.'],
+    ['enlace simple', 'Un enlace simple es la unión en la que dos átomos comparten un par de electrones.'],
     ['enlace covalente', 'Es una unión en la que dos átomos comparten uno o más pares de electrones.'],
     ['valencia', 'La valencia indica cuántos enlaces puede formar un átomo según las reglas de este laboratorio.'],
     ['enlace doble', 'Es una unión en la que dos átomos comparten dos pares de electrones.'],

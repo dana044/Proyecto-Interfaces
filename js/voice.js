@@ -9,6 +9,13 @@ import { emit } from './bus.js';
 
 const AVISO_COMPATIBILIDAD = 'Usa Chrome o Edge para los comandos de voz';
 
+/**
+ * Frases que interrumpen una respuesta hablada. Se exportan para
+ * que commands.js entienda exactamente las mismas que el
+ * reconocimiento deja pasar mientras suena la locución.
+ */
+export const FRASES_PARAR = ['para', 'parar', 'calla', 'callate', 'silencio', 'basta'];
+
 let reconocimiento;
 let inicializada = false;
 let escuchaSolicitada = false;
@@ -93,7 +100,7 @@ export function iniciarVoz() {
 
     reconocimiento.onresult = ({ resultIndex, results }) => {
         for (let i = resultIndex; i < results.length; i++) {
-            if (!escuchaSolicitada || locucion || sesion !== 'activa') break;
+            if (!escuchaSolicitada || sesion !== 'activa') break;
 
             const resultado = results[i];
             if (!resultado.isFinal) continue;
@@ -104,7 +111,14 @@ export function iniciarVoz() {
                 .replace(/[\u0300-\u036f]/g, '')
                 .trim();
 
-            if (texto) emit('voz:texto', { texto });
+            if (!texto) continue;
+
+            // Mientras suena una respuesta, el micrófono sigue abierto
+            // solo para "para": todo lo demás se ignora para que la
+            // propia voz de la app no se tome por un comando.
+            if (locucion && !FRASES_PARAR.includes(texto)) continue;
+
+            emit('voz:texto', { texto });
         }
     };
 
@@ -123,9 +137,11 @@ export function iniciarVoz() {
     reconocimiento.onend = () => {
         sesion = 'inactiva';
 
-        if (locucion) {
-            reproducirLocucion();
-        } else if (escuchaSolicitada) {
+        // Si hay una locución sonando, no se hace nada: al terminar,
+        // el onend de la frase reabre el micrófono.
+        if (locucion) return;
+
+        if (escuchaSolicitada) {
             publicarEstado('pausado');
             reinicio = setTimeout(iniciarEscucha, 250);
         }
@@ -173,10 +189,28 @@ export function hablar(texto) {
     locucion = frase;
     sintesis.cancel();
 
-    if (escuchaSolicitada) publicarEstado('pausado');
+    // El micrófono sigue abierto mientras suena la respuesta: onresult
+    // solo deja pasar "para", así se puede interrumpir la locución
+    // por voz y la propia voz de la app no se toma por un comando.
+    reproducirLocucion();
+}
 
-    // Esperar a que se cierre el micrófono antes de reproducir el audio.
-    detenerEscucha();
+/**
+ * Para la respuesta hablada en curso, si la hay, y deja el
+ * micrófono escuchando. Devuelve true si había algo que parar.
+ * Lo usan el comando de voz "para" y el botón de silencio.
+ */
+export function detenerLocucion() {
+    if (!locucion) return false;
 
-    if (sesion === 'inactiva') reproducirLocucion();
+    const frase = locucion;
+    locucion = undefined;
+    frase.onend = null;
+    frase.onerror = null;
+    window.speechSynthesis?.cancel();
+
+    // Si el micrófono estaba cerrado, se reabre aquí; si estaba
+    // abierto, sigue escuchando sin interrupción.
+    iniciarEscucha();
+    return true;
 }
