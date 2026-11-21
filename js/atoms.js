@@ -19,6 +19,7 @@ import {
     evaluarUnion,
     valenciaDe,
 } from './chemistry.js';
+import { calcularGeometria, identificarMolecula } from './molecules.js';
 
 const ALTURA_ENLACE_DOBLE = 0.08;
 const FACTOR_TOLERANCIA_PELLIZCO = 1.5;
@@ -783,11 +784,60 @@ function validarCatalogo(catalogo) {
 }
 
 /**
- * Verifica la molécula construida comparando sus átomos con el catálogo
- * (data/moleculas.json). Versión provisional: la comparación es por
- * cantidad de átomos de cada elemento, no por enlaces ni valencias.
- * Si coincide, emite escena:molecula-identificada y devuelve la molécula;
- * si no, avisa que todavía no es una molécula completa del catálogo.
+ * Acomoda los átomos a las posiciones indicadas en 1 segundo, todos
+ * a la vez, actualizando los enlaces en cada cuadro para que sigan
+ * unidos a sus átomos mientras se mueven.
+ * @param {Object<string, { x: number, y: number, z: number }>} destinos Posición por id de átomo.
+ * @param {number} [duracionMs=1000] Duración de la animación.
+ * @returns {Promise<void>} Se resuelve cuando termina la animación.
+ */
+function acomodarGeometria(destinos, duracionMs = 1000) {
+    const movimientos = Object.entries(destinos)
+        .map(([id, destino]) => {
+            const atomo = atomos.get(id);
+            if (!atomo) return null;
+            return {
+                atomo,
+                inicio: atomo.grupo.position.clone(),
+                fin: new THREE.Vector3(destino.x, destino.y, destino.z),
+            };
+        })
+        .filter(Boolean);
+    if (movimientos.length === 0) return Promise.resolve();
+
+    if (typeof requestAnimationFrame === 'undefined') {
+        for (const { atomo, fin } of movimientos) {
+            atomo.grupo.position.copy(fin);
+            for (const otroId of atomo.enlaces) actualizarEnlace(atomo.id, otroId);
+        }
+        return Promise.resolve();
+    }
+
+    const inicioTiempo = performance.now();
+    return new Promise((resolver) => {
+        function paso(ahora) {
+            const crudo = Math.min((ahora - inicioTiempo) / duracionMs, 1);
+            // Desacelera al final, para que el acomodo no se vea brusco.
+            const progreso = 1 - (1 - crudo) * (1 - crudo);
+            for (const { atomo, inicio, fin } of movimientos) {
+                atomo.grupo.position.lerpVectors(inicio, fin, progreso);
+                for (const otroId of atomo.enlaces) actualizarEnlace(atomo.id, otroId);
+            }
+            if (crudo < 1) requestAnimationFrame(paso);
+            else resolver();
+        }
+        requestAnimationFrame(paso);
+    });
+}
+
+/**
+ * Verifica la molécula construida comparando su fórmula y su
+ * conectividad con el catálogo (data/moleculas.json). Si está
+ * completa, emite escena:molecula-identificada, acomoda los átomos
+ * a su geometría real en 1 segundo y felicita. Si está incompleta,
+ * dice qué falta con palabras sencillas. Si no está en el catálogo,
+ * dice que no la reconoce o explica por qué no se puede armar.
+ * Devuelve la molécula cuando está completa, o null si no.
  */
 export async function verificarMolecula() {
     const actuales = obtenerListaAtomos();
@@ -807,35 +857,62 @@ export async function verificarMolecula() {
         return null;
     }
 
-    const conteo = {};
-    for (const atomo of actuales) {
-        conteo[atomo.elemento] = (conteo[atomo.elemento] || 0) + 1;
+    const enlacesActuales = [...enlaces.values()].map((enlace) => ({
+        a: enlace.a,
+        b: enlace.b,
+        orden: enlace.orden,
+    }));
+    const resultado = identificarMolecula(
+        { atomos: actuales, enlaces: enlacesActuales },
+        catalogoMoleculas.moleculas || [],
+    );
+
+    if (resultado.estado === 'completa') {
+        const { molecula, mapeo } = resultado;
+        emit('escena:molecula-identificada', {
+            nombre: molecula.nombre,
+            formula: molecula.formula,
+            completa: true,
+            geometria: molecula.geometria,
+            descripcion: molecula.descripcion,
+        });
+        const destinos = calcularGeometria(molecula, mapeo);
+        const hayQueMover = Object.entries(destinos).some(([id, destino]) => {
+            const atomo = atomos.get(id);
+            if (!atomo) return false;
+            const posicion = atomo.grupo.position;
+            return Math.hypot(posicion.x - destino.x, posicion.y - destino.y, posicion.z - destino.z) > 0.001;
+        });
+        if (hayQueMover) guardarFoto(`acomodar ${molecula.nombre.toLowerCase()}`);
+        await acomodarGeometria(destinos);
+        enviarMensaje('correcto', `¡Muy bien! Es ${molecula.nombre} y su fórmula es ${molecula.formula}.`);
+        setUltimaAccion(`Verificaste ${molecula.nombre}`);
+        return molecula;
     }
 
-    const encontrada = (catalogoMoleculas.moleculas || []).find((molecula) => {
-        const esperado = {};
-        for (const atomo of molecula.atomos || []) {
-            esperado[atomo.elemento] = (esperado[atomo.elemento] || 0) + 1;
-        }
-        return mismoConteo(conteo, esperado);
-    });
-
-    if (!encontrada) {
-        enviarMensaje('aviso', 'Todavía no es una molécula completa del catálogo. Revisa los átomos que agregaste.');
+    if (resultado.estado === 'incompleta') {
+        const { molecula, mensaje } = resultado;
+        emit('escena:molecula-identificada', {
+            nombre: molecula.nombre,
+            formula: molecula.formula,
+            completa: false,
+            geometria: molecula.geometria,
+            descripcion: molecula.descripcion,
+        });
+        enviarMensaje('aviso', mensaje);
         setUltimaAccion('Verificación: molécula incompleta');
         return null;
     }
 
-    emit('escena:molecula-identificada', {
-        nombre: encontrada.nombre,
-        formula: encontrada.formula,
-        completa: true,
-        geometria: encontrada.geometria,
-        descripcion: encontrada.descripcion,
-    });
-    enviarMensaje('correcto', `¡Es ${encontrada.nombre}! Su fórmula es ${encontrada.formula}.`);
-    setUltimaAccion(`Verificaste ${encontrada.nombre}`);
-    return encontrada;
+    if (resultado.estado === 'imposible') {
+        enviarMensaje('aviso', resultado.motivo);
+        setUltimaAccion('Verificación: combinación imposible');
+        return null;
+    }
+
+    enviarMensaje('aviso', resultado.mensaje);
+    setUltimaAccion('Verificación: molécula no reconocida');
+    return null;
 }
 
 /* Modelo de Bohr: protones y neutrones en el núcleo, electrones
@@ -1098,6 +1175,10 @@ export function limpiarParticulas() {
 }
 
 export function iniciarComandosDeAtomos() {
+    // Pulgar arriba un segundo: verifica la molécula construida.
+    on('gesto:listo', () => {
+        verificarMolecula();
+    });
     on('voz:comando', ({ intencion, parametros }) => {
         if (intencion === 'deshacer') {
             deshacer();

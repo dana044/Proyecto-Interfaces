@@ -26,6 +26,7 @@ const PUNTO_INDICE = 8;
 const FACTOR_DEDO_EXTENDIDO = 1.1;
 const FACTOR_DEDO_PLEGADO = 1.0;
 const CUADROS_PARA_SOLTAR = 3;
+const MS_PULGAR_ARRIBA = 1000;
 
 const MENSAJE_PERMISO_DENEGADO = 'Necesito tu cámara para ver tus manos; actívala en el candado de la barra de direcciones. Mientras tanto puedes usar el mouse.';
 const MENSAJE_SIN_CAMARA = 'No encontré una cámara disponible. Si otra aplicación la está usando, ciérrala e inténtalo de nuevo. Mientras tanto puedes usar el mouse.';
@@ -50,6 +51,8 @@ let cuadrosAbierta = 0;
 let suavizado = null;
 let ultimoMomentoConMano = 0;
 let cursor = null;
+let inicioPulgarArriba = 0;
+let listoEmitido = false;
 
 /**
  * Publica el estado de la cámara en el bus.
@@ -354,11 +357,50 @@ function esManoAbierta(puntos) {
 }
 
 /**
+ * Pulgar arriba: el pulgar estirado hacia arriba y los otros
+ * cuatro dedos plegados. En la imagen, arriba es una y menor.
+ * @param {Array<{x: number, y: number}>} puntos
+ */
+function esPulgarArriba(puntos) {
+  return relacionDedo(puntos, 4, 3) > FACTOR_DEDO_EXTENDIDO
+    && puntos[4].y < puntos[2].y
+    && puntos[4].y < puntos[8].y
+    && relacionDedo(puntos, 8, 6) < FACTOR_DEDO_PLEGADO
+    && relacionDedo(puntos, 12, 10) < FACTOR_DEDO_PLEGADO
+    && relacionDedo(puntos, 16, 14) < FACTOR_DEDO_PLEGADO
+    && relacionDedo(puntos, 20, 18) < FACTOR_DEDO_PLEGADO;
+}
+
+/**
+ * Si el pulgar arriba se mantiene 1 segundo, emite gesto:listo
+ * una sola vez, hasta que la mano baje el pulgar.
+ * @param {Array<{x: number, y: number}>} puntos
+ * @param {number} ahora
+ */
+function procesarListo(puntos, ahora) {
+  if (!esPulgarArriba(puntos)) {
+    inicioPulgarArriba = 0;
+    listoEmitido = false;
+    return;
+  }
+  if (inicioPulgarArriba === 0) {
+    inicioPulgarArriba = ahora;
+    return;
+  }
+  if (!listoEmitido && ahora - inicioPulgarArriba >= MS_PULGAR_ARRIBA) {
+    listoEmitido = true;
+    emit('gesto:listo');
+  }
+}
+
+/**
  * Suelta el átomo si la mano se perdió más de 0.5 s, o limpia el cursor.
  * @param {number} ahora
  */
 function procesarManoPerdida(ahora) {
   cuadrosAbierta = 0;
+  inicioPulgarArriba = 0;
+  listoEmitido = false;
   if (!agarrando) {
     ocultarCursor();
     suavizado = null;
@@ -396,9 +438,9 @@ function procesarAgarre(resultado, ahora) {
   const y = puntos[PUNTO_INDICE].y;
   suavizado = suavizado
     ? {
-        x: ALFA_SUAVIZADO * x + (1 - ALFA_SUAVIZADO) * suavizado.x,
-        y: ALFA_SUAVIZADO * y + (1 - ALFA_SUAVIZADO) * suavizado.y,
-      }
+      x: ALFA_SUAVIZADO * x + (1 - ALFA_SUAVIZADO) * suavizado.x,
+      y: ALFA_SUAVIZADO * y + (1 - ALFA_SUAVIZADO) * suavizado.y,
+    }
     : { x, y };
 
   cuadrosAbierta = agarrando && esManoAbierta(puntos) ? cuadrosAbierta + 1 : 0;
@@ -414,6 +456,7 @@ function procesarAgarre(resultado, ahora) {
     emit('gesto:pellizco-mover', { ...suavizado });
   }
 
+  procesarListo(puntos, ahora);
   mostrarCursor(suavizado.x, suavizado.y);
 }
 
@@ -493,6 +536,8 @@ export function detenerGestos() {
   if (agarrando) emit('gesto:pellizco-fin', { ...suavizado });
   agarrando = false;
   cuadrosAbierta = 0;
+  inicioPulgarArriba = 0;
+  listoEmitido = false;
   suavizado = null;
   ocultarCursor();
   cancelAnimationFrame(idAnimacion);
