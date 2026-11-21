@@ -3,23 +3,73 @@
     "elementos": {
         "H": {
             "nombre": "Hidrógeno",
+            "z": 1,
             "valencia": 1,
+            "masa": 1,
             "color": "#FFFFFF"
+        },
+        "He": {
+            "nombre": "Helio",
+            "z": 2,
+            "valencia": 0,
+            "masa": 4,
+            "color": "#D9FFFF"
+        },
+        "Li": {
+            "nombre": "Litio",
+            "z": 3,
+            "valencia": 1,
+            "masa": 7,
+            "color": "#CC80FF"
+        },
+        "Be": {
+            "nombre": "Berilio",
+            "z": 4,
+            "valencia": 2,
+            "masa": 9,
+            "color": "#C2FF00"
+        },
+        "B": {
+            "nombre": "Boro",
+            "z": 5,
+            "valencia": 3,
+            "masa": 11,
+            "color": "#FFB5B5"
         },
         "C": {
             "nombre": "Carbono",
+            "z": 6,
             "valencia": 4,
+            "masa": 12,
             "color": "#404040"
         },
         "N": {
             "nombre": "Nitrógeno",
+            "z": 7,
             "valencia": 3,
+            "masa": 14,
             "color": "#3050F8"
         },
         "O": {
             "nombre": "Oxígeno",
+            "z": 8,
             "valencia": 2,
+            "masa": 16,
             "color": "#FF0D0D"
+        },
+        "F": {
+            "nombre": "Flúor",
+            "z": 9,
+            "valencia": 1,
+            "masa": 19,
+            "color": "#90E050"
+        },
+        "Ne": {
+            "nombre": "Neón",
+            "z": 10,
+            "valencia": 0,
+            "masa": 20,
+            "color": "#B3E3F5"
         }
     },
     "moleculas": [

@@ -471,6 +471,19 @@ p {
   color: var(--texto-secundario);
 }
 
+/* Elemento formado en el modelo de Bohr: qué elemento es según
+   sus protones, y su masa aproximada (protones + neutrones). */
+.elemento-formado {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.masa-formada {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+
 /* Aviso del modelo de Bohr en el panel de información */
 .aviso-modelo {
   padding: 12px 16px;

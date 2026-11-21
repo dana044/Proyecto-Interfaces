@@ -9,6 +9,7 @@ import { on } from './bus.js';
 import { alternarMicrofono } from './voice.js';
 import { agregarAtomo, agregarParticula, deshacer, limpiarEscena, limpiarParticulas, quitarParticula, rehacer, verificarMolecula } from './atoms.js';
 import { darPista, entrarModoReto, formatearTiempo, salirModoReto } from './reto.js';
+import { identificarElemento } from './chemistry.js';
 import { ELEMENTOS } from './elementos.js';
 import { estado, setUltimaAccion } from './state.js';
 
@@ -220,7 +221,10 @@ export function iniciarInterfaz() {
   });
 
   // Contador del modelo de Bohr en el panel de información y en las
-  // filas de partículas del panel de átomos.
+  // filas de partículas del panel de átomos. Al cambiar los protones
+  // se identifica el elemento formado (Z = protones) y se muestra su
+  // masa aproximada (protones + neutrones); los neutrones solos no
+  // cambian el elemento, solo la masa.
   on('escena:particulas-cambiadas', ({ protones, neutrones, electrones }) => {
     const panelInfo = document.querySelector('#panel-info');
     if (!panelInfo) return;
@@ -233,6 +237,17 @@ export function iniciarInterfaz() {
     escribir('protones', protones);
     escribir('neutrones', neutrones);
     escribir('electrones', electrones);
+    const identificado = identificarElemento(protones, neutrones);
+    const lineaElemento = panelInfo.querySelector('[data-campo="elemento"]');
+    if (lineaElemento) {
+      lineaElemento.textContent = identificado.simbolo ? identificado.mensaje : identificado.motivo;
+    }
+    const lineaMasa = panelInfo.querySelector('[data-campo="masa-linea"]');
+    const valorMasa = panelInfo.querySelector('[data-campo="masa"]');
+    if (lineaMasa && valorMasa) {
+      lineaMasa.hidden = !identificado.simbolo;
+      valorMasa.textContent = String(identificado.simbolo ? identificado.masa : 0);
+    }
     if (protones + neutrones + electrones > 0) mostrarPanelInfo();
   });
 

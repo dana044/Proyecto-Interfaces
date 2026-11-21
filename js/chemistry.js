@@ -65,6 +65,48 @@ export function motivoValenciaLlena(elemento) {
 }
 
 /**
+ * Símbolo del elemento con ese número atómico (Z = protones), o
+ * null si no está entre los 10 elementos del prototipo.
+ * @param {number} protones Cantidad de protones (número atómico).
+ * @returns {string|null} El símbolo del elemento.
+ */
+export function elementoPorProtones(protones) {
+    for (const [simbolo, config] of Object.entries(ELEMENTOS)) {
+        if (config.z === protones) return simbolo;
+    }
+    return null;
+}
+
+/**
+ * Identifica el elemento que se formó en el modelo de Bohr según
+ * sus protones, y su masa aproximada (protones + neutrones). Los
+ * neutrones no cambian el elemento, solo la masa.
+ * @param {number} protones Cantidad de protones.
+ * @param {number} neutrones Cantidad de neutrones.
+ * @returns {{ simbolo: string, nombre: string, z: number, valencia: number, masa: number, mensaje: string } | { simbolo: null, motivo: string }}
+ *   El elemento formado, o el motivo en lenguaje sencillo si no se
+ *   formó ninguno.
+ */
+export function identificarElemento(protones, neutrones) {
+    if (protones <= 0) {
+        return { simbolo: null, motivo: 'Agrega protones para formar un elemento.' };
+    }
+    const simbolo = elementoPorProtones(protones);
+    if (!simbolo) {
+        return { simbolo: null, motivo: 'Todavía no conozco ese elemento hasta el neón.' };
+    }
+    const config = ELEMENTOS[simbolo];
+    return {
+        simbolo,
+        nombre: config.nombre,
+        z: config.z,
+        valencia: config.valencia,
+        masa: protones + neutrones,
+        mensaje: `Formaste ${config.nombre.toLowerCase()} · Z = ${config.z}`,
+    };
+}
+
+/**
  * Decide si dos átomos pueden unirse.
  *
  * @param {object} datos
