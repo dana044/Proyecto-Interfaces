@@ -8,7 +8,7 @@
  */
 
 import { ELEMENTOS } from './elementos.js';
-import { enlacesUsados, motivoValenciaLlena, valenciaDe } from './chemistry.js';
+import { distanciaEnlace, enlacesUsados, motivoValenciaLlena, valenciaDe } from './chemistry.js';
 
 /**
  * Ángulo por defecto de cada geometría, en grados, por si el
@@ -339,7 +339,7 @@ function direccionEsfera(indice) {
 /**
  * Calcula dónde va cada átomo en la geometría real de la molécula:
  * el átomo central en el centro y los demás a distancia de enlace
- * (suma de radios), con el ángulo del catálogo.
+ * (sus radios más la separación visible), con el ángulo del catálogo.
  * @param {object} molecula Molécula del catálogo, con geometria y angulo_grados.
  * @param {Map<string, string>} mapeo Mapeo de id del catálogo a id de la escena.
  * @returns {Object<string, { x: number, y: number, z: number }>} Posición por id de la escena.
@@ -348,8 +348,7 @@ export function calcularGeometria(molecula, mapeo) {
     const atomosCatalogo = molecula.atomos || [];
     const enlacesCatalogo = enlacesDeCatalogo(molecula);
     const elementoDe = new Map(atomosCatalogo.map((atomo) => [atomo.id, atomo.elemento]));
-    const distancia = (idA, idB) => (ELEMENTOS[elementoDe.get(idA)]?.radio ?? 0.4)
-        + (ELEMENTOS[elementoDe.get(idB)]?.radio ?? 0.4);
+    const distancia = (idA, idB) => distanciaEnlace(elementoDe.get(idA), elementoDe.get(idB));
 
     const posiciones = {};
     if (atomosCatalogo.length === 0) return posiciones;

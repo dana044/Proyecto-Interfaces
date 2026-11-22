@@ -35,6 +35,29 @@ let retosCargados = false;
 let procesandoExito = false;
 
 /**
+ * Temporizador que actualiza el tiempo en pantalla cada segundo
+ * mientras se está en modo reto. Sin él, el tiempo solo cambiaba
+ * cuando pasaba algo (agregar un átomo, verificar) y se veía parado.
+ */
+let intervaloTiempo = null;
+
+/** Arranca el temporizador del reto, si no está ya corriendo. */
+function iniciarTemporizador() {
+    detenerTemporizador();
+    intervaloTiempo = setInterval(() => {
+        if (estado.modo === 'reto') publicarActualizacion();
+    }, 1000);
+}
+
+/** Para el temporizador del reto, si está corriendo. */
+function detenerTemporizador() {
+    if (intervaloTiempo !== null) {
+        clearInterval(intervaloTiempo);
+        intervaloTiempo = null;
+    }
+}
+
+/**
  * Tiempo como minutos y segundos («0:07», «1:23»).
  * @param {number} ms Milisegundos.
  * @returns {string} El tiempo en formato m:ss.
@@ -318,6 +341,7 @@ export async function entrarModoReto() {
     registroActual();
     estado.reto.inicioMs = Date.now();
     setModo('reto');
+    iniciarTemporizador();
     const reto = retoActual();
     publicarActualizacion();
     emit('ui:mensaje', {
@@ -335,6 +359,7 @@ export async function entrarModoReto() {
  */
 export function salirModoReto() {
     if (estado.modo !== 'reto') return false;
+    detenerTemporizador();
     pausarTemporizador();
     setModo('libre');
     publicarActualizacion();
@@ -412,6 +437,7 @@ function alVerificar({ nombre, formula, completa }) {
                 });
             } else {
                 estado.reto.indice = retos.length;
+                detenerTemporizador();
                 publicarActualizacion();
                 emit('ui:mensaje', {
                     tipo: 'correcto',

@@ -141,6 +141,20 @@ export function acercar(factor) {
     camara.position.copy(controles.target).add(desplazamiento);
 }
 
+/**
+ * Vuelve a la vista inicial: desde arriba, sobre el eje Y, centrada en
+ * el origen del tablero. La cámara queda un poquito desplazada en Z para
+ * que la mirada no sea exactamente paralela al eje Y y lookAt funcione.
+ */
+export function vistaInicial() {
+    if (!iniciado) return;
+
+    controles.target.set(0, 0, 0);
+    camara.position.set(0, 6, 0.001);
+    camara.lookAt(0, 0, 0);
+    controles.update();
+}
+
 /** Devuelve los grupos de átomos de la escena. */
 export function obtenerAtomos() {
     if (!grupoAtomos) return [];

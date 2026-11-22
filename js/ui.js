@@ -102,6 +102,15 @@ function iniciarPanelAtomos() {
 }
 
 export function iniciarInterfaz() {
+  // Al iniciar la sesión, los paneles de átomos y de información
+  // empiezan cerrados: el navegador a veces restaura los
+  // interruptores como estaban antes de recargar y los paneles
+  // salían abiertos.
+  const menuAtomos = document.querySelector('#menu-atomos');
+  const menuInfo = document.querySelector('#menu-info');
+  if (menuAtomos) menuAtomos.checked = false;
+  if (menuInfo) menuInfo.checked = false;
+
   const microfono = document.querySelector('[data-accion="microfono"]');
   const mensajes = document.querySelector('#zona-mensajes');
   const indicadorCamara = document.querySelector('#estado-camara');

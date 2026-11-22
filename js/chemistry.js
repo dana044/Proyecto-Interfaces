@@ -21,11 +21,32 @@ import * as THREE from 'three';
 import { ELEMENTOS } from './elementos.js';
 
 /** Distancia máxima para intentar un enlace, en veces la suma de radios. */
-export const FACTOR_PROXIMIDAD = 2;
+export const FACTOR_PROXIMIDAD = 1.5;
+
+/**
+ * Hueco visible entre las superficies de dos átomos unidos: con 0
+ * los átomos se tocan y el cilindro del enlace queda escondido
+ * dentro de las esferas; con 0.6 el enlace se ve como una varilla
+ * de más o menos un cuadro de la rejilla (como una tecla).
+ */
+export const SEPARACION_ENLACE = 1.2;
+
+/**
+ * Distancia entre los centros de dos átomos unidos: sus radios más
+ * la separación visible del enlace.
+ * @param {string} elementoA Símbolo de un elemento.
+ * @param {string} elementoB Símbolo del otro elemento.
+ * @returns {number} La distancia entre centros.
+ */
+export function distanciaEnlace(elementoA, elementoB) {
+    return radioDe(elementoA) + radioDe(elementoB) + SEPARACION_ENLACE;
+}
 
 const COLOR_ARO_COMPLETO = 0x15803d;
 const COLOR_ARO_INCOMPLETO = 0x9ca3af;
-const COLOR_PUNTO_LIBRE = 0xffffff;
+/** Puntos de valencia libre: ámbar y grandes, para que se vean. */
+const COLOR_PUNTO_LIBRE = 0xffc93c;
+const RADIO_PUNTO_LIBRE = 0.08;
 
 /** Valencia de un elemento (0 si no está en el catálogo). */
 export function valenciaDe(elemento) {
@@ -187,7 +208,7 @@ function vaciarGrupo(grupo) {
 /**
  * Dibuja el aro de valencia de un átomo.
  * - Valencia completa: aro verde sólido, sin puntos.
- * - Si le quedan enlaces: aro gris con un punto blanco por cada
+ * - Si le quedan enlaces: aro gris con un punto ámbar por cada
  *   enlace que aún le queda.
  */
 export function actualizarAnilloValencia(grupo, radio, libres) {
@@ -207,7 +228,7 @@ export function actualizarAnilloValencia(grupo, radio, libres) {
     for (let i = 0; i < libres; i++) {
         const angulo = (i / libres) * Math.PI * 2;
         const punto = new THREE.Mesh(
-            new THREE.SphereGeometry(0.05, 12, 8),
+            new THREE.SphereGeometry(RADIO_PUNTO_LIBRE, 12, 8),
             new THREE.MeshBasicMaterial({ color: COLOR_PUNTO_LIBRE })
         );
         punto.position.set(

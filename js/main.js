@@ -12,6 +12,7 @@
 import { emit, iniciarBus } from './bus.js';
 import { iniciarEstado } from './state.js';
 import { iniciarEscena } from './scene.js';
+import { iniciarEjes } from './ejes.js';
 import { iniciarGestos, detenerGestos } from './gestures.js';
 import { iniciarVoz } from './voice.js';
 import { iniciarInterfaz } from './ui.js';
@@ -48,6 +49,7 @@ async function iniciarApp() {
   await iniciarModulo('bus', iniciarBus);
   await iniciarModulo('estado', iniciarEstado);
   await iniciarModulo('escena', iniciarEscena);
+  await iniciarModulo('ejes', iniciarEjes);
   await iniciarModulo('modelo de Bohr', () => {
     if (!iniciarModeloBohr()) throw new Error('la escena no tiene contenedor');
   });

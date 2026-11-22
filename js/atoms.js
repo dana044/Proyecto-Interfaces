@@ -16,11 +16,13 @@ import {
     animarSacudida,
     buscarVecinoMasCercano,
     crearAnilloValencia,
+    distanciaEnlace,
     enlacesUsados,
     evaluarUnion,
     valenciaDe,
 } from './chemistry.js';
 import { calcularGeometria, identificarMolecula } from './molecules.js';
+import { restriccionActiva } from './ejes.js';
 
 /** Separación de cada cilindro del centro en un enlace doble: los
  * dos cilindros tienen radio 0.08, así que con menos de 0.08 se
@@ -325,6 +327,30 @@ export function actualizarVistaPrevia(id) {
 }
 
 /**
+ * Si un átomo en esa posición se solapa con otro (la distancia
+ * entre centros es menor que la suma de sus radios), devuelve ese
+ * otro átomo; si no, null. Los átomos unidos quedan a distancia
+ * de enlace, así que no se confunden con un solapamiento.
+ * @param {string} id Id del átomo que se mueve.
+ * @param {{ x: number, y: number, z: number }} posicion Posición a revisar.
+ * @returns {object|null} El átomo solapado, o null.
+ */
+function atomoSolapado(id, posicion) {
+    const atomo = atomos.get(id);
+    if (!atomo) return null;
+    for (const [otroId, otro] of atomos) {
+        if (otroId === id) continue;
+        const distancia = Math.hypot(
+            posicion.x - otro.grupo.position.x,
+            posicion.y - otro.grupo.position.y,
+            posicion.z - otro.grupo.position.z
+        );
+        if (distancia < atomo.radio + otro.radio + 0.02) return otro;
+    }
+    return null;
+}
+
+/**
  * Al soltar un átomo, evalúa si se une al átomo más cercano
  * (js/chemistry.js). Se llama desde terminarArrastre(), así que
  * vale para mouse, pellizco y teclado.
@@ -352,7 +378,18 @@ function evaluarUnionAlSoltar(id, origen) {
     });
 
     // Ya tienen un enlace doble: solo estaba moviendo la molécula.
-    if (resultado.accion === 'nada') return;
+    // Pero si lo soltó encima de otro átomo, vuelve a su sitio:
+    // dos átomos no se pueden sobreponer.
+    if (resultado.accion === 'nada') {
+        if (atomoSolapado(id, atomo.grupo.position)) {
+            enviarMensaje('aviso', 'No se pueden sobreponer dos átomos.');
+            setUltimaAccion('No se pueden sobreponer dos átomos.');
+            animarSacudida(atomo.grupo, origen).then(() => {
+                moverAtomo(id, { x: origen.x, y: origen.y, z: origen.z });
+            });
+        }
+        return;
+    }
 
     if (!resultado.ok) {
         emit('escena:enlace-rechazado', { motivo: resultado.motivo });
@@ -365,11 +402,10 @@ function evaluarUnionAlSoltar(id, origen) {
         return;
     }
 
-    // Se acerca hasta tocar al vecino y ahí se crea (o se duplica) el enlace.
-    // La foto va antes de la animación: es el estado sin ese enlace.
-    guardarFoto(resultado.accion === 'convertir-doble'
-        ? `enlace doble ${soltado.elemento}–${vecino.elemento}`
-        : `enlace ${soltado.elemento}–${vecino.elemento}`);
+    // Se acerca hasta la distancia de enlace del vecino (sus
+    // radios más la separación visible) y ahí se crea (o se
+    // duplica) el enlace. El destino se revisa antes de guardar
+    // la foto: en una escena llena podría caer encima de otro átomo.
     const direccion = new THREE.Vector3(
         soltado.posicion.x - vecino.posicion.x,
         soltado.posicion.y - vecino.posicion.y,
@@ -377,12 +413,28 @@ function evaluarUnionAlSoltar(id, origen) {
     );
     if (direccion.lengthSq() === 0) direccion.set(1, 0, 0);
     direccion.normalize();
-    const distanciaContacto = atomo.radio + (ELEMENTOS[vecino.elemento]?.radio ?? 0.4);
+    const distanciaContacto = distanciaEnlace(soltado.elemento, vecino.elemento);
     const destino = {
         x: vecino.posicion.x + direccion.x * distanciaContacto,
         y: vecino.posicion.y + direccion.y * distanciaContacto,
         z: vecino.posicion.z + direccion.z * distanciaContacto,
     };
+
+    if (atomoSolapado(id, destino)) {
+        const motivo = 'No hay espacio para unirlos ahí: se sobrepondrían con otro átomo.';
+        emit('escena:enlace-rechazado', { motivo });
+        enviarMensaje('aviso', motivo);
+        setUltimaAccion(`Enlace rechazado: ${motivo}`);
+        animarSacudida(atomo.grupo, origen).then(() => {
+            moverAtomo(id, { x: origen.x, y: origen.y, z: origen.z });
+        });
+        return;
+    }
+
+    // La foto va antes de la animación: es el estado sin ese enlace.
+    guardarFoto(resultado.accion === 'convertir-doble'
+        ? `enlace doble ${soltado.elemento}–${vecino.elemento}`
+        : `enlace ${soltado.elemento}–${vecino.elemento}`);
 
     animarHasta(atomo.grupo, destino).then(() => {
         moverAtomo(id, destino);
@@ -608,7 +660,10 @@ function actualizarEnlace(idA, idB) {
     const pA = atomoA.grupo.position;
     const pB = atomoB.grupo.position;
     const direccion = new THREE.Vector3().subVectors(pB, pA);
-    const longitud = Math.max(direccion.length() - atomoA.radio - atomoB.radio, 0.05);
+    // El cilindro va de centro a centro: las esferas son opacas y
+    // tapan sus puntas, así la varilla siempre llega al átomo aunque
+    // tenga radio distinto (el hidrógeno es más chico que el oxígeno).
+    const longitud = direccion.length();
     const normal = direccion.clone().normalize();
     const medio = new THREE.Vector3().addVectors(pA, pB).multiplyScalar(0.5);
 
@@ -629,24 +684,35 @@ function actualizarEnlace(idA, idB) {
     });
 }
 
+/**
+ * Pinta el átomo de amarillo mientras está seleccionado o agarrado,
+ * o lo devuelve a su color de grupo cuando ya no se está tocando.
+ */
+function marcarAtomoActivo(atomo, activo) {
+    if (activo) {
+        atomo.esfera.material.color.setHex(COLOR_RESALTADO);
+        atomo.esfera.material.emissive.setHex(COLOR_RESALTADO);
+        atomo.esfera.material.emissiveIntensity = 0.4;
+        if (atomo.borde) atomo.borde.visible = true;
+    } else {
+        atomo.esfera.material.color.setHex(ELEMENTOS[atomo.elemento].color);
+        atomo.esfera.material.emissive.setHex(0x000000);
+        if (atomo.borde) atomo.borde.visible = false;
+    }
+}
+
 /** Resalta el átomo seleccionado. Pasa null para quitar la selección. */
 export function seleccionarAtomo(id) {
     if (seleccionado && atomos.has(seleccionado)) {
-        const anterior = atomos.get(seleccionado);
         // Vuelve a su color de grupo: el amarillo es solo mientras
         // está seleccionado.
-        anterior.esfera.material.color.setHex(ELEMENTOS[anterior.elemento].color);
-        anterior.esfera.material.emissive.setHex(0x000000);
-        if (anterior.borde) anterior.borde.visible = false;
+        marcarAtomoActivo(atomos.get(seleccionado), false);
     }
     seleccionado = null;
 
     const atomo = atomos.get(id);
     if (atomo) {
-        atomo.esfera.material.color.setHex(COLOR_RESALTADO);
-        atomo.esfera.material.emissive.setHex(COLOR_RESALTADO);
-        atomo.esfera.material.emissiveIntensity = 0.4;
-        if (atomo.borde) atomo.borde.visible = true;
+        marcarAtomoActivo(atomo, true);
         seleccionado = id;
     }
 
@@ -871,12 +937,12 @@ function acomodarGeometria(destinos, duracionMs = 1000) {
  * Devuelve la molécula cuando está completa, o null si no.
  */
 export async function verificarMolecula() {
-  // Destello morado del botón Verificar al usarlo (clic, voz o gesto).
-  const botonVerificar = document.querySelector('[data-accion="verificar"]');
-  if (botonVerificar) {
-    botonVerificar.classList.add('destello');
-    setTimeout(() => botonVerificar.classList.remove('destello'), 1200);
-  }
+    // Destello morado del botón Verificar al usarlo (clic, voz o gesto).
+    const botonVerificar = document.querySelector('[data-accion="verificar"]');
+    if (botonVerificar) {
+        botonVerificar.classList.add('destello');
+        setTimeout(() => botonVerificar.classList.remove('destello'), 1200);
+    }
 
     const actuales = obtenerListaAtomos();
     if (actuales.length === 0) {
@@ -1086,7 +1152,7 @@ function crearParticulaVisual(tipo) {
         grupo.add(signo);
     }
     if (tipo === 'electron') {
-        const signo = crearEtiqueta('−', color, 0.2);
+        const signo = crearEtiqueta('−', color, 0.22);
         signo.position.set(0, 0, radio + 0.02);
         grupo.add(signo);
     }
@@ -1427,12 +1493,73 @@ function resaltarPorDelante(atomo, activo) {
     atomo.borde.material.depthTest = !activo;
 }
 
-function iniciarArrastre(x, y) {
+/**
+ * Crea la restricción de movimiento de un átomo: un plano (base o altura
+ * según el modo activo) que contiene su centro actual. `ref` guarda el
+ * punto de referencia del primer movimiento.
+ */
+function crearRestriccion(atomo) {
+    return {
+        tipo: 'plano',
+        punto: atomo.grupo.position.clone(),
+        normal: restriccionActiva().normal,
+        ref: null,
+    };
+}
+
+/**
+ * Desplazamiento dentro de un plano con una flecha o WASD: la derecha y
+ * arriba de la cámara, proyectadas sobre el plano, para que la tecla
+ * siga la dirección que se ve en pantalla.
+ */
+function pasoEnPlano(normal, dx, dy) {
     const camaraActual = obtenerCamara();
-    if (arrastre || !camaraActual) return false;
+    const derecha = new THREE.Vector3().setFromMatrixColumn(camaraActual.matrixWorld, 0);
+    const arriba = new THREE.Vector3().setFromMatrixColumn(camaraActual.matrixWorld, 1);
+    const enPlano = (vector) => vector.clone().addScaledVector(normal, -vector.dot(normal));
+    const x = enPlano(derecha);
+    const y = enPlano(arriba);
+    if (x.lengthSq() < 1e-8 || y.lengthSq() < 1e-8) return new THREE.Vector3();
+
+    return x.normalize().multiplyScalar(dx * PASO_TECLADO)
+        .add(y.normalize().multiplyScalar(dy * PASO_TECLADO));
+}
+
+/**
+ * Si cambia el plano durante un arrastre, el átomo se queda donde está
+ * y empieza a moverse sobre el plano nuevo.
+ */
+function reanclarArrastre() {
+    if (!arrastre?.restriccion) return;
+    const atomo = atomos.get(arrastre.id);
+    if (!atomo) return;
+    arrastre.restriccion = crearRestriccion(atomo);
+}
+
+function iniciarArrastre(x, y, restringir = false) {
+    const camaraActual = obtenerCamara();
+    if (!camaraActual) return false;
 
     const id = atomoBajoPuntero(x, y);
     if (!id) return false;
+
+    // Cambio libre entre teclado y mouse (o mano): si un átomo está
+    // agarrado con el teclado, el mouse o la mano pueden tomarlo sin
+    // soltarlo con Enter. Si es el mismo átomo, el arrastre pasa de
+    // teclado a mouse y sigue desde donde quedó, con el mismo origen
+    // (para el deshacer y para volver si se rechaza el enlace) y sin
+    // guardar otra foto (ya hay una del arrastre con teclado). Si es
+    // otro átomo, el del teclado se suelta donde quedó.
+    let origenPrevio = null;
+    if (arrastre?.teclado) {
+        if (id !== arrastre.id) {
+            terminarArrastre(arrastre.id);
+        } else {
+            origenPrevio = arrastre.origen;
+        }
+    } else if (arrastre) {
+        return false;
+    }
 
     const atomo = atomos.get(id);
     const centro = atomo.grupo.position.clone();
@@ -1443,16 +1570,23 @@ function iniciarArrastre(x, y) {
     const impacto = rayo.ray.intersectPlane(plano, new THREE.Vector3());
     if (!impacto) return false;
 
+    // Con el mouse el átomo solo se mueve sobre el plano activo. El pellizco de la mano no tiene esta restricción.
+    const restriccion = restringir ? crearRestriccion(atomo) : null;
+
     arrastre = {
         id,
         plano,
         desfase: new THREE.Vector3().subVectors(centro, impacto),
-        origen: centro.clone(),
+        origen: origenPrevio ?? centro.clone(),
+        restriccion,
     };
     // La foto se guarda al empezar el arrastre: durante el arrastre
     // el átomo ya se mueve con cada pointermove, así que al soltarlo
-    // sería tarde para guardar la posición de antes.
-    fotoArrastrePendiente = guardarFoto(`mover ${id}`);
+    // sería tarde para guardar la posición de antes. En el cambio
+    // desde teclado la foto ya existe y no se guarda otra.
+    if (!origenPrevio) {
+        fotoArrastrePendiente = guardarFoto(`mover ${id}`);
+    }
     seleccionarAtomo(id);
     resaltarPorDelante(atomo, true);
     actualizarVistaPrevia(id);
@@ -1469,10 +1603,21 @@ function moverArrastre(x, y) {
     }
 
     prepararRayo(x, y);
-    const impacto = rayo.ray.intersectPlane(arrastre.plano, new THREE.Vector3());
-    if (!impacto) return;
-
-    atomo.grupo.position.copy(impacto.add(arrastre.desfase));
+    const restriccion = arrastre.restriccion;
+    if (restriccion) {
+        const plano = new THREE.Plane().setFromNormalAndCoplanarPoint(restriccion.normal, restriccion.punto);
+        const impacto = rayo.ray.intersectPlane(plano, new THREE.Vector3());
+        if (!impacto) return;
+        if (restriccion.ref === null) {
+            restriccion.ref = impacto;
+            return;
+        }
+        atomo.grupo.position.copy(restriccion.punto).add(impacto.clone().sub(restriccion.ref));
+    } else {
+        const impacto = rayo.ray.intersectPlane(arrastre.plano, new THREE.Vector3());
+        if (!impacto) return;
+        atomo.grupo.position.copy(impacto.add(arrastre.desfase));
+    }
     for (const otroId of atomo.enlaces) {
         actualizarEnlace(arrastre.id, otroId);
     }
@@ -1488,6 +1633,9 @@ function terminarArrastre(id) {
     ocultarTarjetaAtomo();
     limpiarVistaPrevia();
     resaltarPorDelante(atomo, false);
+    // Al soltarlo deja de estar tocado: vuelve a su color normal.
+    // Sigue siendo el átomo elegido, así que Enter lo vuelve a agarrar.
+    marcarAtomoActivo(atomo, false);
     const p = atomo.grupo.position.clone();
     moverAtomo(id, { x: p.x, y: p.y, z: p.z });
     // Si al final no se movió, la foto del arrastre no sirve:
@@ -1529,26 +1677,32 @@ function iniciarArrastreTeclado(id) {
     const atomo = atomos.get(id);
     if (!atomo) return;
 
-    arrastre = { id, teclado: true, origen: atomo.grupo.position.clone() };
+    arrastre = {
+        id,
+        teclado: true,
+        origen: atomo.grupo.position.clone(),
+        restriccion: crearRestriccion(atomo),
+    };
     // Igual que con el mouse: la foto va al empezar, porque cada
     // flecha ya mueve el átomo en el momento.
     fotoArrastrePendiente = guardarFoto(`mover ${id}`);
     resaltarPorDelante(atomo, true);
+    marcarAtomoActivo(atomo, true);
     actualizarVistaPrevia(id);
-    enviarMensaje('aviso', `Agarraste un ${ELEMENTOS[atomo.elemento].nombre.toLowerCase()}. Flechas para moverlo, Enter para soltarlo, Escape para cancelar`);
+    enviarMensaje('aviso', `Agarraste un ${ELEMENTOS[atomo.elemento].nombre.toLowerCase()}. Flechas o WASD para moverlo, Enter para soltarlo, Escape para cancelar`);
 }
 
 function desplazarAtomoTeclado(id, dx, dy) {
     const atomo = atomos.get(id);
-    const camaraActual = obtenerCamara();
-    if (!atomo || !camaraActual) return;
+    if (!atomo || !obtenerCamara()) return;
 
-    const derecha = new THREE.Vector3().setFromMatrixColumn(camaraActual.matrixWorld, 0);
-    const arriba = new THREE.Vector3().setFromMatrixColumn(camaraActual.matrixWorld, 1);
-
-    atomo.grupo.position
-        .addScaledVector(derecha, dx * PASO_TECLADO)
-        .addScaledVector(arriba, dy * PASO_TECLADO);
+    // El paso se calcula antes de mover: si el destino se solapa
+    // con otro átomo, el átomo se queda donde está.
+    const restriccion = arrastre?.restriccion ?? crearRestriccion(atomo);
+    const destino = atomo.grupo.position.clone()
+        .add(pasoEnPlano(restriccion.normal, dx, dy));
+    if (atomoSolapado(id, destino)) return;
+    atomo.grupo.position.copy(destino);
 
     for (const otroId of atomo.enlaces) {
         actualizarEnlace(id, otroId);
@@ -1571,6 +1725,7 @@ function cancelarArrastreTeclado() {
     // foto no debe quedarse en el historial.
     descartarFotoArrastre();
     resaltarPorDelante(atomo, false);
+    marcarAtomoActivo(atomo, false);
     enviarMensaje('aviso', `Movimiento de ${id} cancelado`);
 }
 
@@ -1615,17 +1770,51 @@ function manejarTeclado(evento) {
         return;
     }
 
+    // Flechas y WASD mueven igual: las teclas se leen por código
+    // físico (KeyW, KeyA...) para que valgan con mayúsculas o con
+    // otro idioma de teclado. Si hay un átomo seleccionado y
+    // todavía no está agarrado, la primera flecha o tecla lo agarra.
     const direcciones = {
         ArrowLeft: [-1, 0],
         ArrowRight: [1, 0],
         ArrowUp: [0, 1],
         ArrowDown: [0, -1],
+        KeyA: [-1, 0],
+        KeyD: [1, 0],
+        KeyW: [0, 1],
+        KeyS: [0, -1],
     };
-    const direccion = direcciones[evento.key];
+    const direccion = direcciones[evento.key] || direcciones[evento.code];
 
-    if (direccion && esTeclado) {
+    if (direccion) {
         evento.preventDefault();
-        desplazarAtomoTeclado(arrastre.id, direccion[0], direccion[1]);
+        if (!esTeclado) {
+            if (arrastre) {
+                // El mouse (o la mano) tiene el átomo: el teclado
+                // lo toma sin soltar el botón, con el mismo origen
+                // y sin guardar otra foto (ya hay una del arrastre).
+                const id = arrastre.id;
+                const tomado = atomos.get(id);
+                arrastre = {
+                    id,
+                    teclado: true,
+                    origen: arrastre.origen,
+                    restriccion: arrastre.restriccion ?? (tomado ? crearRestriccion(tomado) : null),
+                };
+                if (tomado) resaltarPorDelante(tomado, true);
+                actualizarVistaPrevia(id);
+                enviarMensaje('aviso', 'Ahora lo mueves con el teclado. Flechas o WASD para moverlo, Enter para soltarlo, Escape para cancelar');
+            } else {
+                if (!seleccionado) {
+                    enviarMensaje('aviso', 'Usa Tab para elegir un átomo y luego las flechas o WASD para moverlo');
+                    return;
+                }
+                iniciarArrastreTeclado(seleccionado);
+            }
+        }
+        if (arrastre?.teclado) {
+            desplazarAtomoTeclado(arrastre.id, direccion[0], direccion[1]);
+        }
     }
 }
 
@@ -1735,11 +1924,12 @@ export function iniciarArrastreDeAtomos() {
     on('gesto:pellizco-inicio', ({ x, y }) => iniciarArrastre(x, y));
     on('gesto:pellizco-mover', ({ x, y }) => moverArrastre(x, y));
     on('gesto:pellizco-fin', ({ x, y }) => soltarArrastre(x, y));
+    on('ejes:cambio', reanclarArrastre);
 
     lienzo.tabIndex = 0;
     lienzo.setAttribute(
         'aria-label',
-        'Escena 3D. Tab elige un átomo, Enter lo agarra, flechas lo mueven y Enter lo suelta'
+        'Escena 3D. Tab elige un átomo, Enter lo agarra, flechas o WASD lo mueven y Enter lo suelta'
     );
     lienzo.addEventListener('keydown', manejarTeclado);
 
@@ -1749,10 +1939,14 @@ export function iniciarArrastreDeAtomos() {
         if (evento.button !== 0) return;
 
         const punto = coordenadasDePuntero(evento, lienzo);
-        if (!punto || !iniciarArrastre(punto.x, punto.y)) return;
+        if (!punto || !iniciarArrastre(punto.x, punto.y, true)) return;
 
         evento.preventDefault();
         evento.stopImmediatePropagation();
+        // El preventDefault impide que el clic enfoque el lienzo:
+        // sin esto, las flechas o WASD no funcionarían justo
+        // después de agarrar un átomo con el mouse.
+        lienzo.focus();
         lienzo.setPointerCapture(evento.pointerId);
     }, { capture: true });
 

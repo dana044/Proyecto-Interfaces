@@ -15,6 +15,9 @@
   --accion-presionado: #4C1D95;
   --accion-suave: #F3EEFD;
 
+  /* Tarjeta de ayuda al pasar el cursor (globo de los botones) */
+  --globo-fondo: #1F2430;
+
   /* Texto y bordes */
   --texto: #1F2430;
   --texto-secundario: #5B6372;
@@ -390,11 +393,16 @@ p {
   color: var(--accion);
 }
 
-/* El nombre no se parte en dos líneas: si no cabe, se recorta. */
+/* El nombre se puede partir en dos líneas: no se recorta.
+   Antes llevaba puntos suspensivos y «Hidrógeno» se veía
+   como «Hidróge…». */
 .lista-elementos .boton-atomo span:last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  line-height: 1.2;
+  overflow-wrap: break-word;
+  font-size: 14px;
 }
 
 /* Modelo de Bohr: una fila compacta por partícula */
@@ -504,7 +512,7 @@ p {
   font-size: 15px;
   color: var(--texto-secundario);
   background: #FEF3C7;
-  border: 1px solid #F59E0B;
+  border: 1px solid #FFC93C;
   border-radius: 12px;
 }
 
@@ -1007,8 +1015,15 @@ p {
 }
 
 @keyframes pulso-microfono {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(21, 128, 61, 0.45); }
-  50% { box-shadow: 0 0 0 6px rgba(21, 128, 61, 0); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(21, 128, 61, 0.45);
+  }
+
+  50% {
+    box-shadow: 0 0 0 6px rgba(21, 128, 61, 0);
+  }
 }
 
 /* Globos: al pasar el cursor o enfocar, aparecen a la derecha con la
@@ -1030,7 +1045,8 @@ p {
   padding: 8px 12px;
   text-align: left;
   color: #FFFFFF;
-  background: var(--texto);
+  background: var(--globo-fondo);
+  border: 1px solid var(--borde-fuerte);
   border-radius: 8px;
   box-shadow: var(--sombra-flotante);
   transform: translateY(-50%);
@@ -1298,7 +1314,13 @@ label[for="menu-info"].boton-menu::before {
   --superficie: #1B1F29;
   --lienzo: #161A23;
   --cuadricula: #262C3A;
+  /* El morado de la guía (#6D28D9) se pierde sobre el fondo
+     oscuro: aquí va un violeta más claro y visible. */
+  --accion: #8B5CF6;
+  --accion-hover: #A78BFA;
+  --accion-presionado: #7C3AED;
   --accion-suave: #2A2140;
+  --globo-fondo: #232836;
   --texto: #E7E9EF;
   --texto-secundario: #9AA3B2;
   --borde: #2A3040;
@@ -1323,6 +1345,12 @@ label[for="menu-info"].boton-menu::before {
 :root[data-tema="oscuro"] .explicacion-enlace {
   background: var(--accion-suave);
   color: #C4B5FD;
+}
+
+/* El título del reto usa el morado claro en modo oscuro,
+   para que se lea bien sobre el fondo suave. */
+:root[data-tema="oscuro"] .panel-reto h3 {
+  color: #A78BFA;
 }
 
 /* El subtítulo de voz sube para no tapar la pista de gestos */
