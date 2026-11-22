@@ -12,7 +12,7 @@ const oyentes = {};
 
 /**
  * Emite un evento con datos opcionales.
- * @param {string} nombre - Nombre del evento (ej. "gesto:pellizco-inicio")
+ * @param {string} nombre - Nombre del evento (ej. "gesto:seleccionar-inicio")
  * @param {Object} [datos={}] - Datos que acompañan el evento
  */
 export function emit(nombre, datos = {}) {
@@ -27,7 +27,7 @@ export function emit(nombre, datos = {}) {
  * @param {Function} funcion - Función que se ejecuta al recibir el evento
  */
 /**
- * Inicio del bus (HU-06: cada módulo exporta una iniciar...()).
+ * Inicio del bus (cada módulo exporta una iniciar...()).
  * El bus no necesita inicialización: solo deja constancia de que existe.
  */
 export function iniciarBus() {}

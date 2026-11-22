@@ -6,7 +6,6 @@
  */
 
 import { emit, on } from './bus.js';
-import { cambiarModoCanvas } from './gestures.js';
 import { alternarMicrofono, detenerLocucion, hablar } from './voice.js';
 import { agregarAtomo, agregarParticula, deshacer, limpiarEscena, limpiarParticulas, quitarParticula, rehacer, verificarMolecula } from './atoms.js';
 import { darPista, entrarModoReto, formatearTiempo, salirModoReto } from './reto.js';
@@ -112,12 +111,10 @@ export function iniciarInterfaz() {
   if (menuAtomos) menuAtomos.checked = false;
   if (menuInfo) menuInfo.checked = false;
 
-  // Pulgar hacia un lado: abre o cierra la paleta de moléculas. Al
-  // abrirla, el cursor pasa a la interfaz para poder elegir.
+  // Pulgar hacia un lado: abre o cierra la paleta de moléculas.
   on('gesto:paleta', () => {
     if (!menuAtomos) return;
     menuAtomos.checked = !menuAtomos.checked;
-    if (menuAtomos.checked) cambiarModoCanvas(false);
     emit('ui:paleta', { abierta: menuAtomos.checked });
   });
 

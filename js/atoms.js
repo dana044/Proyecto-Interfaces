@@ -9,7 +9,6 @@
 import * as THREE from 'three';
 import { acercar, desplazarVista, obtenerCamara, obtenerContenedorAtomos, obtenerLienzo, rotarVista } from './scene.js';
 import { emit, on } from './bus.js';
-import { cambiarModoCanvas, estaEnCanvas } from './gestures.js';
 import { alternarMicrofono } from './voice.js';
 import { AVISO_ELEMENTO_DESCONOCIDO, ELEMENTOS, MAX_ATOMOS } from './elementos.js';
 import { setUltimaAccion } from './state.js';
@@ -1691,14 +1690,28 @@ export function iniciarComandosDeAtomos() {
     });
     // Al cerrar la paleta, el elemento en la mano se suelta sin colocar.
     on('ui:paleta', ({ abierta }) => {
-        if (!abierta) soltarElementoEnMano();
+        if (!abierta) soltarEnMano();
     });
-    // El tutorial pide un átomo de ejemplo para practicar, solo si la
-    // escena está vacía, y lo quita al cerrarse.
+    // Deslizar la mano a la izquierda deshace; a la derecha, rehace.
+    on('gesto:deshacer', () => deshacer());
+    on('gesto:rehacer', () => rehacer());
+    // Índice y medio arriba sobre un átomo: lo elimina, solo ese, y avisa cuál.
+    on('gesto:eliminar-pedido', ({ x, y }) => {
+        if (!estaEnTablero(x, y)) return;
+        const punto = aCoordenadasCanvas(x, y);
+        const id = atomoBajoPuntero(punto.x, punto.y);
+        if (!id) return;
+        const elemento = atomos.get(id)?.elemento;
+        if (!eliminarAtomo(id)) return;
+        emit('gesto:eliminar', { id });
+        enviarMensaje('aviso', `Eliminé el átomo de ${ELEMENTOS[elemento]?.nombre ?? elemento}.`);
+    });
+    // El tutorial pide un átomo de ejemplo en un punto libre, aunque la
+    // escena ya tenga átomos, y lo quita al cerrarse.
     on('tutorial:atomo-ejemplo', ({ mostrar }) => {
         if (mostrar) {
-            if (idAtomoEjemplo || atomos.size > 0) return;
-            idAtomoEjemplo = agregarAtomo('H', { x: 0, y: 0, z: 0 });
+            if (idAtomoEjemplo) return;
+            idAtomoEjemplo = agregarAtomo('H');
         } else if (idAtomoEjemplo) {
             eliminarAtomo(idAtomoEjemplo);
             idAtomoEjemplo = null;
@@ -2010,7 +2023,15 @@ function soltarArrastre(x, y) {
 }
 
 let elementoEnMano = null;
+let particulaEnMano = null;
 let idAtomoEjemplo = null;
+
+// Símbolo y color que muestra el cursor para cada partícula.
+const SIMBOLO_PARTICULA = {
+    proton: { simbolo: 'p+', color: '#E11D48' },
+    neutron: { simbolo: 'n', color: '#9CA3AF' },
+    electron: { simbolo: 'e-', color: '#2563EB' },
+};
 
 /**
  * Pasa una posición de la ventana (0 a 1) a coordenadas del
@@ -2045,22 +2066,33 @@ function posicionBajoCursor(x, y) {
     return rayo.ray.intersectPlane(plano, new THREE.Vector3());
 }
 
-/** Toma un elemento de la paleta para colocarlo en el tablero. */
+/** Toma un elemento de la paleta con la mano cerrada. */
 function tomarElemento(simbolo) {
+    soltarEnMano();
     elementoEnMano = simbolo;
     emit('cursor:elemento', { simbolo, color: `#${ELEMENTOS[simbolo].color.toString(16).padStart(6, '0')}` });
-    enviarMensaje('aviso', `Tienes ${ELEMENTOS[simbolo].nombre} en la mano. Entra al tablero con el puño y levanta el índice donde quieras colocarlo.`);
+    enviarMensaje('aviso', `Tienes ${ELEMENTOS[simbolo].nombre} en la mano. Arrástralo al tablero con el índice y abre la mano para soltarlo.`);
 }
 
-/** Suelta el elemento en la mano sin colocarlo. */
-function soltarElementoEnMano() {
-    if (!elementoEnMano) return;
+/** Suelta lo que hay en la mano, sin colocarlo. */
+function soltarEnMano() {
+    if (!elementoEnMano && !particulaEnMano) return;
     elementoEnMano = null;
+    particulaEnMano = null;
     emit('cursor:elemento', { simbolo: null, color: null });
 }
 
+/** Toma una partícula de los botones + del modelo de Bohr. */
+function tomarParticula(tipo) {
+    if (!Object.hasOwn(SIMBOLO_PARTICULA, tipo)) return;
+    soltarEnMano();
+    particulaEnMano = tipo;
+    emit('cursor:elemento', { simbolo: SIMBOLO_PARTICULA[tipo].simbolo, color: SIMBOLO_PARTICULA[tipo].color });
+    enviarMensaje('aviso', `Tienes ${NOMBRES_PARTICULA[tipo].nombre} en la mano. Arrástralo al tablero con el índice y abre la mano para soltarlo.`);
+}
+
 /**
- * Coloca el elemento en la mano bajo el cursor y vuelve al tablero.
+ * Coloca el elemento en la mano bajo el cursor.
  * @param {number} x
  * @param {number} y
  */
@@ -2068,44 +2100,85 @@ function colocarElementoEnMano(x, y) {
     const punto = aCoordenadasCanvas(x, y);
     const posicion = posicionBajoCursor(punto.x, punto.y);
     if (!posicion) return;
+    const nombre = ELEMENTOS[elementoEnMano].nombre;
     const id = agregarAtomo(elementoEnMano, { x: posicion.x, y: posicion.y, z: posicion.z });
     if (!id) return;
-    soltarElementoEnMano();
-    cambiarModoCanvas(true);
+    soltarEnMano();
+    enviarMensaje('aviso', `Coloqué ${nombre}.`);
+}
+
+/** Agrega al modelo de Bohr la partícula que se lleva en la mano. */
+function colocarParticulaEnMano() {
+    const nombre = NOMBRES_PARTICULA[particulaEnMano].nombre;
+    if (!agregarParticula(particulaEnMano)) return;
+    soltarEnMano();
+    enviarMensaje('aviso', `Agregué un ${nombre}.`);
 }
 
 /**
  * Pulsa con el cursor el elemento de la interfaz bajo el punto.
- * Un botón de la paleta no se pulsa: toma el elemento en la mano.
+ * Los botones de agregar no se pulsan: se toman con el puño.
  * @param {number} x
  * @param {number} y
  */
 function clicVirtual(x, y) {
     const elemento = document.elementFromPoint(x * window.innerWidth, y * window.innerHeight);
     if (!elemento) return;
-    const botonAtomo = elemento.closest('[data-accion="agregar"]');
-    if (botonAtomo?.dataset.elemento) {
-        tomarElemento(botonAtomo.dataset.elemento);
+    if (elemento.closest('[data-accion="agregar"], [data-particula]')) {
+        enviarMensaje('aviso', 'Para tomar un elemento, cierra la mano sobre su botón.');
         return;
     }
     elemento.click();
 }
 
 /**
- * El índice arriba con un elemento en la mano lo coloca; fuera del
- * tablero pulsa la interfaz; dentro del tablero agarra un átomo.
+ * Punto del tablero (0 a 1) o fuera de él: dice si la posición de
+ * la ventana cae dentro del tablero.
+ * @param {number} x
+ * @param {number} y
+ */
+function estaEnTablero(x, y) {
+    const punto = aCoordenadasCanvas(x, y);
+    return punto.x >= 0 && punto.x <= 1 && punto.y >= 0 && punto.y <= 1;
+}
+
+/**
+ * Índice arriba sobre un botón de la paleta o de Bohr: toma ese elemento.
+ * Devuelve true si tomó algo.
+ * @param {number} x
+ * @param {number} y
+ */
+function tomarBajoPuntero(x, y) {
+    const elemento = document.elementFromPoint(x * window.innerWidth, y * window.innerHeight);
+    if (!elemento) return false;
+    const botonAtomo = elemento.closest('[data-accion="agregar"][data-elemento]');
+    if (botonAtomo) {
+        tomarElemento(botonAtomo.dataset.elemento);
+        return true;
+    }
+    const botonParticula = elemento.closest('[data-particula][data-accion-particula="agregar"]');
+    if (botonParticula) {
+        tomarParticula(botonParticula.dataset.particula);
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Índice arriba: fuera del tablero toma un elemento de la paleta o pulsa
+ * la interfaz. Dentro del tablero agarra un átomo, salvo que ya se lleve
+ * algo en la mano.
  * @param {number} x
  * @param {number} y
  */
 function manejarInicioGesto(x, y) {
-    if (elementoEnMano) {
-        colocarElementoEnMano(x, y);
-        return;
-    }
-    if (!estaEnCanvas()) {
+    const llevaAlgo = Boolean(elementoEnMano || particulaEnMano);
+    if (!estaEnTablero(x, y)) {
+        if (!llevaAlgo && tomarBajoPuntero(x, y)) return;
         clicVirtual(x, y);
         return;
     }
+    if (llevaAlgo) return;
     const punto = aCoordenadasCanvas(x, y);
     iniciarArrastre(punto.x, punto.y);
 }
@@ -2375,16 +2448,34 @@ export function iniciarArrastreDeAtomos() {
 
     // El gesto trae la posición de la ventana; el arrastre la
     // convierte a coordenadas del tablero.
-    on('gesto:pellizco-inicio', ({ x, y }) => manejarInicioGesto(x, y));
-    on('gesto:pellizco-mover', ({ x, y }) => {
+    on('gesto:seleccionar-inicio', ({ x, y }) => manejarInicioGesto(x, y));
+    on('gesto:seleccionar-mover', ({ x, y }) => {
         const punto = aCoordenadasCanvas(x, y);
         moverArrastre(punto.x, punto.y);
     });
-    on('gesto:pellizco-fin', ({ x, y }) => {
+    on('gesto:seleccionar-fin', ({ x, y }) => {
         const punto = aCoordenadasCanvas(x, y);
         soltarArrastre(punto.x, punto.y);
     });
     on('ejes:cambio', reanclarArrastre);
+
+    // Al abrir la mano se suelta lo seleccionado: dentro del tablero se
+    // coloca; fuera, o si la mano se perdió, se cancela.
+    on('gesto:soltar', ({ x, y, cancelado }) => {
+        if (!elementoEnMano && !particulaEnMano) return;
+        if (cancelado) {
+            soltarEnMano();
+            enviarMensaje('aviso', 'Se canceló: no se colocó nada.');
+            return;
+        }
+        if (!estaEnTablero(x, y)) {
+            soltarEnMano();
+            enviarMensaje('aviso', 'Abriste la mano fuera del tablero: no se colocó nada.');
+            return;
+        }
+        if (elementoEnMano) colocarElementoEnMano(x, y);
+        else colocarParticulaEnMano();
+    });
 
     lienzo.tabIndex = 0;
     lienzo.setAttribute(
