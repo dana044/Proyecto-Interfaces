@@ -1,26 +1,31 @@
-/* MolecuLab · css/styles.css (versión 2)
-   Valores de: docs/guia_visual.pdf v1.0 */
+/* MolecuLab · css/styles.css (rediseño estilo Avogadro)
+   Valores de: docs/guia_visual.pdf v1.0 (morado #6D28D9, Nunito Sans e Inter).
+   Solo CSS: no cambia ids, data-* ni clases que usa el JavaScript. */
 
 :root {
-  /* Fondos y superficies */
-  --fondo: #F7F5FC;
+  /* Fondos y superficies: gris azulado casi blanco, plano */
+  --fondo: #F3F5F9;
   --superficie: #FFFFFF;
-  --lienzo: #F3F4F6;
-  --cuadricula: #D1D5DB;
+  --lienzo: #F7F9FC;
+  --cuadricula: #E6EAF1;
 
-  /* Acciones y acentos */
+  /* Acción principal (único acento) */
   --accion: #6D28D9;
   --accion-hover: #5B21B6;
   --accion-presionado: #4C1D95;
+  --accion-suave: #F3EEFD;
 
   /* Texto y bordes */
-  --texto: #202331;
-  --texto-secundario: #525566;
-  --borde: #858096;
-  --sombra: 0 4px 16px rgba(32, 35, 49, 0.08);
-  --deshabilitado-fondo: #E5E7EB;
+  --texto: #1F2430;
+  --texto-secundario: #5B6372;
+  --borde: #E2E6EE;
+  --borde-fuerte: #C9D0DC;
+  --sombra: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.06);
+  --sombra-flotante: 0 12px 32px rgba(15, 23, 42, 0.14);
+  --deshabilitado-fondo: #EEF0F4;
+  --boton-texto: #4B5263;
 
-  /* Estados */
+  /* Estados: verde éxito, ámbar aviso, rojo error */
   --ok: #15803D;
   --aviso: #B45309;
   --error: #B91C1C;
@@ -50,16 +55,19 @@ body {
   margin: 0;
 }
 
+/* Diseño general: barra de acciones a la izquierda, encabezado y
+   escena a la derecha (como Avogadro). */
 body {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 16px;
+  grid-template-columns: 124px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 16px 20px;
   height: 100vh;
-  padding: 16px 24px;
+  padding: 16px 20px 16px 16px;
   background: var(--fondo);
   color: var(--texto);
   font-family: var(--fuente-texto);
-  font-size: 18px;
+  font-size: 17px;
   line-height: 1.5;
 }
 
@@ -72,11 +80,11 @@ h2 {
 }
 
 h1 {
-  font-size: 32px;
+  font-size: 26px;
 }
 
 h2 {
-  font-size: 24px;
+  font-size: 22px;
   margin-bottom: 16px;
 }
 
@@ -97,25 +105,33 @@ p {
   border: 0;
 }
 
-/* Encabezado */
+/* Encabezado: marca a la izquierda, lo esencial a la derecha */
 
 .encabezado {
+  grid-column: 2;
+  grid-row: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  padding: 10px 16px;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-tarjeta);
+  box-shadow: var(--sombra);
 }
 
 .encabezado-izq {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
 .marca {
   display: flex;
   align-items: center;
   gap: 10px;
+  font-size: 24px;
 }
 
 .marca svg {
@@ -124,21 +140,22 @@ p {
 
 .encabezado-der {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
 }
 
-/* Pastillas de estado de cámara y mano en el encabezado */
+/* Pastillas de estado de cámara y mano */
 .chip-estado {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
-  font-size: 16px;
-  background: var(--superficie);
+  padding: 6px 14px;
+  font-size: 15px;
+  background: var(--lienzo);
   border: 1px solid var(--borde);
   border-radius: 999px;
-  box-shadow: var(--sombra);
 }
 
 .chip-estado .valor {
@@ -146,46 +163,39 @@ p {
   color: var(--estado);
 }
 
-/* Botón de menú (hamburguesa) */
+/* Botón de menú (abre y cierra los paneles) */
 
 .boton-menu {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  min-height: 48px;
+  gap: 10px;
+  min-height: 44px;
   padding: 8px 16px;
   font-family: var(--fuente-texto);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
-  color: var(--accion);
+  color: var(--texto);
   background: var(--superficie);
-  border: 2px solid var(--accion);
+  border: 1px solid var(--borde-fuerte);
   border-radius: var(--radio-boton);
   cursor: pointer;
 }
 
 .boton-menu:hover {
-  color: var(--accion-hover);
-  border-color: var(--accion-hover);
+  border-color: var(--accion);
+  color: var(--accion);
 }
 
-/* Menú abierto: su etiqueta se rellena */
-#menu-atomos:checked~.encabezado label[for="menu-atomos"] {
-  color: #FFFFFF;
-  background: var(--accion);
-}
-
+/* Menú abierto: su etiqueta se rellena con el acento */
+#menu-atomos:checked~.encabezado label[for="menu-atomos"],
 #menu-info:checked~.encabezado label[for="menu-info"] {
   color: #FFFFFF;
   background: var(--accion);
+  border-color: var(--accion);
 }
 
 /* Foco de teclado sobre el interruptor oculto, mostrado en la etiqueta */
-#menu-atomos:focus-visible~.encabezado label[for="menu-atomos"] {
-  outline: 3px solid var(--accion);
-  outline-offset: 3px;
-}
-
+#menu-atomos:focus-visible~.encabezado label[for="menu-atomos"],
 #menu-info:focus-visible~.encabezado label[for="menu-info"] {
   outline: 3px solid var(--accion);
   outline-offset: 3px;
@@ -194,7 +204,7 @@ p {
 .hamburguesa {
   position: relative;
   display: block;
-  width: 20px;
+  width: 18px;
   height: 2px;
   background: currentColor;
   border-radius: 2px;
@@ -205,7 +215,7 @@ p {
   content: "";
   position: absolute;
   left: 0;
-  width: 20px;
+  width: 18px;
   height: 2px;
   background: currentColor;
   border-radius: 2px;
@@ -219,8 +229,7 @@ p {
   top: 6px;
 }
 
-/* Colores de estado: los usan las pastillas del encabezado y el
-   botón del micrófono para mostrar su estado con un color. */
+/* Colores de estado: pastillas del encabezado y punto del micrófono */
 .estado-ok {
   --estado: var(--ok);
 }
@@ -233,8 +242,7 @@ p {
   --estado: var(--error);
 }
 
-/* Notificación emergente: aparece abajo a la derecha unos segundos
-   y se puede cerrar con la ×. Oculta por defecto. */
+/* Notificación emergente: abajo a la derecha, unos segundos */
 .zona-mensajes {
   position: fixed;
   right: 24px;
@@ -244,11 +252,12 @@ p {
   align-items: center;
   gap: 12px;
   max-width: 380px;
-  padding: 12px 16px;
+  padding: 14px 16px;
   background: var(--superficie);
   border: 1px solid var(--borde);
+  border-left: 4px solid var(--accion);
   border-radius: var(--radio-tarjeta);
-  box-shadow: 0 8px 24px rgba(32, 35, 49, 0.2);
+  box-shadow: var(--sombra-flotante);
 }
 
 .zona-mensajes[hidden] {
@@ -257,7 +266,7 @@ p {
 
 .zona-mensajes p {
   flex: 1;
-  font-size: 18px;
+  font-size: 17px;
 }
 
 .cerrar-mensaje {
@@ -285,7 +294,7 @@ p {
   justify-content: center;
   width: 28px;
   height: 28px;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   border: 2px solid var(--texto);
   border-radius: 50%;
@@ -310,33 +319,32 @@ p {
   --estado: var(--error);
 }
 
-/* Escena principal: sin paneles laterales abiertos solo está el lienzo.
-   Cada panel que se abre añade su columna. */
+/* Escena: el lienzo ocupa casi todo; cada panel abierto añade su columna */
+
 .escena {
+  grid-column: 2;
+  grid-row: 2;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   min-height: 0;
 }
 
-/* Con el menú abierto aparece la columna de átomos */
 #menu-atomos:checked~.escena {
-  grid-template-columns: 340px minmax(0, 1fr);
+  grid-template-columns: 320px minmax(0, 1fr);
 }
 
-/* Con el panel de información abierto aparece su columna */
 #menu-info:checked~.escena {
   grid-template-columns: minmax(0, 1fr) 320px;
 }
 
-/* Con los dos paneles abiertos aparecen las dos columnas */
 #menu-atomos:checked~#menu-info:checked~.escena {
-  grid-template-columns: 340px minmax(0, 1fr) 320px;
+  grid-template-columns: 300px minmax(0, 1fr) 320px;
 }
 
 .panel {
   min-height: 0;
-  padding: 16px;
+  padding: 20px;
   background: var(--superficie);
   border: 1px solid var(--borde);
   border-radius: var(--radio-tarjeta);
@@ -345,19 +353,18 @@ p {
 }
 
 .panel h2 {
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 /* Panel de átomos: oculto al inicio */
 .panel-atomos {
   display: none;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
   overflow: hidden;
 }
 
-/* Lista de átomos en dos columnas: los 10 botones ocupan la mitad
-   de alto que en una sola columna y el panel deja de ser tan largo. */
+/* Lista de átomos en dos columnas */
 .lista-elementos {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -373,7 +380,14 @@ p {
   min-height: 44px;
   padding: 6px 10px;
   gap: 6px;
-  font-size: 16px;
+  font-size: 15px;
+  border-color: var(--borde-fuerte);
+  color: var(--texto);
+}
+
+.lista-elementos .boton-atomo:hover {
+  border-color: var(--accion);
+  color: var(--accion);
 }
 
 /* El nombre no se parte en dos líneas: si no cabe, se recorta. */
@@ -383,17 +397,16 @@ p {
   white-space: nowrap;
 }
 
-/* Modelo de Bohr: una fila compacta por partícula, con su contador
-   y los botones + y −, en lugar de seis botones grandes. */
+/* Modelo de Bohr: una fila compacta por partícula */
 .panel-bohr {
-  padding-top: 12px;
+  padding-top: 16px;
   border-top: 1px solid var(--borde);
 }
 
 .panel-bohr h3 {
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   font-family: var(--fuente-titulo);
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .filas-particulas {
@@ -405,9 +418,10 @@ p {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding-left: 8px;
-  border-left: 6px solid var(--borde);
-  border-radius: 4px;
+  padding: 6px 8px 6px 10px;
+  background: var(--lienzo);
+  border-left: 5px solid var(--borde-fuerte);
+  border-radius: 8px;
 }
 
 .fila-proton {
@@ -424,7 +438,7 @@ p {
 
 .nombre-particula {
   flex: 1;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
 }
 
@@ -436,43 +450,42 @@ p {
 }
 
 .fila-particula .boton-particula {
-  min-width: 36px;
-  min-height: 36px;
+  min-width: 40px;
+  min-height: 40px;
   padding: 4px 10px;
   justify-content: center;
   font-size: 18px;
 }
 
-/* Contador del modelo de Bohr en el panel de información: tres
-   celdas en una fila, en lugar de tres filas de la lista. */
+/* Contador del modelo de Bohr en el panel de información */
 .contador-bohr {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
 .celda-contador {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 8px 4px;
+  padding: 10px 4px;
   background: var(--lienzo);
+  border: 1px solid var(--borde);
   border-radius: 12px;
 }
 
 .numero-contador {
   font-size: 24px;
   font-weight: 700;
+  color: var(--accion);
 }
 
 .etiqueta-contador {
-  font-size: 16px;
+  font-size: 14px;
   color: var(--texto-secundario);
 }
 
-/* Elemento formado en el modelo de Bohr: qué elemento es según
-   sus protones, y su masa aproximada (protones + neutrones). */
 .elemento-formado {
   margin: 0 0 4px;
   font-size: 18px;
@@ -480,14 +493,15 @@ p {
 }
 
 .masa-formada {
-  margin: 0 0 12px;
-  font-size: 16px;
+  margin: 0 0 14px;
+  font-size: 15px;
+  color: var(--texto-secundario);
 }
 
-/* Aviso del modelo de Bohr en el panel de información */
+/* Aviso del modelo de Bohr */
 .aviso-modelo {
-  padding: 12px 16px;
-  font-size: 16px;
+  padding: 12px 14px;
+  font-size: 15px;
   color: var(--texto-secundario);
   background: #FEF3C7;
   border: 1px solid #F59E0B;
@@ -495,14 +509,15 @@ p {
 }
 
 .panel-info h3 {
-  margin: 0 0 8px;
+  margin: 24px 0 10px;
   font-family: var(--fuente-titulo);
-  font-size: 20px;
+  font-size: 18px;
+  color: var(--texto-secundario);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
-/* Símbolos claros (H, He, Li, Be, B, F, Ne): texto oscuro sobre fondo claro.
-   Antes también vivía solo en el @media, así que en escritorio la H
-   era blanca sobre blanco, invisible. */
+/* Símbolos claros (H, He, Li, Be, B, F, Ne): texto oscuro sobre fondo claro */
 .simbolo-claro {
   color: var(--texto);
   border: 2px solid var(--atomo-c);
@@ -512,8 +527,7 @@ p {
   display: flex;
 }
 
-/* Panel de información: oculto al inicio, se abre con «Información»
-   o solo cuando llega información nueva. */
+/* Panel de información: oculto al inicio */
 .panel-info {
   display: none;
   max-width: 25vw;
@@ -525,12 +539,12 @@ p {
 
 .panel-info dl {
   display: grid;
-  gap: 16px;
-  margin: 0 0 24px;
+  gap: 14px;
+  margin: 0 0 20px;
 }
 
 .panel-info dt {
-  font-size: 16px;
+  font-size: 14px;
   color: var(--texto-secundario);
 }
 
@@ -541,60 +555,60 @@ p {
 }
 
 .descripcion {
-  padding: 16px;
-  border: 1px solid var(--borde);
-  border-radius: var(--radio-tarjeta);
+  padding: 14px 16px;
+  color: var(--texto-secundario);
+  background: var(--lienzo);
+  border-radius: 12px;
 }
 
-/* Lo que le falta a la molécula: ámbar, para que no se confunda
-   con una molécula completa (verde). */
+/* Lo que le falta a la molécula: ámbar */
 .aviso-molecula {
-  margin: 0 0 16px;
-  padding: 12px 16px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
   background: #FEF3C7;
   border-left: 4px solid #B45309;
-  border-radius: 4px;
+  border-radius: 8px;
   color: #92400E;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
 }
 
-/* Subtítulo en vivo de lo que entendió el micrófono. */
+/* Subtítulo en vivo de lo que entendió el micrófono */
 .subtitulo-voz {
   position: fixed;
   left: 50%;
-  bottom: 96px;
+  bottom: 24px;
   transform: translateX(-50%);
   z-index: 30;
   margin: 0;
-  padding: 6px 14px;
-  background: rgba(17, 24, 39, 0.85);
+  padding: 8px 16px;
+  background: rgba(31, 36, 48, 0.88);
   color: #FFFFFF;
   border-radius: 999px;
-  font-size: 14px;
+  font-size: 15px;
   white-space: nowrap;
 }
 
-/* Explicación del enlace: qué electrones comparten los dos átomos. */
+/* Explicación del enlace */
 .explicacion-enlace {
-  margin: 0 0 16px;
-  padding: 12px 16px;
-  background: #F5F3FF;
-  border-left: 4px solid #6D28D9;
-  border-radius: 4px;
-  color: #4C1D95;
-  font-size: 16px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  background: var(--accion-suave);
+  border-left: 4px solid var(--accion);
+  border-radius: 8px;
+  color: var(--accion-presionado);
+  font-size: 15px;
   font-weight: 600;
 }
 
-/* Carga eléctrica de cada partícula del modelo de Bohr. */
+/* Carga eléctrica de cada partícula */
 .carga-particula {
   color: var(--texto-secundario);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
 }
 
-/* Lienzo 3D */
+/* Lienzo 3D: fondo plano y cuadrícula muy suave */
 
 .lienzo {
   position: relative;
@@ -604,7 +618,7 @@ p {
   background-image:
     linear-gradient(var(--cuadricula) 1px, transparent 1px),
     linear-gradient(90deg, var(--cuadricula) 1px, transparent 1px);
-  background-size: 32px 32px;
+  background-size: 40px 40px;
   border: 1px solid var(--borde);
   border-radius: var(--radio-tarjeta);
 }
@@ -615,25 +629,21 @@ p {
   height: 100%;
 }
 
-/* Foco de teclado en la escena: el contorno va en el contenedor porque el canvas
-   queda recortado por overflow: hidden de .lienzo. */
 .lienzo canvas:focus {
   outline: none;
 }
 
-/* Tarjeta con la información de un átomo: aparece solo al dejar el
-   cursor sobre él. No intercepta el cursor, para no estorbar el
-   arrastre ni el giro de la vista. */
+/* Tarjeta de información de un átomo al pasar el cursor */
 .tarjeta-atomo {
   position: absolute;
   z-index: 30;
   max-width: 260px;
   padding: 12px 16px;
-  font-size: 16px;
+  font-size: 15px;
   background: var(--superficie);
   border: 1px solid var(--borde);
   border-radius: 12px;
-  box-shadow: var(--sombra);
+  box-shadow: var(--sombra-flotante);
   pointer-events: none;
 }
 
@@ -671,9 +681,10 @@ p {
   position: relative;
   aspect-ratio: 4 / 3;
   overflow: hidden;
-  background: #111827;
-  border: 2px dashed var(--borde);
+  background: #1F2430;
+  border: 1px solid var(--borde-fuerte);
   border-radius: 12px;
+  box-shadow: var(--sombra-flotante);
   transform: scaleX(-1);
 }
 
@@ -695,44 +706,11 @@ p {
 .camara-flotante figcaption {
   display: inline-block;
   margin-top: 8px;
-  padding: 4px 8px;
-  font-size: 16px;
-  background: rgba(255, 255, 255, 0.92);
+  padding: 3px 10px;
+  font-size: 14px;
+  color: var(--texto-secundario);
+  background: var(--superficie);
   border-radius: 8px;
-}
-
-/* Tooltips: aparecen al pasar el cursor o al enfocar con teclado */
-
-.tip {
-  position: relative;
-}
-
-.tip::after {
-  content: attr(data-tip);
-  position: absolute;
-  bottom: calc(100% + 10px);
-  left: 50%;
-  z-index: 20;
-  width: max-content;
-  max-width: 300px;
-  padding: 8px 12px;
-  font-size: 16px;
-  font-weight: 400;
-  line-height: 1.3;
-  color: #FFFFFF;
-  background: var(--texto);
-  border-radius: 8px;
-  transform: translateX(-50%);
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 0.15s ease, visibility 0.15s ease;
-}
-
-.tip:hover::after,
-.tip:focus-visible::after {
-  opacity: 1;
-  visibility: visible;
 }
 
 /* Controles */
@@ -742,20 +720,22 @@ p {
   align-items: center;
   gap: 8px;
   min-height: 48px;
-  padding: 8px 20px;
+  padding: 8px 18px;
   font-family: var(--fuente-texto);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--accion);
   background: var(--superficie);
-  border: 2px solid var(--accion);
+  border: 1px solid var(--borde-fuerte);
   border-radius: var(--radio-boton);
   cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .boton:hover {
   color: var(--accion-hover);
-  border-color: var(--accion-hover);
+  border-color: var(--accion);
+  background: var(--accion-suave);
 }
 
 .boton:active {
@@ -766,11 +746,14 @@ p {
 .boton-principal {
   color: #FFFFFF;
   background: var(--accion);
+  border-color: var(--accion);
+  box-shadow: 0 4px 12px rgba(109, 40, 217, 0.25);
 }
 
 .boton-principal:hover {
   color: #FFFFFF;
   background: var(--accion-hover);
+  border-color: var(--accion-hover);
 }
 
 .boton-principal:active {
@@ -787,11 +770,11 @@ p {
   color: var(--texto-secundario);
   background: var(--deshabilitado-fondo);
   border-color: transparent;
+  box-shadow: none;
   cursor: not-allowed;
 }
 
-/* Estado del micrófono dentro de su botón: un punto de color y el
-   estado en texto (Escuchando, Pausado o Error). */
+/* Estado del micrófono: punto de color y estado en texto */
 .boton .punto-estado {
   flex-shrink: 0;
   width: 10px;
@@ -810,8 +793,7 @@ p {
   justify-content: flex-start;
 }
 
-/* Símbolos de los átomos; el hidrógeno lleva borde oscuro para distinguirse del lienzo */
-
+/* Símbolos de los átomos */
 .simbolo {
   display: inline-flex;
   flex-shrink: 0;
@@ -819,41 +801,51 @@ p {
   justify-content: center;
   width: 28px;
   height: 28px;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: #FFFFFF;
   border-radius: 50%;
 }
 
-/* Panel del modo reto: la fórmula grande, la sugerencia y el
-   progreso (estrellas, intentos y tiempo). Solo se ve en modo reto. */
+/* Panel del modo reto */
 .panel-reto {
-  padding: 12px;
-  margin-bottom: 16px;
-  background: var(--lienzo);
+  padding: 16px;
+  margin-bottom: 18px;
+  background: var(--accion-suave);
   border-radius: var(--radio-tarjeta);
 }
 
 .panel-reto h3 {
   margin: 0 0 4px;
+  font-size: 15px;
+  color: var(--accion);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .reto-formula {
-  margin: 0 0 4px;
+  margin: 0 0 6px;
   font-family: var(--fuente-titulo);
-  font-size: 28px;
+  font-size: 30px;
   font-weight: 700;
 }
 
 .reto-sugerencia {
-  margin: 0 0 8px;
-  font-size: 16px;
+  margin: 0 0 10px;
+  font-size: 15px;
+  color: var(--texto-secundario);
 }
 
 .reto-progreso {
-  margin: 0 0 12px;
-  font-size: 16px;
+  margin: 0 0 14px;
+  font-size: 15px;
   font-weight: 600;
+}
+
+.reto-progreso [data-campo-reto="estrellas"] {
+  font-size: 20px;
+  color: #D97706;
+  letter-spacing: 2px;
 }
 
 .reto-botones {
@@ -866,25 +858,221 @@ p {
   justify-content: center;
 }
 
-/* Acciones de respaldo */
+/* Barra de acciones a la izquierda: dos grupos separados por una línea.
+   Los íconos son líneas finas (máscara CSS) y heredan el color del botón. */
+
+#estado-accion {
+  display: none;
+}
 
 .respaldo {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 16px;
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  position: relative;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 8px;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-tarjeta);
+  box-shadow: var(--sombra);
 }
 
+.separador-barra {
+  width: 100%;
+  height: 0;
+  margin: 8px 0;
+  border: 0;
+  border-top: 1px solid var(--borde);
+}
+
+/* Botones de la barra: texto fino, sin borde; el fondo aparece al pasar el cursor */
 .respaldo .boton {
   width: 100%;
+  min-height: 60px;
+  flex-direction: column;
   justify-content: center;
+  gap: 4px;
+  padding: 8px 4px;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--boton-texto);
+  background: transparent;
+  border: 1px solid transparent;
+  box-shadow: none;
 }
 
-/* Pantallas de 1024 px o menos: apilado simple */
+.respaldo .boton:hover {
+  color: var(--accion);
+  background: var(--accion-suave);
+  border-color: transparent;
+}
+
+.respaldo .boton::before {
+  content: "";
+  display: block;
+  width: 22px;
+  height: 22px;
+  background: currentColor;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+}
+
+.respaldo [data-accion="deshacer"]::before {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22M9 14 4 9l5-5%22/%3E%3Cpath d=%22M4 9h10.5a5.5 5.5 0 0 1 0 11H11%22/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22M9 14 4 9l5-5%22/%3E%3Cpath d=%22M4 9h10.5a5.5 5.5 0 0 1 0 11H11%22/%3E%3C/svg%3E");
+}
+
+.respaldo [data-accion="rehacer"]::before {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22m15 14 5-5-5-5%22/%3E%3Cpath d=%22M20 9H9.5a5.5 5.5 0 0 0 0 11H13%22/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22m15 14 5-5-5-5%22/%3E%3Cpath d=%22M20 9H9.5a5.5 5.5 0 0 0 0 11H13%22/%3E%3C/svg%3E");
+}
+
+.respaldo [data-accion="limpiar"]::before {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22M4 7h16%22/%3E%3Cpath d=%22M9 7V4h6v3%22/%3E%3Cpath d=%22M6 7l1 13h10l1-13%22/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22M4 7h16%22/%3E%3Cpath d=%22M9 7V4h6v3%22/%3E%3Cpath d=%22M6 7l1 13h10l1-13%22/%3E%3C/svg%3E");
+}
+
+.respaldo [data-accion="reto"]::before {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z%22/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z%22/%3E%3C/svg%3E");
+}
+
+.respaldo [data-accion="verificar"]::before {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%229%22/%3E%3Cpath d=%22m8 12.5 2.8 2.8L16 9.8%22/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%229%22/%3E%3Cpath d=%22m8 12.5 2.8 2.8L16 9.8%22/%3E%3C/svg%3E");
+}
+
+.respaldo [data-accion="microfono"]::before {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x=%229%22 y=%223%22 width=%226%22 height=%2211%22 rx=%223%22/%3E%3Cpath d=%22M5 11a7 7 0 0 0 14 0M12 18v3%22/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x=%229%22 y=%223%22 width=%226%22 height=%2211%22 rx=%223%22/%3E%3Cpath d=%22M5 11a7 7 0 0 0 14 0M12 18v3%22/%3E%3C/svg%3E");
+}
+
+.respaldo [data-accion="silenciar-sonidos"]::before {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22M4 9h4l5-4v14l-5-4H4z%22/%3E%3Cpath d=%22m17 9 4 6M21 9l-4 6%22/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22M4 9h4l5-4v14l-5-4H4z%22/%3E%3Cpath d=%22m17 9 4 6M21 9l-4 6%22/%3E%3C/svg%3E");
+}
+
+/* Verificar: relleno morado plano, sin sombra fuerte */
+.respaldo .boton-principal {
+  color: #FFFFFF;
+  background: var(--accion);
+  font-weight: 500;
+  box-shadow: none;
+}
+
+.respaldo .boton-principal:hover {
+  color: #FFFFFF;
+  background: var(--accion-hover);
+}
+
+/* Micrófono: estado claro con color y punto */
+.respaldo [data-accion="microfono"] {
+  font-size: 13px;
+}
+
+.respaldo [data-accion="microfono"] .punto-estado {
+  width: 8px;
+  height: 8px;
+  background: var(--estado);
+}
+
+.respaldo [data-accion="microfono"].estado-ok {
+  color: var(--ok);
+}
+
+.respaldo [data-accion="microfono"].estado-ok .punto-estado {
+  animation: pulso-microfono 1.6s ease-in-out infinite;
+}
+
+.respaldo [data-accion="microfono"].estado-aviso {
+  --estado: #9CA3AF;
+  color: #6B7280;
+}
+
+.respaldo [data-accion="microfono"].estado-error {
+  color: var(--error);
+}
+
+.respaldo [data-accion="microfono"] .estado-boton {
+  font-weight: 600;
+  color: inherit;
+}
+
+@keyframes pulso-microfono {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(21, 128, 61, 0.45); }
+  50% { box-shadow: 0 0 0 6px rgba(21, 128, 61, 0); }
+}
+
+/* Globos: al pasar el cursor o enfocar, aparecen a la derecha con la
+   acción y el atajo en una línea pequeña. */
+.tip {
+  position: relative;
+}
+
+.respaldo .globo {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: max-content;
+  max-width: 240px;
+  padding: 8px 12px;
+  text-align: left;
+  color: #FFFFFF;
+  background: var(--texto);
+  border-radius: 8px;
+  box-shadow: var(--sombra-flotante);
+  transform: translateY(-50%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+}
+
+.respaldo .globo b {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.respaldo .globo small {
+  font-size: 12px;
+  font-weight: 400;
+  color: #B8BFCC;
+}
+
+.respaldo .tip:hover .globo,
+.respaldo .tip:focus-visible .globo {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Pantallas de 1024 px o menos: la barra baja a la parte inferior */
 
 @media (max-width: 1023px) {
   body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
     height: auto;
     min-height: 100vh;
+  }
+
+  .encabezado,
+  .escena,
+  .respaldo {
+    grid-column: 1;
+    grid-row: auto;
   }
 
   .escena,
@@ -894,12 +1082,28 @@ p {
     grid-template-columns: 1fr;
   }
 
-  .camara-flotante {
-    width: 160px;
+  .respaldo {
+    flex-direction: row;
+    flex-wrap: wrap;
   }
 
-  .respaldo {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .respaldo .boton {
+    flex: 1 1 130px;
+  }
+
+  .respaldo .separador-barra {
+    display: none;
+  }
+
+  .respaldo .globo {
+    top: auto;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .camara-flotante {
+    width: 160px;
   }
 
   .lista-elementos {
@@ -912,4 +1116,437 @@ p {
     left: 16px;
     max-width: none;
   }
+}
+
+/* ---- Iconos de línea (máscara CSS): menú, estado, reto y avisos ---- */
+
+/* El menú «Átomos» e «Información» usan un ícono en lugar de las barras */
+.hamburguesa {
+  display: none;
+}
+
+.boton-menu::before {
+  content: "";
+  display: block;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%222%22/%3E%3Cellipse cx=%2212%22 cy=%2212%22 rx=%229%22 ry=%224%22/%3E%3Cellipse cx=%2212%22 cy=%2212%22 rx=%229%22 ry=%224%22 transform=%22rotate%2860 12 12%29%22/%3E%3Cellipse cx=%2212%22 cy=%2212%22 rx=%229%22 ry=%224%22 transform=%22rotate%28-60 12 12%29%22/%3E%3C/svg%3E") center / contain no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%222%22/%3E%3Cellipse cx=%2212%22 cy=%2212%22 rx=%229%22 ry=%224%22/%3E%3Cellipse cx=%2212%22 cy=%2212%22 rx=%229%22 ry=%224%22 transform=%22rotate%2860 12 12%29%22/%3E%3Cellipse cx=%2212%22 cy=%2212%22 rx=%229%22 ry=%224%22 transform=%22rotate%28-60 12 12%29%22/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+label[for="menu-info"].boton-menu::before {
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%229%22/%3E%3Cpath d=%22M12 11v5M12 8h.01%22/%3E%3C/svg%3E") center / contain no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%229%22/%3E%3Cpath d=%22M12 11v5M12 8h.01%22/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* Chips de estado: cámara, mano y última acción */
+#estado-camara::before,
+#estado-mano::before {
+  content: "";
+  display: block;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  background: var(--estado, var(--texto-secundario));
+}
+
+#estado-camara::before {
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x=%223%22 y=%227%22 width=%2213%22 height=%2210%22 rx=%222%22/%3E%3Cpath d=%22m16 11 5-3v8l-5-3%22/%3E%3C/svg%3E") center / contain no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x=%223%22 y=%227%22 width=%2213%22 height=%2210%22 rx=%222%22/%3E%3Cpath d=%22m16 11 5-3v8l-5-3%22/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+#estado-mano::before {
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22M8 13V5a1.5 1.5 0 0 1 3 0v6M11 11V3.5a1.5 1.5 0 0 1 3 0V11M14 11V5a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6h-1a6 6 0 0 1-5-2.7L3.5 13a1.5 1.5 0 0 1 2.4-1.8L8 14%22/%3E%3C/svg%3E") center / contain no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22M8 13V5a1.5 1.5 0 0 1 3 0v6M11 11V3.5a1.5 1.5 0 0 1 3 0V11M14 11V5a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6h-1a6 6 0 0 1-5-2.7L3.5 13a1.5 1.5 0 0 1 2.4-1.8L8 14%22/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* Botones del modo reto */
+.reto-botones [data-accion="ayuda-reto"]::before,
+.reto-botones [data-accion="salir-reto"]::before {
+  content: "";
+  display: block;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  background: currentColor;
+}
+
+.reto-botones [data-accion="ayuda-reto"]::before {
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z%22/%3E%3C/svg%3E") center / contain no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z%22/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.reto-botones [data-accion="salir-reto"]::before {
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10%22/%3E%3C/svg%3E") center / contain no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10%22/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* Cerrar aviso */
+.cerrar-mensaje {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cerrar-mensaje::before {
+  content: "";
+  display: block;
+  width: 16px;
+  height: 16px;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22M6 6l12 12M18 6 6 18%22/%3E%3C/svg%3E") center / contain no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22M6 6l12 12M18 6 6 18%22/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+
+/* ================= Rediseño 2: propuestas Avogadro ================= */
+
+/* Cámara y mano junto al micrófono, dentro de la barra */
+.estado-equipo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.estado-equipo .chip-estado {
+  width: 100%;
+  justify-content: flex-start;
+  padding: 4px 10px;
+  font-size: 12px;
+  background: transparent;
+  border: 1px solid var(--borde);
+  box-shadow: none;
+}
+
+.estado-equipo .chip-estado::before {
+  width: 14px;
+  height: 14px;
+}
+
+/* Aviso de lo que le falta a la molécula: sin línea de color, fondo suave */
+.aviso-molecula {
+  padding: 10px 14px;
+  background: #FEF3C7;
+  border: none;
+  border-radius: 12px;
+  color: #92400E;
+}
+
+/* Pista de gestos en la parte inferior de la escena */
+.pista-escena {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  z-index: 3;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 6px 14px;
+  font-size: 13px;
+  color: var(--texto-secundario);
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Títulos de panel en mayúsculas pequeñas, estilo técnico */
+.panel h2 {
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--texto-secundario);
+}
+
+.nota-privacidad {
+  margin-top: 16px;
+  font-size: 12px;
+  color: var(--texto-secundario);
+}
+
+/* Botón de tema */
+.boton-tema {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  color: var(--texto);
+  background: var(--superficie);
+  border: 1px solid var(--borde-fuerte);
+  border-radius: var(--radio-boton);
+  cursor: pointer;
+}
+
+.boton-tema::before {
+  content: "";
+  width: 20px;
+  height: 20px;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z%22/%3E%3C/svg%3E") center / contain no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z%22/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* Tema oscuro: mismos tokens, otros valores */
+:root[data-tema="oscuro"] {
+  color-scheme: dark;
+  --fondo: #12151C;
+  --superficie: #1B1F29;
+  --lienzo: #161A23;
+  --cuadricula: #262C3A;
+  --accion-suave: #2A2140;
+  --texto: #E7E9EF;
+  --texto-secundario: #9AA3B2;
+  --borde: #2A3040;
+  --borde-fuerte: #3A4252;
+  --boton-texto: #C5CAD6;
+  --sombra: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --sombra-flotante: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --deshabilitado-fondo: #232836;
+}
+
+:root[data-tema="oscuro"] .aviso-molecula {
+  background: #3A2E12;
+  color: #FCD34D;
+}
+
+:root[data-tema="oscuro"] .aviso-modelo {
+  background: #3A2E12;
+  border-color: #92400E;
+  color: #FCD34D;
+}
+
+:root[data-tema="oscuro"] .explicacion-enlace {
+  background: var(--accion-suave);
+  color: #C4B5FD;
+}
+
+/* El subtítulo de voz sube para no tapar la pista de gestos */
+.subtitulo-voz {
+  bottom: 72px;
+}
+
+
+/* ================= Rediseño 3 ================= */
+
+/* Aviso: sin línea de color; la tarjeta ya tiene su propio borde */
+.mensaje {
+  padding: 0;
+  border-left: none;
+  font-size: 17px;
+}
+
+/* Cámara y mano: del mismo ancho que los botones, texto que sí cabe */
+.estado-equipo {
+  width: 100%;
+}
+
+.estado-equipo .chip-estado {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+.estado-equipo .chip-estado strong {
+  flex-shrink: 0;
+  font-weight: 500;
+  color: var(--texto-secundario);
+}
+
+.estado-equipo .chip-estado .valor {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Marca: ícono en un cuadro morado y nombre más firme */
+.marca {
+  gap: 10px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.marca svg {
+  width: 36px;
+  height: 36px;
+  padding: 7px;
+  color: #FFFFFF;
+  background: var(--accion);
+  border-radius: 10px;
+}
+
+/* Átomos e Información: píldoras con tinte suave y el ícono en color */
+.boton-menu {
+  min-height: 44px;
+  padding: 8px 16px 8px 14px;
+  border: none;
+  background: var(--accion-suave);
+  color: var(--accion);
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.boton-menu:hover {
+  background: #E9E0FB;
+  color: var(--accion-hover);
+  border: none;
+}
+
+.boton-menu::before {
+  width: 18px;
+  height: 18px;
+}
+
+#menu-atomos:checked~.encabezado label[for="menu-atomos"],
+#menu-info:checked~.encabezado label[for="menu-info"] {
+  background: var(--accion);
+  color: #FFFFFF;
+  border: none;
+}
+
+:root[data-tema="oscuro"] .boton-menu {
+  background: #2A2140;
+  color: #C4B5FD;
+}
+
+:root[data-tema="oscuro"] .boton-menu:hover {
+  background: #352A52;
+}
+
+
+/* ================= Rediseño 4 ================= */
+
+/* Cámara y mano: mismo estilo que el micrófono (ícono arriba, texto abajo) */
+.estado-equipo {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 0;
+}
+
+.estado-equipo .chip-estado {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 60px;
+  padding: 8px 4px;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--boton-texto);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radio-boton);
+  box-shadow: none;
+  text-align: center;
+  white-space: normal;
+  overflow: visible;
+}
+
+.estado-equipo .chip-estado::before {
+  width: 22px;
+  height: 22px;
+  background: var(--estado, var(--texto-secundario));
+}
+
+.estado-equipo .chip-estado strong {
+  font-weight: 400;
+  color: inherit;
+}
+
+.estado-equipo .chip-estado .valor {
+  font-weight: 600;
+  color: var(--estado);
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+/* Verificar molécula: suave por defecto; morado fuerte al usarlo (clic, voz o gesto) */
+.respaldo [data-accion="verificar"] {
+  color: var(--accion);
+  background: var(--accion-suave);
+  font-weight: 500;
+  box-shadow: none;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.respaldo [data-accion="verificar"]:hover {
+  color: var(--accion-hover);
+  background: #E9E0FB;
+}
+
+.respaldo [data-accion="verificar"].destello {
+  color: #FFFFFF;
+  background: var(--accion);
+}
+
+:root[data-tema="oscuro"] .respaldo [data-accion="verificar"] {
+  background: #2A2140;
+  color: #C4B5FD;
+}
+
+:root[data-tema="oscuro"] .respaldo [data-accion="verificar"].destello {
+  background: var(--accion);
+  color: #FFFFFF;
+}
+
+
+/* ================= Rediseño 5: Verificar en gris, morado fuerte al usarlo ================= */
+.respaldo [data-accion="verificar"] {
+  color: var(--boton-texto);
+  background: transparent;
+  border-color: transparent;
+  font-weight: 400;
+  box-shadow: none;
+}
+
+.respaldo [data-accion="verificar"]::before {
+  width: 26px;
+  height: 26px;
+}
+
+.respaldo [data-accion="verificar"]:hover {
+  color: var(--accion);
+  background: var(--accion-suave);
+}
+
+/* Destello: morado fuerte solo al usarlo (clic, voz o gesto) */
+.respaldo [data-accion="verificar"].destello,
+.respaldo [data-accion="verificar"].destello:hover {
+  color: #FFFFFF;
+  background: var(--accion);
+  font-weight: 600;
+}
+
+:root[data-tema="oscuro"] .respaldo [data-accion="verificar"] {
+  color: var(--boton-texto);
+  background: transparent;
+}
+
+:root[data-tema="oscuro"] .respaldo [data-accion="verificar"].destello,
+:root[data-tema="oscuro"] .respaldo [data-accion="verificar"].destello:hover {
+  color: #FFFFFF;
+  background: var(--accion);
 }

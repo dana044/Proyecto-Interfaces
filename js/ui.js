@@ -210,7 +210,7 @@ export function iniciarInterfaz() {
   on('estado:manos', ({ cantidad }) => {
     const numero = Number(cantidad) || 0;
     actualizarIndicador(indicadorMano, {
-      texto: `Manos detectadas: ${numero}`,
+      texto: `Manos: ${numero}`,
       clase: numero === 0 ? 'estado-aviso' : 'estado-ok',
     });
   });

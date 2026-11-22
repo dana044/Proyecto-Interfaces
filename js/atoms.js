@@ -871,6 +871,13 @@ function acomodarGeometria(destinos, duracionMs = 1000) {
  * Devuelve la molécula cuando está completa, o null si no.
  */
 export async function verificarMolecula() {
+  // Destello morado del botón Verificar al usarlo (clic, voz o gesto).
+  const botonVerificar = document.querySelector('[data-accion="verificar"]');
+  if (botonVerificar) {
+    botonVerificar.classList.add('destello');
+    setTimeout(() => botonVerificar.classList.remove('destello'), 1200);
+  }
+
     const actuales = obtenerListaAtomos();
     if (actuales.length === 0) {
         enviarMensaje('aviso', 'La escena está vacía. Agrega átomos y pulsa Verificar molécula.');

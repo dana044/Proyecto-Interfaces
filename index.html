@@ -58,10 +58,7 @@
       <label for="menu-info" class="boton-menu">
         <span>Información</span>
       </label>
-      <span class="chip-estado estado-aviso" id="estado-camara"><strong>Cámara</strong> <span class="valor">Sin
-          permiso</span></span>
-      <span class="chip-estado estado-aviso" id="estado-mano"><strong>Mano</strong> <span class="valor">No
-          detectada</span></span>
+      <button type="button" class="boton-tema" id="boton-tema" aria-label="Cambiar a tema oscuro"><span class="solo-lector">Tema oscuro</span></button>
       <span class="chip-estado estado-ok" id="estado-accion"><strong>Última acción</strong> <span class="valor">Ninguna
           todavía</span></span>
     </div>
@@ -72,7 +69,7 @@
   <div id="zona-mensajes" class="zona-mensajes" role="status" aria-live="polite" hidden>
     <span class="icono" aria-hidden="true">i</span>
     <p></p>
-    <button class="cerrar-mensaje" type="button" aria-label="Cerrar aviso">×</button>
+    <button class="cerrar-mensaje" type="button" aria-label="Cerrar aviso"><span class="solo-lector">Cerrar</span></button>
   </div>
 
   <!-- Subtítulo en vivo: lo que el micrófono entendió, 2 segundos. -->
@@ -126,6 +123,9 @@
       <!-- Tarjeta con la información de un átomo: solo aparece al
            dejar el cursor sobre él en la escena. -->
       <div id="tarjeta-atomo" class="tarjeta-atomo" hidden></div>
+
+      <!-- Pista de gestos y atajos: solo lectura. -->
+      <p class="pista-escena" aria-hidden="true">Mano para mover · Pulgar arriba para verificar · Espacio para hablar</p>
 
       <!-- Cámara en espejo con la superposición de la mano (abajo a la izquierda, como en el wireframe) -->
       <figure class="camara-flotante">
@@ -194,42 +194,70 @@
       <p class="masa-formada" data-campo="masa-linea" hidden>Masa aproximada: <span data-campo="masa">0</span></p>
       <p class="aviso-modelo">Las órbitas son un modelo sencillo para aprender. En la realidad, los
         electrones no giran en círculos alrededor del núcleo como planetas.</p>
+      <p class="nota-privacidad">La cámara se procesa en tu navegador. No se guarda nada.</p>
     </aside>
 
   </main>
 
-  <!-- Acciones de respaldo: funcionan sin cámara ni voz -->
+  <!-- Acciones de respaldo: funcionan sin cámara ni voz.
+       Grupo 1 (edición) y grupo 2 (juego), separados por una línea fina.
+       Los íconos son ::before en CSS: el JavaScript no los borra. -->
   <footer id="botones-respaldo" class="respaldo">
-    <button class="boton tip" data-tip="Deshace la última acción · Voz / Clic" data-accion="deshacer">
+    <button class="boton tip" data-accion="deshacer">
       Deshacer
+      <span class="globo" aria-hidden="true"><b>Deshace la última acción</b><small>Atajo: Ctrl+Z</small></span>
       <span class="solo-lector">Voz o clic</span>
     </button>
-    <button class="boton tip" data-tip="Rehace la última acción deshecha · Voz / Clic" data-accion="rehacer">
+    <button class="boton tip" data-accion="rehacer">
       Rehacer
+      <span class="globo" aria-hidden="true"><b>Rehace la acción deshecha</b><small>Atajo: Ctrl+Y</small></span>
       <span class="solo-lector">Voz o clic</span>
     </button>
-    <button class="boton tip" data-tip="Borra la escena, con confirmación · Voz / Clic" data-accion="limpiar">
+    <button class="boton tip" data-accion="limpiar">
       Limpiar
+      <span class="globo" aria-hidden="true"><b>Borra la escena, con confirmación</b><small>Voz o clic</small></span>
       <span class="solo-lector">Voz o clic</span>
     </button>
-    <button class="boton tip" data-tip="Entra al modo reto «construye una molécula» · Voz / Clic" data-accion="reto">
+
+    <hr class="separador-barra" aria-hidden="true">
+
+    <button class="boton tip" data-accion="reto">
       Modo reto
+      <span class="globo" aria-hidden="true"><b>Entra al modo reto «construye una molécula»</b><small>Voz o clic</small></span>
       <span class="solo-lector">Voz o clic</span>
     </button>
-    <button class="boton boton-principal tip" data-tip="Verifica la molécula · Pulgar arriba (1 seg) / Voz / Clic"
-      data-accion="verificar">
+    <button class="boton boton-principal tip" data-accion="verificar">
       Verificar molécula
+      <span class="globo" aria-hidden="true"><b>Verifica la molécula</b><small>Pulgar arriba (1 s), voz o clic</small></span>
       <span class="solo-lector">Pulgar arriba, voz o clic</span>
     </button>
-    <button class="boton tip estado-aviso" data-tip="Activa o pausa el micrófono · Tecla Espacio / Clic"
-      data-accion="microfono" aria-keyshortcuts="Space">
+    <button class="boton tip estado-aviso" data-accion="microfono" aria-keyshortcuts="Space">
       <span class="punto-estado" aria-hidden="true"></span>
       Micrófono · <span class="estado-boton">Pausado</span>
+      <span class="globo" aria-hidden="true"><b>Activa o pausa el micrófono</b><small>Atajo: Espacio</small></span>
       <span class="solo-lector">Tecla Espacio o clic</span>
     </button>
+    <div class="estado-equipo">
+      <span class="chip-estado estado-aviso" id="estado-camara"><strong>Cámara</strong> <span class="valor">Sin
+              permiso</span></span>
+          <span class="chip-estado estado-aviso" id="estado-mano"><strong>Mano</strong> <span class="valor">No
+              detectada</span></span>
+    </div>
     <button type="button" class="boton" data-accion="silenciar-sonidos" aria-pressed="false">Silenciar tonos</button>
   </footer>
 
+  <script>
+    // Tema claro/oscuro: solo cambia un atributo en <html>.
+    (function () {
+      const boton = document.getElementById("boton-tema");
+      if (!boton) return;
+      boton.addEventListener("click", function () {
+        const oscuro = document.documentElement.dataset.tema !== "oscuro";
+        document.documentElement.dataset.tema = oscuro ? "oscuro" : "claro";
+        boton.setAttribute("aria-label", oscuro ? "Cambiar a tema claro" : "Cambiar a tema oscuro");
+      });
+    })();
+  </script>
   <script type="module" src="js/main.js"></script>
 </body>
 
