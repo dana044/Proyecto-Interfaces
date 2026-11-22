@@ -1550,3 +1550,21 @@ label[for="menu-info"].boton-menu::before {
   color: #FFFFFF;
   background: var(--accion);
 }
+
+
+/* Texto de al menos 16 px en los paneles (historia de legibilidad) */
+.panel-info dt,
+.etiqueta-contador,
+.masa-formada,
+.aviso-modelo,
+.aviso-molecula,
+.explicacion-enlace,
+.reto-sugerencia,
+.reto-progreso,
+.nombre-particula,
+.tarjeta-atomo,
+.tarjeta-atomo span,
+.nota-privacidad,
+.carga-particula {
+  font-size: 16px;
+}

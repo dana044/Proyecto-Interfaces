@@ -8,6 +8,7 @@ export const GLOSARIO = new Map([
     ['enlace doble', 'Es una unión en la que dos átomos comparten dos pares de electrones.'],
     ['formula quimica', 'Una fórmula química usa símbolos y números para indicar qué elementos hay y en qué cantidad.'],
     ['geometria molecular', 'Es la forma que toman los átomos de una molécula en el espacio.'],
+    ['metano', 'El metano es una molécula con un átomo de carbono y cuatro de hidrógeno. Su fórmula es CH₄.'],
     ['agua', 'Una molécula de agua tiene dos átomos de hidrógeno y uno de oxígeno. Su fórmula es H₂O.'],
     ['proton', 'Un protón es una partícula con carga positiva que está en el núcleo del átomo.'],
     ['neutron', 'Un neutrón es una partícula sin carga eléctrica que está en el núcleo del átomo.'],

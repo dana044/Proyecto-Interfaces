@@ -1331,7 +1331,7 @@ export function iniciarComandosDeAtomos() {
         }
         if (intencion === 'limpiar') {
             // Si se cancela la confirmación, las partículas se quedan.
-            if (limpiarEscena()) {
+            if (limpiarEscena({ confirmar: !parametros?.confirmada })) {
                 limpiarParticulas();
                 enviarMensaje('aviso', 'Se limpió la escena');
             }
