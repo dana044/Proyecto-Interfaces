@@ -206,6 +206,14 @@
   <!-- Acciones de respaldo: funcionan sin cámara ni voz.
        Grupo 1 (edición) y grupo 2 (juego), separados por una línea fina.
        Los íconos son ::before en CSS: el JavaScript no los borra. -->
+  <!-- Acciones de respaldo: funcionan sin cámara ni voz.
+       Tres grupos, separados por una línea fina: 1) edición
+       (deshacer, rehacer, limpiar), 2) lo que se hace en el
+       programa (pizarra, reto, verificar) y 3) voz, sonido y
+       archivo (micrófono, silenciar, exportar, importar).
+       Las pastillas de cámara y mano son estado, no acciones,
+       y van al final. Los íconos son ::before en CSS: el
+       JavaScript no los borra. -->
   <footer id="botones-respaldo" class="respaldo">
     <button class="boton tip" data-accion="deshacer">
       Deshacer
@@ -222,28 +230,15 @@
       <span class="globo" aria-hidden="true"><b>Borra la escena, con confirmación</b><small>Voz o clic</small></span>
       <span class="solo-lector">Voz o clic</span>
     </button>
-    <button class="boton tip" type="button" data-accion="exportar">
-      Exportar
-      <span class="globo" aria-hidden="true"><b>Guarda la molécula con sus posiciones en un archivo .json</b><small>Voz
-          o clic</small></span>
-      <span class="solo-lector">Voz o clic</span>
-    </button>
-    <button class="boton tip" type="button" data-accion="importar">
-      Importar
-      <span class="globo" aria-hidden="true"><b>Abre una molécula guardada en un archivo .json</b><small>Voz o
-          clic</small></span>
-      <span class="solo-lector">Voz o clic</span>
-    </button>
-    <input type="file" id="entrada-molecula" accept=".json,application/json" hidden>
+
+    <hr class="separador-barra" aria-hidden="true">
+
     <button class="boton tip" type="button" data-accion="pizarra">
       Pizarra
       <span class="globo" aria-hidden="true"><b>Escribe una fórmula o una estructura y agrega la molécula</b><small>Voz
           o clic</small></span>
       <span class="solo-lector">Voz o clic</span>
     </button>
-
-    <hr class="separador-barra" aria-hidden="true">
-
     <button class="boton tip" data-accion="reto">
       Modo reto
       <span class="globo" aria-hidden="true"><b>Entra al modo reto «construye una molécula»</b><small>Voz o
@@ -256,6 +251,9 @@
           clic</small></span>
       <span class="solo-lector">Pulgar arriba, voz o clic</span>
     </button>
+
+    <hr class="separador-barra" aria-hidden="true">
+
     <button class="boton tip estado-aviso" data-accion="microfono" aria-keyshortcuts="Space">
       <span class="punto-estado" aria-hidden="true"></span>
       Micrófono · <span class="estado-boton">Pausado</span>
@@ -269,6 +267,19 @@
           detectada</span></span>
     </div>
     <button type="button" class="boton" data-accion="silenciar-sonidos" aria-pressed="false">Silenciar tonos</button>
+    <button class="boton tip" type="button" data-accion="exportar">
+      Exportar
+      <span class="globo" aria-hidden="true"><b>Guarda la molécula con sus posiciones en un archivo .json</b><small>Voz
+          o clic</small></span>
+      <span class="solo-lector">Voz o clic</span>
+    </button>
+    <button class="boton tip" type="button" data-accion="importar">
+      Importar
+      <span class="globo" aria-hidden="true"><b>Abre una molécula guardada en un archivo .json</b><small>Voz o
+          clic</small></span>
+      <span class="solo-lector">Voz o clic</span>
+    </button>
+    <input type="file" id="entrada-molecula" accept=".json,application/json" hidden>
   </footer>
 
   <script>

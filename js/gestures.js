@@ -13,6 +13,7 @@
  * - pulgar hacia un lado: abre o cierra la paleta de moléculas.
  * - meñique arriba: enciende o apaga el micrófono.
  * - puño cerrado: entra o sale del tablero (modo lienzo o interfaz).
+ * - pellizco mantenido 0.6 s en la interfaz: pulsa el botón bajo el cursor.
  * - pulgar arriba un segundo: confirma (listo).
  *
  * @see docs/eventos.md
@@ -48,6 +49,9 @@ const MS_MANTENER_LISTO = 1000;
 const MS_MANTENER_PALETA = 500;
 const MS_MANTENER_MICROFONO = 800;
 const MS_MANTENER_CUADRO = 500;
+const MS_MANTENER_CLIC = 600;
+/** El cursor no se puede mover más que esto mientras se mantiene el pellizco para pulsar. */
+const MOVIMIENTO_MAXIMO_CLIC = 0.03;
 const UMBRAL_PULGAR_LADO_X = 0.08;
 const UMBRAL_PULGAR_LADO_Y = 0.05;
 const UMBRAL_PULGAR_ARRIBA_Y = 0.08;
@@ -625,6 +629,8 @@ const mantenedorListo = crearMantenedor(MS_MANTENER_LISTO);
 const mantenedorPaleta = crearMantenedor(MS_MANTENER_PALETA);
 const mantenedorMicrofono = crearMantenedor(MS_MANTENER_MICROFONO);
 const mantenedorCuadro = crearMantenedor(MS_MANTENER_CUADRO);
+const mantenedorClic = crearMantenedor(MS_MANTENER_CLIC);
+let posicionClic = null;
 
 /**
  * Pulgar arriba un segundo: emite gesto:listo.
@@ -678,6 +684,56 @@ function procesarCanvas(puntos, ahora) {
   if (mantenedorCuadro.actualizar(esPuno(puntos), ahora, centro.x, centro.y)) {
     cambiarModoCanvas(!enCanvas);
   }
+}
+
+/**
+ * Pellizco mantenido 0.6 s sin mover el cursor, en modo interfaz:
+ * pulsa el botón que hay bajo el cursor (así se agregan moléculas
+ * con la mano: puño para salir del tablero, cursor sobre el botón
+ * del panel y pellizco). En el tablero no pulsa nada: ahí el
+ * pellizco mueve la vista. Si la mano se mueve, no es un clic y la
+ * espera se reinicia, para no pulsar al arrastrar.
+ * @param {Array<{x: number, y: number}>} puntos
+ * @param {number} ahora
+ */
+function procesarClic(puntos, ahora) {
+  if (enCanvas || agarrando || !suavizado) {
+    posicionClic = null;
+    mantenedorClic.reiniciar();
+    return;
+  }
+  if (!esPellizco(puntos, umbralesPellizco.agarrar)) {
+    posicionClic = null;
+    mantenedorClic.reiniciar();
+    return;
+  }
+  if (posicionClic && Math.hypot(suavizado.x - posicionClic.x, suavizado.y - posicionClic.y) > MOVIMIENTO_MAXIMO_CLIC) {
+    posicionClic = { ...suavizado };
+    mantenedorClic.reiniciar();
+  }
+  if (!posicionClic) posicionClic = { ...suavizado };
+  if (mantenedorClic.actualizar(true, ahora, suavizado.x, suavizado.y)) {
+    posicionClic = null;
+    pulsarBajoCursor();
+  }
+}
+
+/**
+ * Pulsa el elemento que hay bajo el cursor virtual. Es un clic real:
+ * dispara los mismos listeners que el mouse, así la mano puede
+ * agregar átomos desde el panel, verificar o abrir la pizarra.
+ */
+function pulsarBajoCursor() {
+  if (!suavizado) return;
+  const elemento = document.elementFromPoint(
+    suavizado.x * window.innerWidth,
+    suavizado.y * window.innerHeight,
+  );
+  if (!elemento || elemento === document.body || elemento === document.documentElement) return;
+  elemento.click();
+  const texto = (elemento.innerText || elemento.getAttribute('aria-label') || '')
+    .split('\n')[0].trim().slice(0, 40);
+  if (texto) emit('ui:mensaje', { tipo: 'aviso', texto: `Pulsé «${texto}».` });
 }
 
 /**
@@ -810,6 +866,8 @@ function procesarManoPerdida(ahora) {
   mantenedorPaleta.reiniciar();
   mantenedorMicrofono.reiniciar();
   mantenedorCuadro.reiniciar();
+  mantenedorClic.reiniciar();
+  posicionClic = null;
   ocultarProgreso();
   if (!agarrando) {
     ocultarCursor();
@@ -876,6 +934,7 @@ function procesarAgarre(resultado, ahora) {
   procesarPaleta(puntos, ahora);
   procesarMicrofono(puntos, ahora);
   procesarCanvas(puntos, ahora);
+  procesarClic(puntos, ahora);
   mostrarCursor(suavizado.x, suavizado.y);
 }
 

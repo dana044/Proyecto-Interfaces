@@ -23,6 +23,7 @@ import {
     enlacesUsados,
     evaluarUnion,
     valenciaDe,
+    valenciaLibre,
 } from './chemistry.js';
 import { calcularGeometria, identificarMolecula } from './molecules.js';
 import { restriccionActiva } from './ejes.js';
@@ -1049,6 +1050,23 @@ function acomodarGeometria(destinos, duracionMs = 1000) {
  * dice que no la reconoce o explica por qué no se puede armar.
  * Devuelve la molécula cuando está completa, o null si no.
  */
+/**
+ * Lee el catálogo de moléculas si aún no está cargado. Devuelve
+ * false (y avisa) si no se pudo leer.
+ */
+async function cargarCatalogo() {
+    if (catalogoMoleculas) return true;
+    try {
+        const respuesta = await fetch('data/moleculas.json');
+        if (!respuesta.ok) throw new Error('catálogo no disponible');
+        catalogoMoleculas = validarCatalogo(await respuesta.json());
+        return true;
+    } catch {
+        enviarMensaje('error', 'No pude leer el catálogo de moléculas (data/moleculas.json).');
+        return false;
+    }
+}
+
 export async function verificarMolecula() {
     // Destello morado del botón Verificar al usarlo (clic, voz o gesto).
     const botonVerificar = document.querySelector('[data-accion="verificar"]');
@@ -1063,16 +1081,7 @@ export async function verificarMolecula() {
         return null;
     }
 
-    try {
-        if (!catalogoMoleculas) {
-            const respuesta = await fetch('data/moleculas.json');
-            if (!respuesta.ok) throw new Error('catálogo no disponible');
-            catalogoMoleculas = validarCatalogo(await respuesta.json());
-        }
-    } catch {
-        enviarMensaje('error', 'No pude leer el catálogo de moléculas (data/moleculas.json).');
-        return null;
-    }
+    if (!await cargarCatalogo()) return null;
 
     const enlacesActuales = [...enlaces.values()].map((enlace) => ({
         a: enlace.a,
@@ -1489,6 +1498,168 @@ async function animarElectronesCompartidos(a, b, pares) {
     await Promise.all(animaciones);
 }
 
+/**
+ * Respuesta hablada de un comando de voz: commands.js la muestra
+ * en pantalla y la lee en voz alta.
+ */
+function responderVoz(texto, tipo = 'aviso') {
+    emit('voz:respuesta', { texto, tipo });
+}
+
+function normalizarNombre(texto) {
+    return texto.toLocaleLowerCase('es-MX')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim();
+}
+
+function atomosDeElemento(elemento) {
+    return [...atomos.values()].filter((atomo) => atomo.elemento === elemento);
+}
+
+/**
+ * Devuelve los ids de `cantidad` átomos de ese elemento,
+ * agregando los que falten. null si la escena está llena.
+ */
+function asegurarAtomos(elemento, cantidad) {
+    const ids = atomosDeElemento(elemento).map((atomo) => atomo.id);
+    while (ids.length < cantidad) {
+        const id = agregarAtomo(elemento);
+        if (id === null) return null;
+        ids.push(id);
+    }
+    return ids;
+}
+
+/**
+ * Crea el enlace por voz con la misma geometría que al soltar con
+ * el mouse: A se acerca a B hasta la distancia de enlace, sin
+ * sobreponer a nadie. Si se pidió un doble y se creó un simple,
+ * intenta convertirlo; si la valencia no da (el hidrógeno, con 1),
+ * se queda en simple y dice por qué.
+ */
+function crearEnlacePorVoz(idA, idB, ordenCrear, nombreA, nombreB, ordenPedido) {
+    const atomoA = atomos.get(idA);
+    const atomoB = atomos.get(idB);
+    if (!atomoA || !atomoB) return;
+
+    const direccion = new THREE.Vector3(
+        atomoA.grupo.position.x - atomoB.grupo.position.x,
+        atomoA.grupo.position.y - atomoB.grupo.position.y,
+        atomoA.grupo.position.z - atomoB.grupo.position.z,
+    );
+    if (direccion.lengthSq() === 0) direccion.set(1, 0, 0);
+    direccion.normalize();
+    const distanciaContacto = distanciaEnlace(atomoA.elemento, atomoB.elemento);
+    const destino = {
+        x: atomoB.grupo.position.x + direccion.x * distanciaContacto,
+        y: atomoB.grupo.position.y + direccion.y * distanciaContacto,
+        z: atomoB.grupo.position.z + direccion.z * distanciaContacto,
+    };
+    if (atomoSolapado(idA, destino)) {
+        responderVoz('No hay espacio para unirlos ahí: se sobrepondrían con otro átomo.', 'aviso');
+        return;
+    }
+
+    guardarFoto(ordenCrear === 2
+        ? `enlace doble ${atomoA.elemento}–${atomoB.elemento}`
+        : `enlace ${atomoA.elemento}–${atomoB.elemento}`);
+    animarHasta(atomoA.grupo, destino).then(() => {
+        moverAtomo(idA, destino);
+        if (!crearEnlace(idA, idB, ordenCrear)) return;
+        if (ordenPedido === 2 && ordenCrear === 1) {
+            const conversion = evaluarUnion({
+                idA, elementoA: atomoA.elemento, idB, elementoB: atomoB.elemento,
+                ordenActual: 1, enlaces: [...enlaces.values()],
+            });
+            if (!conversion.ok || conversion.accion !== 'convertir-doble') {
+                setUltimaAccion(`Creaste un enlace entre ${nombreA} y ${nombreB}`);
+                responderVoz(`Lo dejé en enlace simple: ${conversion.motivo ?? 'no se puede hacer doble.'}`, 'aviso');
+                return;
+            }
+            crearEnlace(idA, idB, 2);
+            setUltimaAccion(`Creaste un enlace doble entre ${nombreA} y ${nombreB}`);
+            responderVoz('Enlace doble creado: comparten 2 electrones cada uno.', 'correcto');
+            return;
+        }
+        setUltimaAccion(ordenCrear === 2
+            ? `Creaste un enlace doble entre ${nombreA} y ${nombreB}`
+            : `Creaste un enlace entre ${nombreA} y ${nombreB}`);
+        responderVoz(ordenCrear === 2
+            ? 'Enlace doble creado: comparten 2 electrones cada uno.'
+            : 'Enlace creado: comparten 1 electrón cada uno.', 'correcto');
+    });
+}
+
+/**
+ * Une dos átomos por voz ("unir 2 hidrógenos", "crear un doble
+ * enlace de dos hidrógenos", "unir oxígeno con hidrógeno"). Si
+ * faltan átomos en la escena, los agrega primero. Valida la
+ * valencia igual que al soltar un átomo con el mouse; si no se
+ * puede, dice el motivo en voz.
+ */
+function unirAtomosPorVoz({ elementoA, elementoB, cantidadA = 1, cantidadB = 1, orden = 1 } = {}) {
+    if (!Object.hasOwn(ELEMENTOS, elementoA) || !Object.hasOwn(ELEMENTOS, elementoB)) return;
+
+    const totalA = Math.max(1, cantidadA || 1);
+    const totalB = elementoA === elementoB ? totalA : Math.max(1, cantidadB || 1);
+    const idsA = asegurarAtomos(elementoA, totalA);
+    if (idsA === null) {
+        responderVoz('La escena ya tiene 20 átomos, no caben más.', 'aviso');
+        return;
+    }
+    const idsB = elementoA === elementoB ? idsA : asegurarAtomos(elementoB, totalB);
+    if (idsB === null) {
+        responderVoz('La escena ya tiene 20 átomos, no caben más.', 'aviso');
+        return;
+    }
+
+    // Se elige la pareja con valencia libre; si ninguna la tiene,
+    // se deja que evaluarUnion diga el motivo.
+    const listaEnlaces = [...enlaces.values()];
+    const libres = (id) => valenciaLibre(atomos.get(id).elemento, enlacesUsados(id, listaEnlaces));
+    const idA = idsA.find((id) => libres(id) > 0) ?? idsA[0];
+    const idB = idsB.find((id) => id !== idA && libres(id) > 0)
+        ?? idsB.find((id) => id !== idA);
+    if (!idB) {
+        responderVoz('Para unir necesito dos átomos distintos.', 'aviso');
+        return;
+    }
+    const nombreA = ELEMENTOS[elementoA].nombre.toLowerCase();
+    const nombreB = ELEMENTOS[elementoB].nombre.toLowerCase();
+
+    const ordenActual = enlaces.get(claveEnlace(idA, idB))?.orden ?? 0;
+    const resultado = evaluarUnion({
+        idA, elementoA, idB, elementoB, ordenActual, enlaces: listaEnlaces,
+    });
+    if (!resultado.ok) {
+        responderVoz(resultado.motivo, 'aviso');
+        return;
+    }
+    if (resultado.accion === 'nada') {
+        responderVoz('Esos dos átomos ya tienen un enlace doble.', 'aviso');
+        return;
+    }
+    crearEnlacePorVoz(idA, idB, resultado.nuevoOrden, nombreA, nombreB, orden);
+}
+
+/**
+ * Crea una molécula completa del catálogo por voz ("añade agua",
+ * "crea agua"): agrega sus átomos y sus enlaces. agregarMolecula
+ * ya avisa en pantalla; aquí solo se habla.
+ */
+async function crearMoleculaPorVoz(id, nombre) {
+    if (!await cargarCatalogo()) return;
+    const entrada = catalogoMoleculas.moleculas.find((m) => m.id === id)
+        ?? catalogoMoleculas.moleculas.find((m) => normalizarNombre(m.nombre) === nombre);
+    if (!entrada) {
+        responderVoz('Esa molécula no está en el catálogo.', 'aviso');
+        return;
+    }
+    if (!agregarMolecula(entrada, entrada.nombre)) return;
+    emit('voz:hablar', { texto: `Agregué ${entrada.nombre.toLowerCase()} a la escena.` });
+}
+
 export function iniciarComandosDeAtomos() {
     // Pulgar arriba un segundo: verifica la molécula construida.
     on('gesto:listo', () => {
@@ -1557,6 +1728,34 @@ export function iniciarComandosDeAtomos() {
         }
         if (intencion === 'verificar') {
             verificarMolecula();
+            return;
+        }
+        if (intencion === 'unir-atomo') {
+            unirAtomosPorVoz(parametros);
+            return;
+        }
+        if (intencion === 'quitar-atomo') {
+            const { elemento, cantidad } = parametros ?? {};
+            if (!Object.hasOwn(ELEMENTOS, elemento)) return;
+            if (!Number.isSafeInteger(cantidad) || cantidad < 1) return;
+            const nombre = ELEMENTOS[elemento].nombre.toLowerCase();
+            const plural = ELEMENTOS[elemento].plural.toLowerCase();
+            let quitados = 0;
+            for (let i = 0; i < cantidad; i++) {
+                const lista = atomosDeElemento(elemento);
+                if (lista.length === 0) break;
+                eliminarAtomo(lista[lista.length - 1].id);
+                quitados += 1;
+            }
+            if (quitados === 0) {
+                responderVoz(`No hay ${plural} en la escena.`, 'aviso');
+            } else {
+                responderVoz(quitados === 1 ? `Quité un ${nombre}.` : `Quité ${quitados} ${plural}.`, 'aviso');
+            }
+            return;
+        }
+        if (intencion === 'crear-molecula') {
+            void crearMoleculaPorVoz(parametros?.id, parametros?.nombre);
             return;
         }
         if (intencion === 'rotar') {

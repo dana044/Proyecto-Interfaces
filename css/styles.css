@@ -880,18 +880,38 @@ p {
   z-index: 5;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 12px 8px;
+  gap: 4px;
+  min-height: 0;
+  padding: 10px 8px;
   background: var(--superficie);
   border: 1px solid var(--borde);
   border-radius: var(--radio-tarjeta);
   box-shadow: var(--sombra);
 }
 
+/* Pantallas bajas (por ejemplo con DevTools abierto): la barra tiene más
+   botones que alto disponible. En vez de salirse del panel, se desplaza
+   por dentro; los globos de ayuda se ocultan ahí porque el desplazamiento
+   los recortaría. En pantallas normales todo cabe y no hay desplazamiento. */
+@media (max-height: 760px) {
+  .respaldo {
+    overflow-y: auto;
+    /* Sin deslizamiento horizontal: al poner overflow-y en auto, el
+       overflow-x se vuelve auto también y aparecía una barra
+       horizontal que no sirve para nada. */
+    overflow-x: hidden;
+    scrollbar-width: thin;
+  }
+
+  .respaldo .globo {
+    display: none;
+  }
+}
+
 .separador-barra {
   width: 100%;
   height: 0;
-  margin: 8px 0;
+  margin: 6px 0;
   border: 0;
   border-top: 1px solid var(--borde);
 }
@@ -899,12 +919,13 @@ p {
 /* Botones de la barra: texto fino, sin borde; el fondo aparece al pasar el cursor */
 .respaldo .boton {
   width: 100%;
-  min-height: 60px;
+  min-height: 52px;
+  flex: none;
   flex-direction: column;
   justify-content: center;
   gap: 4px;
-  padding: 8px 4px;
-  font-size: 13px;
+  padding: 6px 4px;
+  font-size: 12px;
   font-weight: 400;
   line-height: 1.2;
   color: var(--boton-texto);
@@ -922,8 +943,8 @@ p {
 .respaldo .boton::before {
   content: "";
   display: block;
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   background: currentColor;
   mask-size: contain;
   mask-repeat: no-repeat;
@@ -1223,15 +1244,15 @@ label[for="menu-info"].boton-menu::before {
 .estado-equipo {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-top: 4px;
+  gap: 4px;
+  margin-top: 2px;
 }
 
 .estado-equipo .chip-estado {
   width: 100%;
   justify-content: flex-start;
-  padding: 4px 10px;
-  font-size: 12px;
+  padding: 3px 8px;
+  font-size: 11px;
   background: transparent;
   border: 1px solid var(--borde);
   box-shadow: none;

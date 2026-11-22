@@ -16,6 +16,13 @@ const AVISO_COMPATIBILIDAD = 'Usa Chrome o Edge para los comandos de voz';
  */
 export const FRASES_PARAR = ['para', 'parar', 'calla', 'callate', 'silencio', 'basta'];
 
+/**
+ * Respuestas cortas que también pasan mientras suena una locución:
+ * sin ellas, el "¿Seguro? Di sí o no." de limpiar nunca se podía
+ * contestar, porque la propia pregunta tapaba la respuesta.
+ */
+export const FRASES_RESPUESTA = ['si', 'no'];
+
 let reconocimiento;
 let inicializada = false;
 let escuchaSolicitada = false;
@@ -114,9 +121,11 @@ export function iniciarVoz() {
             if (!texto) continue;
 
             // Mientras suena una respuesta, el micrófono sigue abierto
-            // solo para "para": todo lo demás se ignora para que la
-            // propia voz de la app no se tome por un comando.
-            if (locucion && !FRASES_PARAR.includes(texto)) continue;
+            // solo para "para" y para un "sí"/"no" (la confirmación
+            // de limpiar se contesta mientras suena la pregunta):
+            // todo lo demás se ignora para que la propia voz de la
+            // app no se tome por un comando.
+            if (locucion && !FRASES_PARAR.includes(texto) && !FRASES_RESPUESTA.includes(texto)) continue;
 
             emit('voz:texto', { texto });
         }
