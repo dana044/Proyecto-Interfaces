@@ -59,6 +59,115 @@ export function crearEtiqueta(simbolo, color, escala = 0.5) {
     return etiqueta;
 }
 
+/** Lado del plano de cada etiqueta cruzada (igual que el sprite del editor). */
+const LADO_ETIQUETA_CRUZADA = 0.5;
+/** Lado del lienzo que dibuja el símbolo sobre la esfera, en píxeles. */
+const LADO_LIENZO_ESFERA = 512;
+/** Tamaño de la letra sobre la esfera, en píxeles del lienzo. */
+const FUENTE_ESFERA = 320;
+
+/**
+ * Dibuja el símbolo en un lienzo transparente. El color de la letra sigue la
+ * misma regla que crearEtiqueta: blanca sobre colores oscuros y oscura sobre claros.
+ * @param {string} simbolo Símbolo del elemento.
+ * @param {number} color Color de la esfera, en hexadecimal.
+ * @param {number} lado Lado del lienzo, en píxeles.
+ * @param {number} fuente Tamaño de la letra, en píxeles.
+ * @returns {THREE.CanvasTexture}
+ */
+function texturaSimbolo(simbolo, color, lado, fuente) {
+    const lienzo = document.createElement('canvas');
+    lienzo.width = lado;
+    lienzo.height = lado;
+
+    const rojo = (color >> 16) & 0xff;
+    const verde = (color >> 8) & 0xff;
+    const azul = color & 0xff;
+    const luminancia = 0.2126 * rojo + 0.7152 * verde + 0.0722 * azul;
+    const claro = luminancia > 180;
+
+    const ctx = lienzo.getContext('2d');
+    ctx.font = `bold ${fuente}px Inter, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = claro ? '#202331' : '#ffffff';
+    ctx.strokeStyle = claro ? '#202331' : '#000000';
+    ctx.lineWidth = lado * (6 / 128);
+    ctx.strokeText(simbolo, lado / 2, lado / 2);
+    ctx.fillText(simbolo, lado / 2, lado / 2);
+
+    return new THREE.CanvasTexture(lienzo);
+}
+
+/**
+ * Etiqueta cruzada: dos planos con el símbolo, centrados en el átomo y
+ * con normales a 45° del eje vertical de la estructura, para que la letra
+ * se vea desde arriba. Los planos son fijos: no giran con la cámara.
+ * La orientación supone la estructura de la RA, con la tarjeta en el plano
+ * XY y «arriba» en −Z.
+ * @param {string} simbolo Símbolo del elemento.
+ * @param {number} color Color de la esfera, en hexadecimal.
+ * @returns {THREE.Group} Grupo con los dos planos, en el centro del átomo.
+ */
+export function crearEtiquetaCruzada(simbolo, color) {
+    const grupo = new THREE.Group();
+    grupo.name = 'etiqueta-cruzada';
+    const textura = texturaSimbolo(simbolo, color, 128, 84);
+    const s = Math.SQRT1_2;
+    const orientaciones = [
+        { derecha: new THREE.Vector3(s, -s, 0), normal: new THREE.Vector3(s, s, 0) },
+        { derecha: new THREE.Vector3(s, s, 0), normal: new THREE.Vector3(-s, s, 0) },
+    ];
+    const arriba = new THREE.Vector3(0, 0, -1);
+
+    for (const { derecha, normal } of orientaciones) {
+        const base = new THREE.Matrix4().makeBasis(derecha, arriba, normal);
+        const plano = new THREE.Mesh(
+            new THREE.PlaneGeometry(LADO_ETIQUETA_CRUZADA, LADO_ETIQUETA_CRUZADA),
+            new THREE.MeshBasicMaterial({
+                map: textura,
+                transparent: true,
+                depthTest: false,
+                depthWrite: false,
+                side: THREE.DoubleSide,
+            })
+        );
+        plano.quaternion.setFromRotationMatrix(base);
+        plano.renderOrder = 2;
+        grupo.add(plano);
+    }
+    return grupo;
+}
+
+/**
+ * Etiqueta sobre la esfera: el símbolo impreso en una capa transparente
+ * que cubre la cara de la esfera orientada hacia la cámara. La capa tiene
+ * profundidad, así que los enlaces de detrás quedan tapados.
+ * La textura se desplaza para que el centro del símbolo caiga en la cara
+ * frontal de la esfera (uv 0.25, 0.5) y la malla se gira para que esa cara
+ * mire hacia +Y de la estructura.
+ * @param {string} simbolo Símbolo del elemento.
+ * @param {number} color Color de la esfera, en hexadecimal.
+ * @param {number} radio Radio de la esfera del átomo.
+ * @returns {THREE.Mesh} Capa con el símbolo, centrada en el átomo.
+ */
+export function crearEtiquetaEsfera(simbolo, color, radio) {
+    const textura = texturaSimbolo(simbolo, color, LADO_LIENZO_ESFERA, FUENTE_ESFERA);
+    textura.offset.set(0.25, 0);
+    const capa = new THREE.Mesh(
+        new THREE.SphereGeometry(radio * 1.03, 64, 48),
+        new THREE.MeshBasicMaterial({
+            map: textura,
+            transparent: true,
+            depthWrite: false,
+        })
+    );
+    capa.rotation.x = -Math.PI / 2;
+    capa.renderOrder = 2;
+    capa.name = 'etiqueta-esfera';
+    return capa;
+}
+
 export function crearAtomoVisual(elemento) {
     const config = ELEMENTOS[elemento];
     const grupo = new THREE.Group();

@@ -13,7 +13,8 @@
 import * as THREE from 'three';
 import { emit, on } from './bus.js';
 import { detenerGestos, iniciarGestos } from './gestures.js';
-import { actualizarMallaEnlace, crearAtomoVisual, crearMallaEnlace, liberarGrupo } from './modelos.js';
+import { actualizarMallaEnlace, crearAtomoVisual, crearEtiquetaCruzada, crearEtiquetaEsfera, crearMallaEnlace, liberarGrupo } from './modelos.js';
+import { ELEMENTOS } from './elementos.js';
 import { obtenerListaAtomos, obtenerListaEnlaces } from './atoms.js';
 import { actualizarAnilloValencia, enlacesUsados, valenciaDe } from './chemistry.js';
 import { setUltimaAccion } from './state.js';
@@ -30,6 +31,12 @@ const ALTO_ENTRADA = 480;
 
 /** Tamaño de la estructura respecto a la tarjeta (1 unidad = ancho de la tarjeta). */
 const ESCALA_MOLECULA = 0.3;
+
+/**
+ * Forma de la etiqueta de cada átomo en la RA. Se eligió «sprite», la misma del
+ * editor. «cruzados» y «esfera» se conservan para comparar en futuras pruebas.
+ */
+const MODO_ETIQUETA = 'sprite';
 
 /** Vistas posibles del área de trabajo cuando la RA está activa. */
 const VISTAS = ['dividida', 'editor', 'ra'];
@@ -621,9 +628,33 @@ function aplicarCambios() {
  */
 function crearAtomoRA(atomo) {
     const { grupo, anillo, radio } = crearAtomoVisual(atomo.elemento);
+    aplicarEtiquetaRA(grupo, atomo.elemento, radio);
     grupo.position.set(atomo.posicion.x, atomo.posicion.y, atomo.posicion.z);
     estructura.add(grupo);
     atomosRA.set(atomo.id, { grupo, anillo, radio, elemento: atomo.elemento });
+}
+
+/**
+ * Cambia la etiqueta del átomo según MODO_ETIQUETA. En «sprite» no hace nada:
+ * se conserva la etiqueta que crea crearAtomoVisual, la misma del editor.
+ * En los otros modos se quita ese sprite y se pone la alternativa.
+ * @param {THREE.Group} grupo Grupo del átomo.
+ * @param {string} elemento Símbolo del elemento.
+ * @param {number} radio Radio de la esfera.
+ */
+function aplicarEtiquetaRA(grupo, elemento, radio) {
+    if (MODO_ETIQUETA === 'sprite') return;
+
+    const sprite = grupo.children.find((hijo) => hijo.isSprite);
+    if (sprite) {
+        grupo.remove(sprite);
+        sprite.material.map.dispose();
+        sprite.material.dispose();
+    }
+
+    const color = ELEMENTOS[elemento].color;
+    if (MODO_ETIQUETA === 'cruzados') grupo.add(crearEtiquetaCruzada(elemento, color));
+    else if (MODO_ETIQUETA === 'esfera') grupo.add(crearEtiquetaEsfera(elemento, color, radio));
 }
 
 /**
