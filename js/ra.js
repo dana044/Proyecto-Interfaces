@@ -1,17 +1,19 @@
 /**
  * @file ra.js
  * @description Modo de realidad aumentada (RA) dentro de MolecuLab. Abre la
- * cámara, reconoce la tarjeta con MindAR y dibuja sobre ella la molécula de
- * prueba (agua), con la misma geometría que usa el editor. Mientras la RA está
- * activa, la detección de manos se pausa, porque MindAR y MediaPipe no pueden
- * usar la cámara a la vez. Al salir se libera la cámara y se reanudan las manos.
+ * cámara, reconoce la tarjeta con MindAR y dibuja sobre ella la molécula del
+ * editor, actualizada en vivo. Mientras la RA está activa, la detección de manos
+ * se pausa, porque MindAR y MediaPipe no pueden usar la cámara a la vez. Al salir
+ * se libera la cámara y se reanudan las manos.
  * @author Citlaly Morales Viveros
  */
 
 import * as THREE from 'three';
-import { emit } from './bus.js';
+import { emit, on } from './bus.js';
 import { detenerGestos, iniciarGestos } from './gestures.js';
 import { actualizarMallaEnlace, crearAtomoVisual, crearMallaEnlace, liberarGrupo } from './modelos.js';
+import { obtenerListaAtomos, obtenerListaEnlaces } from './atoms.js';
+import { actualizarAnilloValencia, enlacesUsados, valenciaDe } from './chemistry.js';
 import { setUltimaAccion } from './state.js';
 
 /** Núcleo de MindAR. El puente con Three lo hace este módulo, como en el prototipo. */
@@ -20,15 +22,12 @@ const URL_MINDAR = 'https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image
 /** Marcador de la tarjeta. Es el prototipo; se reemplazará por el definitivo de 8 × 8 cm. */
 const RUTA_MARCADOR = 'ar/marcador.mind';
 
-/** Resolución de entrada que se pide a la cámara y a MindAR. */
+/** Resolución que se pide a la cámara. MindAR usa la real del video, no esta. */
 const ANCHO_ENTRADA = 640;
 const ALTO_ENTRADA = 480;
 
 /** Tamaño de la molécula respecto a la tarjeta (1 unidad = ancho de la tarjeta). */
 const ESCALA_MOLECULA = 0.3;
-
-/** Ángulo H–O–H del agua en grados. */
-const ANGULO_AGUA = 104.5;
 
 /** Vistas posibles del área de trabajo cuando la RA está activa. */
 const VISTAS = ['dividida', 'editor', 'ra'];
@@ -39,6 +38,7 @@ let activa = false;
 let ocupado = false;
 let vista = 'dividida';
 let ultimoEstado = '';
+let oyentesRegistrados = false;
 
 let video = null;
 let flujo = null;
@@ -47,13 +47,22 @@ let renderer = null;
 let escena = null;
 let camara = null;
 let ancla = null;
-let molecula = null;
+let estructura = null;
 let postMatrix = null;
 let observador = null;
 
+/** Átomos dibujados en la RA: id → { grupo, anillo, radio, elemento }. */
+const atomosRA = new Map();
+/** Enlaces dibujados en la RA: clave «a|b» → { grupo, cilindros, a, b, orden }. */
+const enlacesRA = new Map();
+/** Ids de átomos con cambios que se aplican en el siguiente cuadro. */
+const atomosPendientes = new Set();
+/** true cuando hay que reconstruir toda la estructura (limpiar, importar, deshacer, rehacer). */
+let reconstruirTodo = false;
+
 /**
- * Conecta el botón de RA y el selector de vista. Debe llamarse después de
- * iniciarGestos, porque la RA pausa y reanuda esa detección.
+ * Conecta el botón de RA, el selector de vista y los eventos de la escena.
+ * Debe llamarse después de iniciarGestos, porque la RA pausa y reanuda esa detección.
  * @returns {boolean} true si quedó lista.
  * @throws {Error} Si falta alguno de los elementos de la RA en la página.
  */
@@ -74,7 +83,35 @@ export function iniciarRA() {
     selector.querySelectorAll('[data-vista]').forEach((opcion) => {
         opcion.addEventListener('click', () => cambiarVista(opcion.dataset.vista));
     });
+    registrarEventosDeEscena();
     return true;
+}
+
+/**
+ * Escucha los cambios del editor. Cada evento solo marca lo que cambió; la
+ * actualización se aplica en el cuadro siguiente. La reconstrucción completa
+ * se pide con limpiar, importar, deshacer y rehacer (escena:reconstruir).
+ */
+function registrarEventosDeEscena() {
+    if (oyentesRegistrados) return;
+    oyentesRegistrados = true;
+
+    const marcarAtomo = ({ id }) => { if (activa) atomosPendientes.add(id); };
+    const marcarEnlace = ({ a, b }) => {
+        if (!activa) return;
+        atomosPendientes.add(a);
+        atomosPendientes.add(b);
+    };
+    const pedirReconstruccion = () => { if (activa) reconstruirTodo = true; };
+
+    on('escena:atomo-agregado', marcarAtomo);
+    on('escena:atomo-movido', marcarAtomo);
+    on('escena:atomo-desplazado', marcarAtomo);
+    on('escena:atomo-eliminado', marcarAtomo);
+    on('escena:enlace-creado', marcarEnlace);
+    on('escena:enlace-eliminado', marcarEnlace);
+    on('escena:escena-limpia', pedirReconstruccion);
+    on('escena:reconstruir', pedirReconstruccion);
 }
 
 /** Enciende la RA si está apagada, o la apaga si está encendida. */
@@ -92,6 +129,8 @@ function alternarRA() {
 async function activarRA() {
     ocupado = true;
     vista = 'dividida';
+    reconstruirTodo = true;
+    atomosPendientes.clear();
     mostrarRA(true);
     cambiarEstado('Abriendo la cámara…');
 
@@ -145,10 +184,13 @@ function desactivarRA() {
         video = null;
     }
 
-    if (molecula) {
-        ancla?.remove(molecula);
-        liberarGrupo(molecula);
-        molecula = null;
+    for (const id of [...atomosRA.keys()]) quitarAtomoRA(id);
+    for (const clave of [...enlacesRA.keys()]) quitarEnlaceRA(clave);
+    atomosPendientes.clear();
+
+    if (estructura) {
+        ancla?.remove(estructura);
+        estructura = null;
     }
     if (renderer) {
         renderer.dispose();
@@ -203,7 +245,9 @@ function cambiarVista(nueva) {
 }
 
 /**
- * Pide la cámara trasera o la disponible, en la misma resolución que el prototipo.
+ * Pide la cámara trasera o la disponible y fija el tamaño de origen del video
+ * a su resolución real. MindAR dibuja el video con ese tamaño; si no coincide,
+ * el cuadro sale recortado y no se reconoce la tarjeta.
  * @throws {DOMException|Error} Si el navegador no tiene cámara o se niega el permiso.
  */
 async function abrirCamara() {
@@ -220,7 +264,6 @@ async function abrirCamara() {
     });
     video.srcObject = flujo;
     await video.play();
-    // Igual que el ejemplo oficial: MindAR toma el tamaño de origen del video, así que debe ser el nativo.
     video.setAttribute('width', video.videoWidth);
     video.setAttribute('height', video.videoHeight);
 }
@@ -257,12 +300,16 @@ async function iniciarMindAR() {
 
     await controlador.dummyRun(video);
     controlador.processVideo(video);
-    renderer.setAnimationLoop(() => renderer.render(escena, camara));
+    renderer.setAnimationLoop(() => {
+        sincronizarEstructura();
+        renderer.render(escena, camara);
+    });
 }
 
 /**
- * Crea el renderizador de la RA, su luz y el ancla de la molécula.
- * El renderizador es independiente del de la escena del editor.
+ * Crea el renderizador de la RA, su luz y el ancla de la estructura.
+ * La estructura se gira 90° sobre el eje X: en el editor, las moléculas están
+ * sobre el plano del tablero (x, z); así quedan planas sobre la tarjeta.
  */
 function crearEscena() {
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -283,38 +330,171 @@ function crearEscena() {
     ancla.visible = false;
     escena.add(ancla);
 
-    molecula = crearMoleculaAgua();
-    ancla.add(molecula);
+    estructura = new THREE.Group();
+    estructura.rotation.x = Math.PI / 2;
+    estructura.scale.setScalar(ESCALA_MOLECULA);
+    ancla.add(estructura);
 }
 
 /**
- * Construye el agua con la geometría de modelos.js: oxígeno en el centro y
- * dos hidrógenos a 1 unidad, con el ángulo H–O–H de la molécula.
- * @returns {THREE.Group}
+ * Sincroniza la RA con el editor en cada cuadro. Si hubo una reconstrucción,
+ * la hace completa; si no, aplica solo los cambios marcados por los eventos.
  */
-function crearMoleculaAgua() {
-    const grupo = new THREE.Group();
-    const mitad = (ANGULO_AGUA / 2) * Math.PI / 180;
-    const posiciones = {
-        O1: new THREE.Vector3(0, 0, 0),
-        H1: new THREE.Vector3(-Math.sin(mitad), Math.cos(mitad), 0),
-        H2: new THREE.Vector3(Math.sin(mitad), Math.cos(mitad), 0),
-    };
+function sincronizarEstructura() {
+    if (!activa || !estructura) return;
 
-    for (const [id, elemento] of [['O1', 'O'], ['H1', 'H'], ['H2', 'H']]) {
-        const { grupo: atomo } = crearAtomoVisual(elemento);
-        atomo.position.copy(posiciones[id]);
-        grupo.add(atomo);
+    if (reconstruirTodo) {
+        reconstruirEstructura();
+        return;
+    }
+    if (atomosPendientes.size === 0) return;
+    aplicarCambios();
+}
+
+/**
+ * Reconstruye toda la estructura desde el editor. Se usa al encender la RA y
+ * después de limpiar, importar, deshacer o rehacer.
+ */
+function reconstruirEstructura() {
+    for (const id of [...atomosRA.keys()]) quitarAtomoRA(id);
+    for (const clave of [...enlacesRA.keys()]) quitarEnlaceRA(clave);
+
+    const enlaces = obtenerListaEnlaces();
+    for (const atomo of obtenerListaAtomos()) crearAtomoRA(atomo);
+    for (const enlace of enlaces) crearEnlaceRA(enlace);
+    actualizarAnillosRA(enlaces);
+
+    reconstruirTodo = false;
+    atomosPendientes.clear();
+}
+
+/**
+ * Aplica solo lo que cambió: quita y agrega átomos, mueve los que cambiaron de
+ * posición, crea y quita enlaces, y actualiza la geometría de los enlaces
+ * tocados y los anillos de valencia.
+ */
+function aplicarCambios() {
+    const atomos = obtenerListaAtomos();
+    const enlaces = obtenerListaEnlaces();
+
+    const idsActuales = new Set(atomos.map((atomo) => atomo.id));
+    for (const id of [...atomosRA.keys()]) {
+        if (!idsActuales.has(id)) quitarAtomoRA(id);
     }
 
-    for (const destino of ['H1', 'H2']) {
-        const enlace = crearMallaEnlace(1, 'O1', destino);
-        actualizarMallaEnlace(enlace, posiciones.O1, posiciones[destino]);
-        grupo.add(enlace.grupo);
+    for (const atomo of atomos) {
+        if (!atomosRA.has(atomo.id)) crearAtomoRA(atomo);
+        else if (atomosPendientes.has(atomo.id)) posicionarAtomoRA(atomo);
     }
 
-    grupo.scale.setScalar(ESCALA_MOLECULA);
-    return grupo;
+    const clavesActuales = new Map(enlaces.map((enlace) => [clave(enlace.a, enlace.b), enlace]));
+    for (const [claveEnlace, enlace] of [...enlacesRA]) {
+        const actual = clavesActuales.get(claveEnlace);
+        if (!actual || actual.orden !== enlace.orden) quitarEnlaceRA(claveEnlace);
+    }
+    for (const [claveEnlace, enlace] of clavesActuales) {
+        if (!enlacesRA.has(claveEnlace)) crearEnlaceRA(enlace);
+    }
+
+    for (const enlace of enlacesRA.values()) {
+        if (atomosPendientes.has(enlace.a) || atomosPendientes.has(enlace.b)) actualizarEnlaceRA(enlace);
+    }
+
+    actualizarAnillosRA(enlaces);
+    atomosPendientes.clear();
+}
+
+/**
+ * Crea la representación de un átomo del editor, con su posición.
+ * @param {{id: string, elemento: string, posicion: {x: number, y: number, z: number}}} atomo
+ */
+function crearAtomoRA(atomo) {
+    const { grupo, anillo, radio } = crearAtomoVisual(atomo.elemento);
+    grupo.position.set(atomo.posicion.x, atomo.posicion.y, atomo.posicion.z);
+    estructura.add(grupo);
+    atomosRA.set(atomo.id, { grupo, anillo, radio, elemento: atomo.elemento });
+}
+
+/**
+ * Mueve la representación de un átomo a su nueva posición.
+ * @param {{id: string, posicion: {x: number, y: number, z: number}}} atomo
+ */
+function posicionarAtomoRA(atomo) {
+    const representacion = atomosRA.get(atomo.id);
+    if (!representacion) return;
+    representacion.grupo.position.set(atomo.posicion.x, atomo.posicion.y, atomo.posicion.z);
+}
+
+/**
+ * Quita un átomo de la RA, junto con los enlaces que lo tocan.
+ * @param {string} id
+ */
+function quitarAtomoRA(id) {
+    for (const [claveEnlace, enlace] of [...enlacesRA]) {
+        if (enlace.a === id || enlace.b === id) quitarEnlaceRA(claveEnlace);
+    }
+    const representacion = atomosRA.get(id);
+    if (!representacion) return;
+    estructura.remove(representacion.grupo);
+    liberarGrupo(representacion.grupo);
+    atomosRA.delete(id);
+}
+
+/**
+ * Crea un enlace simple o doble entre dos átomos ya dibujados.
+ * @param {{a: string, b: string, orden: number}} enlace
+ */
+function crearEnlaceRA(enlace) {
+    const { grupo, cilindros } = crearMallaEnlace(enlace.orden, enlace.a, enlace.b);
+    estructura.add(grupo);
+    const representacion = { grupo, cilindros, a: enlace.a, b: enlace.b, orden: enlace.orden };
+    enlacesRA.set(clave(enlace.a, enlace.b), representacion);
+    actualizarEnlaceRA(representacion);
+}
+
+/**
+ * Coloca un enlace entre las posiciones actuales de sus dos átomos.
+ * @param {{a: string, b: string, cilindros: THREE.Mesh[]}} enlace
+ */
+function actualizarEnlaceRA(enlace) {
+    const atomoA = atomosRA.get(enlace.a);
+    const atomoB = atomosRA.get(enlace.b);
+    if (!atomoA || !atomoB) return;
+    actualizarMallaEnlace(enlace, atomoA.grupo.position, atomoB.grupo.position);
+}
+
+/**
+ * Quita un enlace de la RA y libera su geometría.
+ * @param {string} claveEnlace Clave «a|b» del enlace.
+ */
+function quitarEnlaceRA(claveEnlace) {
+    const enlace = enlacesRA.get(claveEnlace);
+    if (!enlace) return;
+    estructura.remove(enlace.grupo);
+    liberarGrupo(enlace.grupo);
+    enlacesRA.delete(claveEnlace);
+}
+
+/**
+ * Recalcula el anillo de valencia de cada átomo, igual que en el editor:
+ * la valencia que le queda libre según sus enlaces.
+ * @param {Array<{a: string, b: string, orden: number}>} enlaces
+ */
+function actualizarAnillosRA(enlaces) {
+    for (const [id, representacion] of atomosRA) {
+        const libres = Math.max(valenciaDe(representacion.elemento) - enlacesUsados(id, enlaces), 0);
+        actualizarAnilloValencia(representacion.anillo, representacion.radio, libres);
+    }
+}
+
+/**
+ * Clave estable de un enlace, sin importar el orden de sus átomos.
+ * @param {string} a
+ * @param {string} b
+ * @returns {string}
+ */
+function clave(a, b) {
+    return [a, b].sort().join('|');
 }
 
 /**
@@ -407,4 +587,4 @@ function mensajeDeError(error) {
         return `No encontré una cámara disponible. ${alternativa}`;
     }
     return `No pude iniciar la realidad aumentada. ${alternativa}`;
-}   
+}
