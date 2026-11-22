@@ -3,11 +3,14 @@
  * @description Átomos, enlaces y arrastre en la escena 3D de MolecuLab.
  * @author Citlaly Morales Viveros
  * @author Stephanie Elizdeth Hernández Prieto
+ * @author Dana Carmona Santamaria
  */
 
 import * as THREE from 'three';
-import { acercar, obtenerCamara, obtenerContenedorAtomos, obtenerLienzo, rotarVista } from './scene.js';
+import { acercar, desplazarVista, obtenerCamara, obtenerContenedorAtomos, obtenerLienzo, rotarVista } from './scene.js';
 import { emit, on } from './bus.js';
+import { cambiarModoCanvas, estaEnCanvas } from './gestures.js';
+import { alternarMicrofono } from './voice.js';
 import { AVISO_ELEMENTO_DESCONOCIDO, ELEMENTOS, MAX_ATOMOS } from './elementos.js';
 import { setUltimaAccion } from './state.js';
 import {
@@ -1431,7 +1434,7 @@ function resaltarAnillo(id) {
  * dorado por cada par viaja entre los dos átomos durante 1 s (ida y
  * vuelta). Los dos pares van uno a cada lado del enlace, como los
  * dos cilindros del enlace doble; con un par, va centrado. Esta
- * animación es la parte que la HU asigna a Citlaly: vive aquí
+ * animación es la parte que le toca a Citlaly: vive aquí
  * porque este módulo tiene los átomos y la escena, y escucha el
  * mismo evento escena:electrones-compartidos que puede usar
  * cualquier otra animación en su lugar.
@@ -1490,6 +1493,45 @@ export function iniciarComandosDeAtomos() {
     // Pulgar arriba un segundo: verifica la molécula construida.
     on('gesto:listo', () => {
         verificarMolecula();
+    });
+    // Dos manos en pinza que giran: rota la vista con el ángulo.
+    on('gesto:rotar', ({ dx, dy }) => {
+        rotarVista(dx, dy);
+    });
+    // Una mano en pinza arrastrando: mueve la vista con la mano.
+    on('gesto:mover', ({ dx, dy }) => {
+        desplazarVista(dx, dy);
+    });
+    // Dos manos en marco: el factor es el cambio desde que se formó
+    // el marco. Cerca de 1 es un marco nuevo, no un cambio.
+    let ultimoFactorZoom = 1;
+    on('gesto:zoom', ({ factor }) => {
+        if (!factor) return;
+        if (factor > 0.95 && factor < 1.05) {
+            ultimoFactorZoom = factor;
+            return;
+        }
+        acercar(factor / ultimoFactorZoom);
+        ultimoFactorZoom = factor;
+    });
+    // Meñique arriba un instante: enciende o apaga el micrófono.
+    on('gesto:microfono', () => {
+        alternarMicrofono();
+    });
+    // Al cerrar la paleta, el elemento en la mano se suelta sin colocar.
+    on('ui:paleta', ({ abierta }) => {
+        if (!abierta) soltarElementoEnMano();
+    });
+    // El tutorial pide un átomo de ejemplo para practicar, solo si la
+    // escena está vacía, y lo quita al cerrarse.
+    on('tutorial:atomo-ejemplo', ({ mostrar }) => {
+        if (mostrar) {
+            if (idAtomoEjemplo || atomos.size > 0) return;
+            idAtomoEjemplo = agregarAtomo('H', { x: 0, y: 0, z: 0 });
+        } else if (idAtomoEjemplo) {
+            eliminarAtomo(idAtomoEjemplo);
+            idAtomoEjemplo = null;
+        }
     });
     // Electrones compartidos al formarse un enlace: la animación de
     // 1 s entre los dos átomos y el resaltado de su capa externa.
@@ -1768,6 +1810,107 @@ function soltarArrastre(x, y) {
     terminarArrastre(id);
 }
 
+let elementoEnMano = null;
+let idAtomoEjemplo = null;
+
+/**
+ * Pasa una posición de la ventana (0 a 1) a coordenadas del
+ * tablero (0 a 1): el cursor vive en toda la ventana y el
+ * arrastre solo entiende el tablero.
+ * @param {number} x
+ * @param {number} y
+ */
+function aCoordenadasCanvas(x, y) {
+    const lienzo = obtenerLienzo();
+    if (!lienzo) return { x, y };
+    const rect = lienzo.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return { x, y };
+    return {
+        x: (x * window.innerWidth - rect.left) / rect.width,
+        y: (y * window.innerHeight - rect.top) / rect.height,
+    };
+}
+
+/**
+ * Punto del tablero bajo el cursor: el rayo del cursor corta el
+ * plano paralelo a la cámara que pasa por el origen.
+ * @param {number} x
+ * @param {number} y
+ */
+function posicionBajoCursor(x, y) {
+    const camaraActual = obtenerCamara();
+    if (!camaraActual) return null;
+    const normal = camaraActual.getWorldDirection(new THREE.Vector3());
+    const plano = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, new THREE.Vector3(0, 0, 0));
+    prepararRayo(x, y);
+    return rayo.ray.intersectPlane(plano, new THREE.Vector3());
+}
+
+/** Toma un elemento de la paleta para colocarlo en el tablero. */
+function tomarElemento(simbolo) {
+    elementoEnMano = simbolo;
+    emit('cursor:elemento', { simbolo, color: `#${ELEMENTOS[simbolo].color.toString(16).padStart(6, '0')}` });
+    enviarMensaje('aviso', `Tienes ${ELEMENTOS[simbolo].nombre} en la mano. Entra al tablero con el puño y levanta el índice donde quieras colocarlo.`);
+}
+
+/** Suelta el elemento en la mano sin colocarlo. */
+function soltarElementoEnMano() {
+    if (!elementoEnMano) return;
+    elementoEnMano = null;
+    emit('cursor:elemento', { simbolo: null, color: null });
+}
+
+/**
+ * Coloca el elemento en la mano bajo el cursor y vuelve al tablero.
+ * @param {number} x
+ * @param {number} y
+ */
+function colocarElementoEnMano(x, y) {
+    const punto = aCoordenadasCanvas(x, y);
+    const posicion = posicionBajoCursor(punto.x, punto.y);
+    if (!posicion) return;
+    const id = agregarAtomo(elementoEnMano, { x: posicion.x, y: posicion.y, z: posicion.z });
+    if (!id) return;
+    soltarElementoEnMano();
+    cambiarModoCanvas(true);
+}
+
+/**
+ * Pulsa con el cursor el elemento de la interfaz bajo el punto.
+ * Un botón de la paleta no se pulsa: toma el elemento en la mano.
+ * @param {number} x
+ * @param {number} y
+ */
+function clicVirtual(x, y) {
+    const elemento = document.elementFromPoint(x * window.innerWidth, y * window.innerHeight);
+    if (!elemento) return;
+    const botonAtomo = elemento.closest('[data-accion="agregar"]');
+    if (botonAtomo?.dataset.elemento) {
+        tomarElemento(botonAtomo.dataset.elemento);
+        return;
+    }
+    elemento.click();
+}
+
+/**
+ * El índice arriba con un elemento en la mano lo coloca; fuera del
+ * tablero pulsa la interfaz; dentro del tablero agarra un átomo.
+ * @param {number} x
+ * @param {number} y
+ */
+function manejarInicioGesto(x, y) {
+    if (elementoEnMano) {
+        colocarElementoEnMano(x, y);
+        return;
+    }
+    if (!estaEnCanvas()) {
+        clicVirtual(x, y);
+        return;
+    }
+    const punto = aCoordenadasCanvas(x, y);
+    iniciarArrastre(punto.x, punto.y);
+}
+
 function cambiarSeleccionTeclado(sentido) {
     const ids = [...atomos.keys()];
     if (ids.length === 0) return false;
@@ -2031,9 +2174,17 @@ export function iniciarArrastreDeAtomos() {
     if (!lienzo) return false;
     arrastreIniciado = true;
 
-    on('gesto:pellizco-inicio', ({ x, y }) => iniciarArrastre(x, y));
-    on('gesto:pellizco-mover', ({ x, y }) => moverArrastre(x, y));
-    on('gesto:pellizco-fin', ({ x, y }) => soltarArrastre(x, y));
+    // El gesto trae la posición de la ventana; el arrastre la
+    // convierte a coordenadas del tablero.
+    on('gesto:pellizco-inicio', ({ x, y }) => manejarInicioGesto(x, y));
+    on('gesto:pellizco-mover', ({ x, y }) => {
+        const punto = aCoordenadasCanvas(x, y);
+        moverArrastre(punto.x, punto.y);
+    });
+    on('gesto:pellizco-fin', ({ x, y }) => {
+        const punto = aCoordenadasCanvas(x, y);
+        soltarArrastre(punto.x, punto.y);
+    });
     on('ejes:cambio', reanclarArrastre);
 
     lienzo.tabIndex = 0;

@@ -2,6 +2,7 @@
  * @file scene.js
  * @description Escena 3D con Three.js, cámara, luces, cuadrícula y controles.
  * @author Citlaly Morales Viveros
+ * @author Dana Carmona Santamaria
  */
 
 import * as THREE from 'three';
@@ -122,6 +123,24 @@ export function rotarVista(dx, dy) {
 }
 
 /**
+ * Mueve la vista con el objeto: el desplazamiento sigue a la mano
+ * en la pantalla. dx y dy son fracciones de la ventana (0.5 = media).
+ */
+export function desplazarVista(dx, dy) {
+    if (!iniciado) return;
+
+    const distancia = camara.position.distanceTo(controles.target);
+    const derecha = new THREE.Vector3().setFromMatrixColumn(camara.matrix, 0);
+    const arriba = new THREE.Vector3().setFromMatrixColumn(camara.matrix, 1);
+    const desplazamiento = new THREE.Vector3()
+        .addScaledVector(derecha, dx * distancia)
+        .addScaledVector(arriba, -dy * distancia);
+
+    controles.target.add(desplazamiento);
+    camara.position.add(desplazamiento);
+}
+
+/**
  * Acerca la cámara con un factor mayor que 1 y la aleja
  * con un factor entre 0 y 1.
  */
@@ -180,5 +199,5 @@ export function obtenerLienzo() {
     return renderer ? renderer.domElement : null;
 }
 
-// Nota: la esfera de prueba de HU-07 se quitó a propósito; no hay
+// Nota: la esfera de prueba se quitó a propósito; no hay
 // función que la quite porque la escena ya inicia sin ella.
