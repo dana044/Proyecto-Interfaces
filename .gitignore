@@ -3,3 +3,6 @@
 *.mp4
 *.mov
 *.avi
+herramientas/node_modules/
+herramientas/tomas/
+herramientas/compiler-base-node.js

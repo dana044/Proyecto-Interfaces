@@ -1,0 +1,20 @@
+{
+    "name": "moleculab-herramientas-ar",
+    "version": "1.0.0",
+    "private": true,
+    "description": "Herramientas para compilar el marcador de RA (.mind) y probar su reconocimiento. No forman parte de la web.",
+    "type": "module",
+    "scripts": {
+        "preparar": "node preparar.mjs",
+        "compilar": "node compilar.mjs",
+        "probar": "node prueba-reconocimiento.mjs"
+    },
+    "dependencies": {
+        "@tensorflow/tfjs": "4.22.0",
+        "canvas": "npm:@napi-rs/canvas@1.2.0",
+        "mind-ar": "1.2.5"
+    },
+    "overrides": {
+        "canvas": "npm:@napi-rs/canvas@1.2.0"
+    }
+}

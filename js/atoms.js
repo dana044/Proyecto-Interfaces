@@ -18,7 +18,6 @@ import {
     animarHasta,
     animarSacudida,
     buscarVecinoMasCercano,
-    crearAnilloValencia,
     distanciaEnlace,
     enlacesUsados,
     evaluarUnion,
@@ -27,18 +26,25 @@ import {
 } from './chemistry.js';
 import { calcularGeometria, identificarMolecula } from './molecules.js';
 import { restriccionActiva } from './ejes.js';
+import {
+    ALTURA_ENLACE_DOBLE,
+    COLOR_RESALTADO,
+    EJE_UP,
+    actualizarMallaEnlace,
+    crearAtomoVisual,
+    crearEtiqueta,
+    crearMallaEnlace,
+    liberarGrupo,
+} from './modelos.js';
 
 /** Separación de cada cilindro del centro en un enlace doble: los
  * dos cilindros tienen radio 0.08, así que con menos de 0.08 se
  * tocan y se ven como una sola barra gruesa; con 0.16 sus centros
  * quedan a 0.32 y queda un hueco claro de 0.16 entre ellos. */
-const ALTURA_ENLACE_DOBLE = 0.16;
 const FACTOR_TOLERANCIA_PELLIZCO = 1.5;
 const PASO_TECLADO = 0.1;
-const COLOR_RESALTADO = 0xfacc15;
 const COLOR_VISTA_PREVIA_POSIBLE = 0x15803d;
 const COLOR_VISTA_PREVIA_RECHAZO = 0xb91c1c;
-const EJE_UP = new THREE.Vector3(0, 1, 0);
 
 const atomos = new Map();
 const enlaces = new Map();
@@ -112,6 +118,7 @@ function restaurarFoto(foto) {
     for (const enlace of foto.enlaces) {
         crearEnlace(enlace.a, enlace.b, enlace.orden, { explicar: false });
     }
+    emit('escena:reconstruir', {});
 }
 
 /**
@@ -129,96 +136,6 @@ const rayo = new THREE.Raycaster();
 
 function claveEnlace(a, b) {
     return a < b ? `${a}|${b}` : `${b}|${a}`;
-}
-
-/**
- * Crea la etiqueta con el símbolo del elemento. La letra es oscura
- * solo si el color de la esfera es claro; con los colores de grupo
- * actuales, todos son oscuros y la letra es blanca.
- * @param {string} simbolo Símbolo del elemento.
- * @param {number} color Color de la esfera, en hexadecimal.
- * @param {number} [escala=0.5] Tamaño de la etiqueta en la escena.
- */
-function crearEtiqueta(simbolo, color, escala = 0.5) {
-    const lienzo = document.createElement('canvas');
-    lienzo.width = 128;
-    lienzo.height = 128;
-
-    const rojo = (color >> 16) & 0xff;
-    const verde = (color >> 8) & 0xff;
-    const azul = color & 0xff;
-    const luminancia = 0.2126 * rojo + 0.7152 * verde + 0.0722 * azul;
-    const claro = luminancia > 180;
-
-    const ctx = lienzo.getContext('2d');
-    ctx.font = 'bold 84px Inter, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = claro ? '#202331' : '#ffffff';
-    ctx.strokeStyle = claro ? '#202331' : '#000000';
-    ctx.lineWidth = 6;
-    ctx.strokeText(simbolo, 64, 64);
-    ctx.fillText(simbolo, 64, 64);
-
-    const material = new THREE.SpriteMaterial({
-        map: new THREE.CanvasTexture(lienzo),
-        depthTest: false,
-    });
-    const etiqueta = new THREE.Sprite(material);
-    etiqueta.scale.set(escala, escala, 1);
-    etiqueta.renderOrder = 2;
-    return etiqueta;
-}
-
-function crearAtomoVisual(elemento) {
-    const config = ELEMENTOS[elemento];
-    const grupo = new THREE.Group();
-
-    const esfera = new THREE.Mesh(
-        new THREE.SphereGeometry(config.radio, 32, 24),
-        new THREE.MeshStandardMaterial({
-            color: config.color,
-            roughness: 0.4,
-        })
-    );
-    grupo.add(esfera);
-
-    // El contorno de selección empieza oculto.
-    const borde = new THREE.Mesh(
-        new THREE.SphereGeometry(config.radio * 1.12, 32, 24),
-        new THREE.MeshBasicMaterial({
-            color: COLOR_RESALTADO,
-            side: THREE.BackSide,
-            transparent: true,
-            opacity: 0.9,
-        })
-    );
-    borde.visible = false;
-    grupo.add(borde);
-
-    if (config.bordeOscuro) {
-        const contorno = new THREE.Mesh(
-            new THREE.SphereGeometry(config.radio * 1.02, 32, 24),
-            new THREE.MeshBasicMaterial({
-                color: 0x202331,
-                wireframe: true,
-                transparent: true,
-                opacity: 0.25,
-            })
-        );
-        grupo.add(contorno);
-    }
-
-    const etiqueta = crearEtiqueta(elemento, config.color);
-    etiqueta.position.set(0, config.radio + 0.25, 0);
-    grupo.add(etiqueta);
-
-    // Aro de valencia (js/chemistry.js): verde si la valencia está
-    // completa, gris con un punto por cada enlace que aún le queda.
-    const anillo = crearAnilloValencia(config.radio, config.valencia);
-    grupo.add(anillo);
-
-    return { grupo, esfera, borde, anillo, radio: config.radio };
 }
 
 function generarId(elemento) {
@@ -598,26 +515,8 @@ export function crearEnlace(idA, idB, orden = 1, { explicar = true } = {}) {
     // escena:enlace-eliminado: solo se emite el creado con orden 2.
     if (enlaces.has(clave)) quitarEnlace(idA, idB, false);
 
-    const grupo = new THREE.Group();
-    grupo.userData.tipo = 'enlace';
-    grupo.userData.a = idA;
-    grupo.userData.b = idB;
-
-    const material = new THREE.MeshStandardMaterial({
-        color: 0x6b7280,
-        roughness: 0.6,
-    });
-    const cilindros = [];
     const cantidad = orden === 2 ? 2 : 1;
-
-    for (let i = 0; i < cantidad; i++) {
-        const cilindro = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.08, 0.08, 1, 16),
-            material
-        );
-        grupo.add(cilindro);
-        cilindros.push(cilindro);
-    }
+    const { grupo, cilindros } = crearMallaEnlace(cantidad, idA, idB);
 
     obtenerContenedorAtomos().add(grupo);
     enlaces.set(clave, { a: idA, b: idB, orden: cantidad, grupo, cilindros });
@@ -661,31 +560,7 @@ function actualizarEnlace(idA, idB) {
     const atomoB = atomos.get(idB);
     if (!enlace || !atomoA || !atomoB) return;
 
-    const pA = atomoA.grupo.position;
-    const pB = atomoB.grupo.position;
-    const direccion = new THREE.Vector3().subVectors(pB, pA);
-    // El cilindro va de centro a centro: las esferas son opacas y
-    // tapan sus puntas, así la varilla siempre llega al átomo aunque
-    // tenga radio distinto (el hidrógeno es más chico que el oxígeno).
-    const longitud = direccion.length();
-    const normal = direccion.clone().normalize();
-    const medio = new THREE.Vector3().addVectors(pA, pB).multiplyScalar(0.5);
-
-    const eje = Math.abs(normal.dot(EJE_UP)) > 0.99
-        ? new THREE.Vector3(1, 0, 0)
-        : EJE_UP;
-    const desplazamiento = new THREE.Vector3()
-        .crossVectors(normal, eje)
-        .normalize()
-        .multiplyScalar(ALTURA_ENLACE_DOBLE);
-    const orientacion = new THREE.Quaternion().setFromUnitVectors(EJE_UP, normal);
-
-    enlace.cilindros.forEach((cilindro, i) => {
-        const separacion = enlace.cilindros.length === 2 ? (i === 0 ? 1 : -1) : 0;
-        cilindro.position.copy(medio).addScaledVector(desplazamiento, separacion);
-        cilindro.quaternion.copy(orientacion);
-        cilindro.scale.set(1, longitud, 1);
-    });
+    actualizarMallaEnlace(enlace, atomoA.grupo.position, atomoB.grupo.position);
 }
 
 /**
@@ -772,6 +647,38 @@ export function obtenerListaAtomos() {
 }
 
 /**
+ * Avisa que un átomo cambió de posición durante un arrastre con mouse o
+ * teclado. Se emite en cada cuadro, para que la vista de RA siga el movimiento.
+ * @param {string} id Id del átomo que se movió.
+ */
+function emitirDesplazamiento(id) {
+    const atomo = atomos.get(id);
+    if (!atomo) return;
+    const p = atomo.grupo.position;
+    emit('escena:atomo-desplazado', { id, posicion: { x: p.x, y: p.y, z: p.z } });
+}
+
+/**
+ * Estructura actual para exportarla o mostrarla en otra vista: átomos con
+ * su id, elemento, posición y color de grupo, y enlaces con sus átomos y su
+ * orden. Es solo lectura y no incluye el estado visual (selección, resaltado).
+ * @returns {{ atomos: Array<{id: string, elemento: string, posicion: {x: number, y: number, z: number}, color: number}>, enlaces: Array<{desde: string, hasta: string, orden: number}> }}
+ */
+export function obtenerEstructuraActual() {
+    return {
+        atomos: obtenerListaAtomos().map((atomo) => ({
+            ...atomo,
+            color: ELEMENTOS[atomo.elemento].color,
+        })),
+        enlaces: obtenerListaEnlaces().map((enlace) => ({
+            desde: enlace.a,
+            hasta: enlace.b,
+            orden: enlace.orden,
+        })),
+    };
+}
+
+/**
  * Lista de enlaces de la escena, con sus dos átomos y su orden
  * (1 simple, 2 doble). Es solo lectura: no cambia la escena.
  */
@@ -783,15 +690,6 @@ export function obtenerListaEnlaces() {
     }));
 }
 
-function liberarGrupo(grupo) {
-    grupo.traverse((objeto) => {
-        if (objeto.geometry) objeto.geometry.dispose();
-        if (objeto.material) {
-            if (objeto.material.map) objeto.material.map.dispose();
-            objeto.material.dispose();
-        }
-    });
-}
 
 /**
  * Reemplaza la escena por una foto guardada en un archivo. Cuenta como
@@ -1972,6 +1870,7 @@ function moverArrastre(x, y) {
     for (const otroId of atomo.enlaces) {
         actualizarEnlace(arrastre.id, otroId);
     }
+    emitirDesplazamiento(arrastre.id);
     actualizarVistaPrevia(arrastre.id);
 }
 
@@ -2159,6 +2058,7 @@ function desplazarAtomoTeclado(id, dx, dy) {
     for (const otroId of atomo.enlaces) {
         actualizarEnlace(id, otroId);
     }
+    emitirDesplazamiento(id);
     actualizarVistaPrevia(id);
 }
 

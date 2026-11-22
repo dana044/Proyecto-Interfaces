@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prueba Web Share (GLB) · MolecuLab</title>
+  <style>
+    body { margin: 0; padding: 24px; font-family: Inter, system-ui, sans-serif; background: #0F1419; color: #e5e7eb; }
+    button { padding: 12px 18px; border: none; border-radius: 10px; background: #15803d; color: #fff; font: 600 16px Inter, system-ui, sans-serif; }
+    #resultado { margin-top: 16px; font-size: 15px; line-height: 1.5; }
+    a { color: #93c5fd; }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.183.2/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.183.2/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <button id="compartir">Generar GLB y compartir</button>
+  <div id="resultado"></div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+
+    // Mismo modelo de prueba que ar-prototipo.html: el GLB se genera en el navegador, sin servidor.
+    function construirAgua() {
+      const grupo = new THREE.Group();
+      const esferas = [
+        { p: [0, 0, 0], r: 0.42, c: 0x2563eb },
+        { p: [0.9, 0.6, 0], r: 0.30, c: 0x2563eb },
+        { p: [-0.9, 0.6, 0], r: 0.30, c: 0x2563eb },
+      ];
+      for (const e of esferas) {
+        const m = new THREE.Mesh(new THREE.SphereGeometry(e.r, 32, 24), new THREE.MeshStandardMaterial({ color: e.c, roughness: 0.4 }));
+        m.position.set(...e.p);
+        grupo.add(m);
+      }
+      for (const extremo of [esferas[1].p, esferas[2].p]) {
+        const a = new THREE.Vector3(), b = new THREE.Vector3(...extremo);
+        const cilindro = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, a.distanceTo(b), 16), new THREE.MeshStandardMaterial({ color: 0x6b7280 }));
+        cilindro.position.copy(a).add(b).multiplyScalar(0.5);
+        cilindro.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+        grupo.add(cilindro);
+      }
+      return grupo;
+    }
+
+    const resultado = document.getElementById('resultado');
+    document.getElementById('compartir').addEventListener('click', async () => {
+      resultado.textContent = 'Generando GLB…';
+      const datos = await new GLTFExporter().parseAsync(construirAgua(), { binary: true });
+      const archivo = new File([datos], 'agua.glb', { type: 'model/gltf-binary' });
+
+      if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+        try {
+          await navigator.share({ files: [archivo], title: 'Molécula de agua (GLB)' });
+          resultado.textContent = 'Compartido. Anota en qué app se abrió y si Scene Viewer lo mostró.';
+        } catch (error) {
+          resultado.textContent = 'Se canceló o falló el compartir: ' + error.message;
+        }
+      } else {
+        const url = URL.createObjectURL(archivo);
+        resultado.innerHTML = 'Este navegador no puede compartir archivos. <a href="' + url + '" download="agua.glb">Descargar agua.glb</a>';
+      }
+    });
+  </script>
+</body>
+</html>
