@@ -35,7 +35,7 @@ const MS_MANO_PERDIDA = 500;
 const PUNTO_INDICE = 8;
 const FACTOR_DEDO_EXTENDIDO = 1.1;
 const FACTOR_DEDO_PLEGADO = 1.0;
-const CUADROS_PARA_SOLTAR = 3;
+const CUADROS_PARA_SOLTAR = 5;
 const PUNTO_PULGAR = 4;
 const UMBRAL_PELLIZCO_AGARRAR = 0.05;
 const UMBRAL_PELLIZCO_SOLTAR = 0.08;
@@ -43,18 +43,29 @@ const ZOOM_MINIMO = 0.5;
 const ZOOM_MAXIMO = 3;
 const CAMBIO_MINIMO_ZOOM = 0.02;
 const MOVIMIENTO_MINIMO_MOVER = 0.005;
-const ANGULO_MINIMO_ROTAR = 0.01;
-const ANGULO_MINIMO_MARCO = Math.PI / 3;
+const VELOCIDAD_GIRO = 0.012;
+const ZONA_NEUTRA_GIRO = 0.06;
 const MS_MANTENER_LISTO = 1000;
 const MS_MANTENER_PALETA = 500;
 const MS_MANTENER_MICROFONO = 800;
-const MS_MANTENER_CUADRO = 500;
-const MS_MANTENER_CLIC = 600;
+const MS_MANTENER_ELIMINAR = 500;
 /** El cursor no se puede mover más que esto mientras se mantiene el pellizco para pulsar. */
-const MOVIMIENTO_MAXIMO_CLIC = 0.03;
 const UMBRAL_PULGAR_LADO_X = 0.08;
 const UMBRAL_PULGAR_LADO_Y = 0.05;
-const UMBRAL_PULGAR_ARRIBA_Y = 0.08;
+const UMBRAL_PULGAR_ARRIBA_ALTO = 0.12;
+const FACTOR_PULGAR_ARRIBA = 1.2;
+const MOVIMIENTO_MINIMO_GIRAR = 0.002;
+// Un dedo está estirado si su punta queda más lejos de la muñeca que
+// esto por el tamaño de la mano, y plegado si queda más cerca.
+const FACTOR_TAMANO_ESTIRADO = 1.5;
+const FACTOR_TAMANO_PLEGADO = 1.15;
+const FACTOR_TAMANO_ESTIRADO_GIRAR = 1.3;
+// Pulgar tocando un dedo: las puntas quedan a menos de esta fracción del tamaño de la mano.
+const FACTOR_TOQUE_DEDOS = 0.4;
+const MS_MANTENER_DESHACER = 400;
+const FACTOR_DEDO_PLEGADO_SUAVE = 1.05;
+// Pon -1 para invertir el sentido del giro.
+const SENTIDO_GIRO = 1;
 
 const MENSAJE_PERMISO_DENEGADO = 'Necesito tu cámara para ver tus manos; actívala en el candado de la barra de direcciones. Mientras tanto puedes usar el mouse.';
 const MENSAJE_SIN_CAMARA = 'No encontré una cámara disponible. Si otra aplicación la está usando, ciérrala e inténtalo de nuevo. Mientras tanto puedes usar el mouse.';
@@ -84,13 +95,16 @@ let umbralesPellizco = { agarrar: UMBRAL_PELLIZCO_AGARRAR, soltar: UMBRAL_PELLIZ
 let moverActivo = false;
 let suavizadoMover = null;
 let referenciaMover = null;
-let rotarActivo = false;
-let ultimoAnguloRotar = null;
 let zoomActivo = false;
 let referenciaZoom = null;
 let ultimoFactorZoom = 1;
 let anilloProgreso = null;
-let enCanvas = true;
+let palmaAntes = false;
+let manoEnCuadro = false;
+let puntoPunoAnterior = null;
+let puntoPunoSuave = null;
+let poseGirarDetectada = false;
+let ultimoBloqueoAgarre = '';
 
 /**
  * Publica el estado de la cámara en el bus.
@@ -352,7 +366,7 @@ function mostrarCursor(x, y) {
   cursor.style.display = 'flex';
   cursor.style.left = `${x * window.innerWidth}px`;
   cursor.style.top = `${y * window.innerHeight}px`;
-  cursor.style.borderColor = !enCanvas ? '#F59E0B' : agarrando ? '#22C55E' : '#FFFFFF';
+  cursor.style.borderColor = !cursorEnTablero() ? '#F59E0B' : agarrando ? '#22C55E' : '#FFFFFF';
   cursor.style.backgroundColor = agarrando ? 'rgba(34, 197, 94, 0.5)' : 'transparent';
   cursor.style.transform = agarrando ? 'scale(0.6)' : 'scale(1)';
 }
@@ -441,22 +455,6 @@ function relacionDedo(puntos, punta, articulacion) {
   return distanciaPx(puntos[punta], puntos[0]) / distanciaPx(puntos[articulacion], puntos[0]);
 }
 
-/**
- * Ángulo en radianes entre dos dedos, medidos desde la muñeca.
- * @param {Array<{x: number, y: number}>} puntos
- * @param {number} a
- * @param {number} b
- */
-function anguloEntreDedos(puntos, a, b) {
-  const ax = (puntos[a].x - puntos[0].x) * video.videoWidth;
-  const ay = (puntos[a].y - puntos[0].y) * video.videoHeight;
-  const bx = (puntos[b].x - puntos[0].x) * video.videoWidth;
-  const by = (puntos[b].y - puntos[0].y) * video.videoHeight;
-  const normas = Math.hypot(ax, ay) * Math.hypot(bx, by);
-  if (!normas) return 0;
-  const coseno = Math.min(1, Math.max(-1, (ax * bx + ay * by) / normas));
-  return Math.acos(coseno);
-}
 
 /**
  * Índice arriba: el índice estirado y los otros tres dedos plegados.
@@ -464,23 +462,44 @@ function anguloEntreDedos(puntos, a, b) {
  */
 function esIndiceArriba(puntos) {
   return relacionDedo(puntos, 8, 6) > FACTOR_DEDO_EXTENDIDO
+    && relacionDedo(puntos, 12, 10) < FACTOR_DEDO_PLEGADO_SUAVE
+    && relacionDedo(puntos, 16, 14) < FACTOR_DEDO_PLEGADO_SUAVE
+    && relacionDedo(puntos, 20, 18) < FACTOR_DEDO_PLEGADO_SUAVE;
+}
+
+/**
+ * Pulgar arriba: el pulgar estirado y bien por encima de la muñeca,
+ * con los otros cuatro dedos plegados.
+ * @param {Array<{x: number, y: number}>} puntos
+ */
+function esPulgarArriba(puntos) {
+  return relacionDedo(puntos, 4, 3) > FACTOR_PULGAR_ARRIBA
+    && puntos[0].y - puntos[4].y > UMBRAL_PULGAR_ARRIBA_ALTO
+    && relacionDedo(puntos, 8, 6) < FACTOR_DEDO_PLEGADO
     && relacionDedo(puntos, 12, 10) < FACTOR_DEDO_PLEGADO
     && relacionDedo(puntos, 16, 14) < FACTOR_DEDO_PLEGADO
     && relacionDedo(puntos, 20, 18) < FACTOR_DEDO_PLEGADO;
 }
 
 /**
- * Pulgar arriba: el pulgar estirado y claramente por encima de la
- * muñeca, con los otros cuatro dedos plegados.
+ * Índice y medio levantados, con el anular y el meñique plegados.
+ * Sirve para eliminar el átomo bajo el cursor.
  * @param {Array<{x: number, y: number}>} puntos
  */
-function esPulgarArriba(puntos) {
-  return relacionDedo(puntos, 4, 3) > FACTOR_DEDO_EXTENDIDO
-    && puntos[0].y - puntos[4].y > UMBRAL_PULGAR_ARRIBA_Y
-    && relacionDedo(puntos, 8, 6) < FACTOR_DEDO_PLEGADO
-    && relacionDedo(puntos, 12, 10) < FACTOR_DEDO_PLEGADO
-    && relacionDedo(puntos, 16, 14) < FACTOR_DEDO_PLEGADO
-    && relacionDedo(puntos, 20, 18) < FACTOR_DEDO_PLEGADO;
+function esDosDedos(puntos) {
+  return relacionDedo(puntos, 8, 6) > FACTOR_DEDO_EXTENDIDO
+    && relacionDedo(puntos, 12, 10) > FACTOR_DEDO_EXTENDIDO
+    && relacionDedo(puntos, 16, 14) < FACTOR_DEDO_PLEGADO_SUAVE
+    && relacionDedo(puntos, 20, 18) < FACTOR_DEDO_PLEGADO_SUAVE;
+}
+
+/**
+ * Palma abierta: las cuatro puntas de los dedos largos lejos de la muñeca.
+ * @param {Array<{x: number, y: number}>} puntos
+ */
+function esPalmaAbierta(puntos) {
+  const tamano = tamanoMano(puntos);
+  return [8, 12, 16, 20].every((punta) => distanciaPx(puntos[punta], puntos[0]) > FACTOR_TAMANO_ESTIRADO * tamano);
 }
 
 /**
@@ -502,45 +521,40 @@ function esPulgarLado(puntos) {
 }
 
 /**
- * Meñique arriba: solo el meñique estirado, los demás plegados.
- * Sirve para encender o apagar el micrófono.
+ * Meñique arriba: el meñique estirado y los demás dedos sin estirarse
+ * tanto. Sirve para encender o apagar el micrófono.
  * @param {Array<{x: number, y: number}>} puntos
  */
 function esMeniqueArriba(puntos) {
   return relacionDedo(puntos, 20, 18) > FACTOR_DEDO_EXTENDIDO
-    && relacionDedo(puntos, 4, 3) < FACTOR_DEDO_PLEGADO
-    && relacionDedo(puntos, 8, 6) < FACTOR_DEDO_PLEGADO
-    && relacionDedo(puntos, 12, 10) < FACTOR_DEDO_PLEGADO
-    && relacionDedo(puntos, 16, 14) < FACTOR_DEDO_PLEGADO;
+    && relacionDedo(puntos, 4, 3) < FACTOR_DEDO_PLEGADO_SUAVE
+    && relacionDedo(puntos, 8, 6) < FACTOR_DEDO_PLEGADO_SUAVE
+    && relacionDedo(puntos, 12, 10) < FACTOR_DEDO_PLEGADO_SUAVE
+    && relacionDedo(puntos, 16, 14) < FACTOR_DEDO_PLEGADO_SUAVE;
 }
 
 /**
- * Puño cerrado: los cinco dedos plegados. Sirve para entrar
- * o salir del tablero.
+ * Tamaño de la mano: de la muñeca a la base del dedo medio.
  * @param {Array<{x: number, y: number}>} puntos
  */
-function esPuno(puntos) {
-  return relacionDedo(puntos, 4, 3) < FACTOR_DEDO_PLEGADO
-    && relacionDedo(puntos, 8, 6) < FACTOR_DEDO_PLEGADO
-    && relacionDedo(puntos, 12, 10) < FACTOR_DEDO_PLEGADO
-    && relacionDedo(puntos, 16, 14) < FACTOR_DEDO_PLEGADO
-    && relacionDedo(puntos, 20, 18) < FACTOR_DEDO_PLEGADO;
+function tamanoMano(puntos) {
+  return distanciaPx(puntos[0], puntos[9]);
 }
 
 /**
- * Marco: pulgar e índice estirados y abiertos entre sí, con los
- * otros tres dedos plegados. El ángulo entre pulgar e índice
- * distingue el marco de un índice arriba con el pulgar suelto.
+ * Tres dedos: índice, medio y anular estirados, con el meñique plegado.
+ * Sirve para girar la molécula. Se mide contra el tamaño de la mano.
  * @param {Array<{x: number, y: number}>} puntos
  */
-function esMarco(puntos) {
-  return relacionDedo(puntos, 4, 3) > FACTOR_DEDO_EXTENDIDO
-    && relacionDedo(puntos, 8, 6) > FACTOR_DEDO_EXTENDIDO
-    && relacionDedo(puntos, 12, 10) < FACTOR_DEDO_PLEGADO
-    && relacionDedo(puntos, 16, 14) < FACTOR_DEDO_PLEGADO
-    && relacionDedo(puntos, 20, 18) < FACTOR_DEDO_PLEGADO
-    && anguloEntreDedos(puntos, 4, 8) > ANGULO_MINIMO_MARCO;
+function esTresDedos(puntos) {
+  const tamano = tamanoMano(puntos);
+  const lejos = (punta) => distanciaPx(puntos[punta], puntos[0]);
+  return lejos(8) > FACTOR_TAMANO_ESTIRADO_GIRAR * tamano
+    && lejos(12) > FACTOR_TAMANO_ESTIRADO_GIRAR * tamano
+    && lejos(16) > FACTOR_TAMANO_ESTIRADO_GIRAR * tamano
+    && lejos(20) < FACTOR_TAMANO_PLEGADO * tamano;
 }
+
 
 /**
  * Distancia pulgar-índice como fracción del ancho del video, o null
@@ -579,11 +593,20 @@ function esPellizco(puntos, umbral) {
     && relacionDedo(puntos, PUNTO_INDICE, 6) > FACTOR_DEDO_PLEGADO;
 }
 
-/** Distancia entre los centros de dos manos. */
-function distanciaEntreCentros(a, b) {
-  const centroA = centroMano(a);
-  const centroB = centroMano(b);
-  return Math.hypot(centroA.x - centroB.x, centroA.y - centroB.y);
+/**
+ * Punto medio de la pinza (entre pulgar e índice), en espejo.
+ * @param {Array<{x: number, y: number}>} puntos
+ */
+function centroPinza(puntos) {
+  return {
+    x: 1 - (puntos[4].x + puntos[8].x) / 2,
+    y: (puntos[4].y + puntos[8].y) / 2,
+  };
+}
+
+/** Distancia entre las pinzas de dos manos. */
+function distanciaEntrePinzas(a, b) {
+  return distanciaPx(centroPinza(a), centroPinza(b));
 }
 
 /**
@@ -619,6 +642,7 @@ function crearMantenedor(ms) {
       return false;
     },
     reiniciar() {
+      if (inicio !== 0 || emitido) ocultarProgreso();
       inicio = 0;
       emitido = false;
     },
@@ -628,9 +652,9 @@ function crearMantenedor(ms) {
 const mantenedorListo = crearMantenedor(MS_MANTENER_LISTO);
 const mantenedorPaleta = crearMantenedor(MS_MANTENER_PALETA);
 const mantenedorMicrofono = crearMantenedor(MS_MANTENER_MICROFONO);
-const mantenedorCuadro = crearMantenedor(MS_MANTENER_CUADRO);
-const mantenedorClic = crearMantenedor(MS_MANTENER_CLIC);
-let posicionClic = null;
+const mantenedorEliminar = crearMantenedor(MS_MANTENER_ELIMINAR);
+const mantenedorDeshacer = crearMantenedor(MS_MANTENER_DESHACER);
+const mantenedorRehacer = crearMantenedor(MS_MANTENER_DESHACER);
 
 /**
  * Pulgar arriba un segundo: emite gesto:listo.
@@ -674,67 +698,49 @@ function procesarMicrofono(puntos, ahora) {
   )) emit('gesto:microfono');
 }
 
-/**
- * Puño cerrado medio segundo: entra o sale del tablero.
- * @param {Array<{x: number, y: number}>} puntos
- * @param {number} ahora
- */
-function procesarCanvas(puntos, ahora) {
-  const centro = centroMano(puntos);
-  if (mantenedorCuadro.actualizar(esPuno(puntos), ahora, centro.x, centro.y)) {
-    cambiarModoCanvas(!enCanvas);
-  }
-}
-
-/**
- * Pellizco mantenido 0.6 s sin mover el cursor, en modo interfaz:
- * pulsa el botón que hay bajo el cursor (así se agregan moléculas
- * con la mano: puño para salir del tablero, cursor sobre el botón
- * del panel y pellizco). En el tablero no pulsa nada: ahí el
- * pellizco mueve la vista. Si la mano se mueve, no es un clic y la
- * espera se reinicia, para no pulsar al arrastrar.
- * @param {Array<{x: number, y: number}>} puntos
- * @param {number} ahora
- */
-function procesarClic(puntos, ahora) {
-  if (enCanvas || agarrando || !suavizado) {
-    posicionClic = null;
-    mantenedorClic.reiniciar();
-    return;
-  }
-  if (!esPellizco(puntos, umbralesPellizco.agarrar)) {
-    posicionClic = null;
-    mantenedorClic.reiniciar();
-    return;
-  }
-  if (posicionClic && Math.hypot(suavizado.x - posicionClic.x, suavizado.y - posicionClic.y) > MOVIMIENTO_MAXIMO_CLIC) {
-    posicionClic = { ...suavizado };
-    mantenedorClic.reiniciar();
-  }
-  if (!posicionClic) posicionClic = { ...suavizado };
-  if (mantenedorClic.actualizar(true, ahora, suavizado.x, suavizado.y)) {
-    posicionClic = null;
-    pulsarBajoCursor();
-  }
-}
-
-/**
- * Pulsa el elemento que hay bajo el cursor virtual. Es un clic real:
- * dispara los mismos listeners que el mouse, así la mano puede
- * agregar átomos desde el panel, verificar o abrir la pizarra.
- */
-function pulsarBajoCursor() {
-  if (!suavizado) return;
+/** Dice si el cursor está sobre el tablero 3D, según lo que hay bajo él. */
+function cursorEnTablero() {
+  if (!suavizado) return false;
   const elemento = document.elementFromPoint(
     suavizado.x * window.innerWidth,
     suavizado.y * window.innerHeight,
   );
-  if (!elemento || elemento === document.body || elemento === document.documentElement) return;
-  elemento.click();
-  const texto = (elemento.innerText || elemento.getAttribute('aria-label') || '')
-    .split('\n')[0].trim().slice(0, 40);
-  if (texto) emit('ui:mensaje', { tipo: 'aviso', texto: `Pulsé «${texto}».` });
+  return Boolean(elemento?.closest('#lienzo-3d'));
 }
+
+/**
+ * Abrir la mano después de seleccionar algo: emite gesto:soltar.
+ * atoms.js lo coloca si la mano queda en el tablero, o lo cancela.
+ * @param {Array<{x: number, y: number}>} puntos
+ */
+function procesarSoltar(puntos) {
+  const abierta = esPalmaAbierta(puntos);
+  if (abierta && !palmaAntes && suavizado) {
+    emit('gesto:soltar', { ...suavizado, cancelado: false });
+  }
+  palmaAntes = abierta;
+}
+
+/**
+ * Índice y medio levantados medio segundo: pide eliminar el átomo bajo el cursor.
+ * @param {Array<{x: number, y: number}>} puntos
+ * @param {number} ahora
+ */
+function procesarEliminar(puntos, ahora) {
+  if (!suavizado) return;
+  if (mantenedorEliminar.actualizar(esDosDedos(puntos), ahora, suavizado.x, suavizado.y)) {
+    emit('gesto:eliminar-pedido', { ...suavizado });
+  }
+}
+
+/** Escribe en la consola por qué no arranca el agarre, solo cuando cambia el motivo. */
+function registrarBloqueoAgarre(motivo) {
+  if (ultimoBloqueoAgarre === motivo) return;
+  ultimoBloqueoAgarre = motivo;
+  console.info(`[gestos] Índice arriba sin agarre: ${motivo}.`);
+}
+
+
 
 /**
  * Una mano en pinza arrastrando: emite gesto:mover con el
@@ -778,62 +784,104 @@ function procesarMover(resultado) {
 }
 
 /**
- * Dos manos en pinza que giran alrededor del centro entre ellas:
- * emite gesto:rotar con el cambio de ángulo. Al soltar una pinza,
- * termina la rotación. El dx es la fracción de vuelta (0.5 = media).
+ * Tres dedos que se mueven: gira la vista hacia donde se mueve la mano
+ * (derecha, izquierda, arriba o abajo). Si la mano se detiene, deja de
+ * girar. La velocidad depende de qué tan rápido se mueve.
  * @param {import('@mediapipe/tasks-vision').HandLandmarkerResult} resultado
  */
-function procesarRotar(resultado) {
+function procesarGirar(resultado) {
   const manos = resultado.landmarks || [];
-  const umbral = rotarActivo ? umbralesPellizco.soltar : umbralesPellizco.agarrar;
-  const pinchan = manos.length >= 2
-    && esPellizco(manos[0], umbral)
-    && esPellizco(manos[1], umbral);
+  const mano = manos.find((puntos) => esTresDedos(puntos));
 
-  if (!pinchan) {
-    rotarActivo = false;
-    ultimoAnguloRotar = null;
+  if (!mano) {
+    poseGirarDetectada = false;
+    puntoPunoAnterior = null;
+    puntoPunoSuave = null;
     return;
   }
-
-  const centroA = centroMano(manos[0]);
-  const centroB = centroMano(manos[1]);
-  const angulo = Math.atan2(centroB.y - centroA.y, centroB.x - centroA.x);
-
-  if (!rotarActivo || ultimoAnguloRotar === null) {
-    rotarActivo = true;
-    ultimoAnguloRotar = angulo;
-    return;
+  if (!poseGirarDetectada) {
+    poseGirarDetectada = true;
+    console.info('[gestos] Tres dedos detectados: muévelos para girar la molécula.');
   }
 
-  let delta = angulo - ultimoAnguloRotar;
-  if (delta > Math.PI) delta -= 2 * Math.PI;
-  if (delta < -Math.PI) delta += 2 * Math.PI;
-  ultimoAnguloRotar = angulo;
-  if (Math.abs(delta) < ANGULO_MINIMO_ROTAR) return;
-  emit('gesto:rotar', { dx: delta / (2 * Math.PI), dy: 0 });
+  const centro = centroMano(mano);
+  puntoPunoSuave = puntoPunoSuave
+    ? {
+      x: ALFA_SUAVIZADO * centro.x + (1 - ALFA_SUAVIZADO) * puntoPunoSuave.x,
+      y: ALFA_SUAVIZADO * centro.y + (1 - ALFA_SUAVIZADO) * puntoPunoSuave.y,
+    }
+    : { ...centro };
+
+  const anterior = puntoPunoAnterior;
+  puntoPunoAnterior = { ...puntoPunoSuave };
+  if (!anterior) return;
+
+  const dx = puntoPunoSuave.x - anterior.x;
+  const dy = puntoPunoSuave.y - anterior.y;
+  const movimiento = Math.max(Math.abs(dx), Math.abs(dy));
+  if (movimiento < MOVIMIENTO_MINIMO_GIRAR) return;
+
+  // Más lento el movimiento, más lento el giro; tope en la velocidad base.
+  const velocidad = VELOCIDAD_GIRO * Math.min(1, movimiento / 0.01) * SENTIDO_GIRO;
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    emit('gesto:rotar', { dx: Math.sign(dx) * velocidad, dy: 0 });
+  } else {
+    emit('gesto:rotar', { dx: 0, dy: Math.sign(dy) * velocidad });
+  }
 }
 
 /**
- * Dos manos en marco: emite gesto:zoom con el factor de cambio
- * desde que se formó el marco, entre 0.5 y 3. Solo emite cuando
- * el factor cambia lo suficiente.
+ * Pulgar tocando un dedo: la punta del pulgar cerca de la punta del dedo
+ * indicado y lejos del índice, para no confundirlo con la pinza.
+ * @param {Array<{x: number, y: number}>} puntos
+ * @param {number} dedo - 12 para el medio, 16 para el anular
+ */
+function pulgarTocaDedo(puntos, dedo) {
+  const tamano = tamanoMano(puntos);
+  return distanciaPx(puntos[4], puntos[dedo]) < FACTOR_TOQUE_DEDOS * tamano
+    && distanciaPx(puntos[4], puntos[8]) > 2 * FACTOR_TOQUE_DEDOS * tamano;
+}
+
+/**
+ * Pulgar tocando el dedo medio medio segundo: deshace. Pulgar tocando el
+ * anular medio segundo: rehace. Cada gesto se emite una vez hasta que se
+ * suelta la pose.
+ * @param {import('@mediapipe/tasks-vision').HandLandmarkerResult} resultado
+ * @param {number} ahora
+ */
+function procesarDeshacerRehacer(resultado, ahora) {
+  const manos = resultado.landmarks || [];
+  const x = suavizado ? suavizado.x : 0.5;
+  const y = suavizado ? suavizado.y : 0.5;
+  if (mantenedorDeshacer.actualizar(manos.some((p) => pulgarTocaDedo(p, 12)), ahora, x, y)) {
+    emit('gesto:deshacer');
+  }
+  if (mantenedorRehacer.actualizar(manos.some((p) => pulgarTocaDedo(p, 16)), ahora, x, y)) {
+    emit('gesto:rehacer');
+  }
+}
+
+/**
+ * Dos pinzas (pulgar e índice juntos en cada mano): emite gesto:zoom con
+ * el factor de cambio de la distancia entre las pinzas desde que empezaron,
+ * entre 0.5 y 3. Separarlas acerca; juntarlas aleja.
  * @param {import('@mediapipe/tasks-vision').HandLandmarkerResult} resultado
  */
 function procesarZoom(resultado) {
   const manos = resultado.landmarks || [];
-  const enmarcan = manos.length >= 2
-    && esMarco(manos[0])
-    && esMarco(manos[1]);
+  const umbral = zoomActivo ? umbralesPellizco.soltar : umbralesPellizco.agarrar;
+  const pinzas = manos.length >= 2
+    && esPellizco(manos[0], umbral)
+    && esPellizco(manos[1], umbral);
 
-  if (!enmarcan) {
+  if (!pinzas) {
     zoomActivo = false;
     referenciaZoom = null;
     ultimoFactorZoom = 1;
     return;
   }
 
-  const distancia = distanciaEntreCentros(manos[0], manos[1]);
+  const distancia = distanciaEntrePinzas(manos[0], manos[1]);
   if (!zoomActivo) {
     zoomActivo = true;
     referenciaZoom = distancia;
@@ -853,21 +901,25 @@ function procesarZoom(resultado) {
  * @param {number} ahora
  */
 function procesarManoPerdida(ahora) {
+  if (manoEnCuadro && suavizado) emit('gesto:soltar', { ...suavizado, cancelado: true });
+  manoEnCuadro = false;
+  palmaAntes = false;
+  puntoPunoAnterior = null;
+  puntoPunoSuave = null;
+  mantenedorDeshacer.reiniciar();
+  mantenedorRehacer.reiniciar();
   cuadrosSinIndice = 0;
+  ultimoBloqueoAgarre = '';
   moverActivo = false;
   suavizadoMover = null;
   referenciaMover = null;
-  rotarActivo = false;
-  ultimoAnguloRotar = null;
   zoomActivo = false;
   referenciaZoom = null;
   ultimoFactorZoom = 1;
   mantenedorListo.reiniciar();
   mantenedorPaleta.reiniciar();
   mantenedorMicrofono.reiniciar();
-  mantenedorCuadro.reiniciar();
-  mantenedorClic.reiniciar();
-  posicionClic = null;
+  mantenedorEliminar.reiniciar();
   ocultarProgreso();
   if (!agarrando) {
     ocultarCursor();
@@ -877,7 +929,7 @@ function procesarManoPerdida(ahora) {
   if (ahora - ultimoMomentoConMano < MS_MANO_PERDIDA) return;
 
   agarrando = false;
-  emit('gesto:pellizco-fin', { ...suavizado });
+  emit('gesto:seleccionar-fin', { ...suavizado });
   emit('ui:mensaje', {
     tipo: 'aviso',
     texto: 'Perdí tu mano y solté el átomo donde estaba.',
@@ -888,8 +940,8 @@ function procesarManoPerdida(ahora) {
 
 /**
  * Agarra con índice arriba, mueve con la punta del índice y suelta
- * al bajar el índice 3 cuadros. La palma abierta solo mueve el
- * cursor. Emite los eventos gesto:pellizco-* que escucha atoms.js.
+ * al bajar el índice 5 cuadros. Con la palma abierta solo se mueve
+ * el cursor. Emite los eventos gesto:seleccionar-* que escucha atoms.js.
  * @param {import('@mediapipe/tasks-vision').HandLandmarkerResult} resultado
  * @param {number} ahora
  */
@@ -901,6 +953,7 @@ function procesarAgarre(resultado, ahora) {
   }
 
   ultimoMomentoConMano = ahora;
+  manoEnCuadro = true;
 
   // La x se refleja aquí para que coincida con la vista en espejo.
   const x = 1 - puntos[PUNTO_INDICE].x;
@@ -912,29 +965,34 @@ function procesarAgarre(resultado, ahora) {
     }
     : { x, y };
 
-  cuadrosSinIndice = agarrando && !esIndiceArriba(puntos) ? cuadrosSinIndice + 1 : 0;
+  const indiceArriba = esIndiceArriba(puntos);
+  if (!indiceArriba) ultimoBloqueoAgarre = '';
+  cuadrosSinIndice = agarrando && !indiceArriba ? cuadrosSinIndice + 1 : 0;
 
-  // Con el pulgar junto al índice es un pellizco, no un agarre;
-  // con pulgar e índice abiertos es un marco, tampoco.
-  const pellizcando = esPellizco(puntos, umbralesPellizco.soltar);
-  const enmarcando = esMarco(puntos);
+  // Pulgar muy cerca del índice es pinza, y con la palma abierta solo
+  // se mueve el cursor: ninguna de las dos arranca el agarre.
+  const enPinza = esPellizco(puntos, umbralesPellizco.agarrar);
+  const palmaAbierta = esPalmaAbierta(puntos);
 
   if (agarrando && cuadrosSinIndice >= CUADROS_PARA_SOLTAR) {
     agarrando = false;
     cuadrosSinIndice = 0;
-    emit('gesto:pellizco-fin', { ...suavizado });
-  } else if (!agarrando && esIndiceArriba(puntos) && !pellizcando && !enmarcando) {
+    emit('gesto:seleccionar-fin', { ...suavizado });
+  } else if (!agarrando && indiceArriba && !enPinza && !palmaAbierta) {
     agarrando = true;
-    emit('gesto:pellizco-inicio', { ...suavizado });
-  } else if (agarrando && esIndiceArriba(puntos)) {
-    emit('gesto:pellizco-mover', { ...suavizado });
+    ultimoBloqueoAgarre = '';
+    emit('gesto:seleccionar-inicio', { ...suavizado });
+  } else if (agarrando && indiceArriba) {
+    emit('gesto:seleccionar-mover', { ...suavizado });
+  } else if (!agarrando && indiceArriba) {
+    registrarBloqueoAgarre(enPinza ? 'pinza' : 'palma abierta');
   }
 
   procesarListo(puntos, ahora);
   procesarPaleta(puntos, ahora);
   procesarMicrofono(puntos, ahora);
-  procesarCanvas(puntos, ahora);
-  procesarClic(puntos, ahora);
+  procesarSoltar(puntos);
+  procesarEliminar(puntos, ahora);
   mostrarCursor(suavizado.x, suavizado.y);
 }
 
@@ -959,7 +1017,8 @@ function bucleDeteccion() {
     dibujarManos(resultado);
     procesarAgarre(resultado, ahora);
     procesarMover(resultado);
-    procesarRotar(resultado);
+    procesarGirar(resultado);
+    procesarDeshacerRehacer(resultado, ahora);
     procesarZoom(resultado);
     medirFPS(ahora);
   } catch (error) {
@@ -1015,22 +1074,28 @@ export async function iniciarGestos() {
  */
 export function detenerGestos() {
   detenido = true;
-  if (agarrando) emit('gesto:pellizco-fin', { ...suavizado });
+  if (agarrando) emit('gesto:seleccionar-fin', { ...suavizado });
+  if (manoEnCuadro && suavizado) emit('gesto:soltar', { ...suavizado, cancelado: true });
+  manoEnCuadro = false;
+  palmaAntes = false;
+  puntoPunoAnterior = null;
+  puntoPunoSuave = null;
+  mantenedorDeshacer.reiniciar();
+  mantenedorRehacer.reiniciar();
+  ultimoBloqueoAgarre = '';
   agarrando = false;
   cuadrosSinIndice = 0;
   suavizado = null;
   moverActivo = false;
   suavizadoMover = null;
   referenciaMover = null;
-  rotarActivo = false;
-  ultimoAnguloRotar = null;
   zoomActivo = false;
   referenciaZoom = null;
   ultimoFactorZoom = 1;
   mantenedorListo.reiniciar();
   mantenedorPaleta.reiniciar();
   mantenedorMicrofono.reiniciar();
-  mantenedorCuadro.reiniciar();
+  mantenedorEliminar.reiniciar();
   ocultarCursor();
   limpiarElementoEnCursor();
   ocultarProgreso();
@@ -1056,28 +1121,12 @@ export function obtenerEstadoCamara() {
 }
 
 /** Devuelve true si el cursor está dentro del tablero. */
-export function estaEnCanvas() {
-  return enCanvas;
-}
-
 /**
  * Cambia el modo del cursor: dentro del tablero los gestos mueven
  * la molécula; fuera, el cursor pulsa la interfaz. No hace nada
  * si ya se está en ese modo.
  * @param {boolean} dentro
  */
-export function cambiarModoCanvas(dentro) {
-  if (enCanvas === dentro) return;
-  enCanvas = dentro;
-  emit('gesto:canvas', { dentro });
-  emit('ui:mensaje', {
-    tipo: 'aviso',
-    texto: dentro
-      ? 'Estás en el tablero. Los gestos mueven la molécula.'
-      : 'Estás en la interfaz. El cursor puede pulsar botones.',
-  });
-}
-
 /**
  * Cambia los umbrales del pellizco, como fracción del ancho del video.
  * @param {{agarrar?: number, soltar?: number}} nuevos

@@ -123,8 +123,8 @@ export function rotarVista(dx, dy) {
 }
 
 /**
- * Mueve la vista con el objeto: el desplazamiento sigue a la mano
- * en la pantalla. dx y dy son fracciones de la ventana (0.5 = media).
+ * Mueve la vista al lado contrario de la mano. dx y dy son fracciones
+ * de la ventana (0.5 = media).
  */
 export function desplazarVista(dx, dy) {
     if (!iniciado) return;
@@ -132,9 +132,10 @@ export function desplazarVista(dx, dy) {
     const distancia = camara.position.distanceTo(controles.target);
     const derecha = new THREE.Vector3().setFromMatrixColumn(camara.matrix, 0);
     const arriba = new THREE.Vector3().setFromMatrixColumn(camara.matrix, 1);
+    // Signo invertido: la vista va al lado contrario de la mano.
     const desplazamiento = new THREE.Vector3()
-        .addScaledVector(derecha, dx * distancia)
-        .addScaledVector(arriba, -dy * distancia);
+        .addScaledVector(derecha, -dx * distancia)
+        .addScaledVector(arriba, dy * distancia);
 
     controles.target.add(desplazamiento);
     camara.position.add(desplazamiento);
