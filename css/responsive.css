@@ -118,10 +118,24 @@
   .lista-elementos {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-  
+
   @media (max-width: 600px) {
-  .tutorial {
-    bottom: 96px;
+    .tutorial {
+      bottom: 96px;
+    }
   }
 }
+
+/* Realidad aumentada en pantallas apiladas: el editor va arriba y la RA abajo,
+   cada una con una altura que deja ver la otra. */
+@media (max-width: 1023px) {
+  .area-escena.vista-dividida {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+  }
+
+  .area-escena.vista-dividida .lienzo {
+    height: min(46vh, 420px);
+    min-height: 280px;
+  }
 }

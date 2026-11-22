@@ -1866,54 +1866,125 @@ label[for="menu-info"].boton-menu::before {
 }
 
 @keyframes tutorial-dedo {
-  0%, 100% { transform: translateX(0); }
-  50% { transform: translateX(30px); }
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  50% {
+    transform: translateX(30px);
+  }
 }
 
 @keyframes tutorial-atomo-mover {
-  0%, 100% { transform: translateX(-20px); }
-  50% { transform: translateX(20px); }
+
+  0%,
+  100% {
+    transform: translateX(-20px);
+  }
+
+  50% {
+    transform: translateX(20px);
+  }
 }
 
 @keyframes tutorial-girar {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes tutorial-marco-izq {
-  from { transform: translate(0, 0); }
-  to { transform: translate(10px, 10px); }
+  from {
+    transform: translate(0, 0);
+  }
+
+  to {
+    transform: translate(10px, 10px);
+  }
 }
 
 @keyframes tutorial-marco-der {
-  from { transform: translate(0, 0); }
-  to { transform: translate(-10px, -10px); }
+  from {
+    transform: translate(0, 0);
+  }
+
+  to {
+    transform: translate(-10px, -10px);
+  }
 }
 
 @keyframes tutorial-paleta {
-  0% { transform: translateX(40px); opacity: 0; }
-  30%, 80% { transform: translateX(0); opacity: 1; }
-  100% { transform: translateX(40px); opacity: 0; }
+  0% {
+    transform: translateX(40px);
+    opacity: 0;
+  }
+
+  30%,
+  80% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(40px);
+    opacity: 0;
+  }
 }
 
 @keyframes tutorial-caer {
-  0% { transform: translateY(-30px); opacity: 0; }
-  40%, 80% { transform: translateY(0); opacity: 1; }
-  100% { transform: translateY(0); opacity: 0; }
+  0% {
+    transform: translateY(-30px);
+    opacity: 0;
+  }
+
+  40%,
+  80% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(0);
+    opacity: 0;
+  }
 }
 
 @keyframes tutorial-pulso {
-  0%, 100% { transform: scale(0.9); opacity: 0.5; }
-  50% { transform: scale(1.1); opacity: 1; }
+
+  0%,
+  100% {
+    transform: scale(0.9);
+    opacity: 0.5;
+  }
+
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
 }
 
 @keyframes tutorial-pulso-suave {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
+
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 
 @keyframes tutorial-check {
-  from { stroke-dashoffset: 60; }
-  to { stroke-dashoffset: 0; }
+  from {
+    stroke-dashoffset: 60;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
 /* Móvil: la tarjeta ocupa el ancho bajo la escena */
@@ -1934,9 +2005,114 @@ label[for="menu-info"].boton-menu::before {
 /* Quien prefiere menos movimiento ve la demostración quieta */
 
 @media (prefers-reduced-motion: reduce) {
+
   .tutorial *,
   .tutorial-demo * {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* Realidad aumentada: área de trabajo con el editor y la vista de RA.
+   Mientras la RA está apagada, el área es una sola columna, como antes. */
+
+.area-escena {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 16px;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* Vista dividida: editor a la izquierda y RA a la derecha. */
+.area-escena.vista-dividida {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.area-escena.vista-editor #lienzo-ra,
+.area-escena.vista-ra #lienzo-3d {
+  display: none;
+}
+
+/* La cámara de las manos se oculta con la RA: ahí la usa MindAR. */
+body.modo-ra .camara-flotante {
+  display: none;
+}
+
+.lienzo-ra {
+  background-color: #0F1419;
+  background-image: none;
+}
+
+.lienzo-ra video {
+  position: absolute;
+  z-index: 0;
+}
+
+.estado-ra {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 3;
+  margin: 0;
+  padding: 6px 10px;
+  font: 400 16px/1.5 Inter, system-ui, sans-serif;
+  color: var(--texto);
+  background: var(--superficie);
+  border-radius: 8px;
+  box-shadow: var(--sombra);
+}
+
+.estado-ra:empty {
+  display: none;
+}
+
+/* Selector de vista del encabezado (solo aparece con la RA activa). */
+.selector-vista {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.selector-vista[hidden] {
+  display: none;
+}
+
+.boton-vista {
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid var(--borde-fuerte);
+  border-radius: 12px;
+  background: var(--superficie);
+  color: var(--accion);
+  font: 600 16px/1.2 Inter, system-ui, sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.boton-vista:hover {
+  background: var(--accion-suave);
+}
+
+.boton-vista[aria-pressed="true"] {
+  background: var(--accion);
+  border-color: transparent;
+  color: #FFFFFF;
+}
+
+.boton-vista[aria-pressed="true"]:hover {
+  background: var(--accion-hover);
+}
+
+.boton-vista:focus-visible {
+  outline: 3px solid var(--accion);
+  outline-offset: 3px;
+}
+
+/* El botón de RA muestra que está encendida, sin depender solo del color. */
+.respaldo [data-accion="ra"][aria-pressed="true"] {
+  background: var(--accion-suave);
+  border-color: var(--accion);
+  color: var(--accion);
 }

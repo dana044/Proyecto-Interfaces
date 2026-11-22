@@ -1,13 +1,37 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Prototipo AR · MolecuLab</title>
   <style>
-    html, body { margin: 0; height: 100%; background: #0F1419; overflow: hidden; font-family: Inter, system-ui, sans-serif; }
-    #contenedor { position: fixed; inset: 0; overflow: hidden; }
-    #estado { position: fixed; left: 12px; bottom: 12px; z-index: 5; color: #e5e7eb; background: rgba(15, 20, 25, 0.85); padding: 6px 10px; border-radius: 8px; font-size: 14px; }
+    html,
+    body {
+      margin: 0;
+      height: 100%;
+      background: #0F1419;
+      overflow: hidden;
+      font-family: Inter, system-ui, sans-serif;
+    }
+
+    #contenedor {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+    }
+
+    #estado {
+      position: fixed;
+      left: 12px;
+      bottom: 12px;
+      z-index: 5;
+      color: #e5e7eb;
+      background: rgba(15, 20, 25, 0.85);
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
   </style>
   <script type="importmap">
   {
@@ -18,6 +42,7 @@
   }
   </script>
 </head>
+
 <body>
   <div id="contenedor"></div>
   <div id="estado">Iniciando cámara…</div>
@@ -30,7 +55,8 @@
     const estado = document.getElementById('estado');
     const contenedor = document.getElementById('contenedor');
     const rutaMind = new URLSearchParams(location.search).get('mind') ?? 'marcador_v0.mind';
-    const ANCHO = 640, ALTO = 480;
+    // Se toman de la cámara real (ver abajo): MindAR debe recibir la misma proporción que el video.
+    let ANCHO = 640, ALTO = 480;
 
     // --- Cámara y video de fondo ---
     const video = document.createElement('video');
@@ -39,6 +65,7 @@
     video.style.position = 'absolute';
     contenedor.appendChild(video);
 
+    estado.textContent = 'Paso 1: pidiendo permiso de cámara…';
     try {
       const flujo = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment', width: { ideal: ANCHO }, height: { ideal: ALTO } },
@@ -46,6 +73,9 @@
       });
       video.srcObject = flujo;
       await video.play();
+      ANCHO = video.videoWidth;
+      ALTO = video.videoHeight;
+      estado.textContent = 'Paso 2: cámara ' + ANCHO + '×' + ALTO + ', cargando marcador…';
     } catch (error) {
       estado.textContent = 'No pude abrir la cámara: ' + error.message;
       throw error;
@@ -70,7 +100,14 @@
       },
     });
 
-    const dimensiones = (await controlador.addImageTargets(rutaMind)).dimensions;
+    let dimensiones;
+    try {
+      dimensiones = (await controlador.addImageTargets(rutaMind)).dimensions;
+    } catch (error) {
+      estado.textContent = 'Error al cargar el marcador: ' + error.message;
+      throw error;
+    }
+    estado.textContent = 'Paso 3: marcador cargado, iniciando detección…';
     const [anchoMarcador, altoMarcador] = dimensiones[0];
     const postMatrix = new THREE.Matrix4().compose(
       new THREE.Vector3(anchoMarcador / 2, anchoMarcador / 2 + (altoMarcador - anchoMarcador) / 2, 0),
@@ -153,7 +190,8 @@
     await controlador.dummyRun(video);
     controlador.processVideo(video);
     renderer.setAnimationLoop(() => renderer.render(escena, camara));
-    estado.textContent = 'Buscando marcador…';
+    estado.textContent = 'Paso 4: buscando marcador…';
   </script>
 </body>
+
 </html>

@@ -59,6 +59,11 @@
       <label for="menu-info" class="boton-menu">
         <span>Información</span>
       </label>
+      <div id="selector-vista" class="selector-vista" role="group" aria-label="Qué mostrar" hidden>
+        <button type="button" class="boton-vista" data-vista="dividida" aria-pressed="true">Dividida</button>
+        <button type="button" class="boton-vista" data-vista="editor" aria-pressed="false">Solo editor</button>
+        <button type="button" class="boton-vista" data-vista="ra" aria-pressed="false">Solo RA</button>
+      </div>
       <button type="button" class="boton-tema" id="boton-tema" aria-label="Cambiar a tema oscuro"><span
           class="solo-lector">Tema oscuro</span></button>
       <span class="chip-estado estado-ok" id="estado-accion"><strong>Última acción</strong> <span class="valor">Ninguna
@@ -120,27 +125,37 @@
       </section>
     </aside>
 
-    <!-- Escena 3D: Three.js crea aquí su propio canvas -->
-    <section id="lienzo-3d" class="lienzo" aria-label="Escena 3D de la molécula">
+    <!-- Área de trabajo: editor 3D y, al activar la RA, la vista de realidad aumentada -->
+    <div id="area-escena" class="area-escena">
 
-      <!-- Tarjeta con la información de un átomo: solo aparece al
+      <!-- Escena 3D: Three.js crea aquí su propio canvas -->
+      <section id="lienzo-3d" class="lienzo" aria-label="Escena 3D de la molécula">
+
+        <!-- Tarjeta con la información de un átomo: solo aparece al
            dejar el cursor sobre él en la escena. -->
-      <div id="tarjeta-atomo" class="tarjeta-atomo" hidden></div>
+        <div id="tarjeta-atomo" class="tarjeta-atomo" hidden></div>
 
-      <!-- Pista de gestos y atajos: solo lectura. -->
-      <p class="pista-escena" aria-hidden="true">Mano para mover · Pulgar arriba para verificar · Espacio para hablar
-      </p>
+        <!-- Pista de gestos y atajos: solo lectura. -->
+        <p class="pista-escena" aria-hidden="true">Mano para mover · Pulgar arriba para verificar · Espacio para hablar
+        </p>
 
-      <!-- Cámara en espejo con la superposición de la mano (abajo a la izquierda, como en el wireframe) -->
-      <figure class="camara-flotante">
-        <div class="camara">
-          <video id="camara-espejo" autoplay playsinline muted></video>
-          <canvas id="superposicion-mano"></canvas>
-        </div>
-        <figcaption>Cámara espejo</figcaption>
-      </figure>
+        <!-- Cámara en espejo con la superposición de la mano (abajo a la izquierda, como en el wireframe) -->
+        <figure class="camara-flotante">
+          <div class="camara">
+            <video id="camara-espejo" autoplay playsinline muted></video>
+            <canvas id="superposicion-mano"></canvas>
+          </div>
+          <figcaption>Cámara espejo</figcaption>
+        </figure>
 
-    </section>
+      </section>
+
+      <!-- Realidad aumentada: oculta hasta activarla. MindAR y Three colocan aquí el video y la molécula. -->
+      <section id="lienzo-ra" class="lienzo lienzo-ra" aria-label="Realidad aumentada de la molécula" hidden>
+        <p id="estado-ra" class="estado-ra" aria-live="polite"></p>
+      </section>
+
+    </div>
 
     <!-- Información de la molécula identificada -->
     <aside id="panel-info" class="panel panel-info" aria-labelledby="titulo-info">
@@ -238,6 +253,12 @@
       <span class="globo" aria-hidden="true"><b>Escribe una fórmula o una estructura y agrega la molécula</b><small>Voz
           o clic</small></span>
       <span class="solo-lector">Voz o clic</span>
+    </button>
+    <button class="boton tip" type="button" data-accion="ra" aria-pressed="false">
+      Realidad aumentada
+      <span class="globo" aria-hidden="true"><b>Muestra la molécula sobre la tarjeta de MolecuLab con la
+          cámara</b><small>Clic o voz</small></span>
+      <span class="solo-lector">Clic</span>
     </button>
     <button class="boton tip" data-accion="reto">
       Modo reto

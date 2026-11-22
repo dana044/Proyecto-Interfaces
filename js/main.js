@@ -1,7 +1,8 @@
 /**
  * @fileoverview Punto de entrada de MolecuLab 3D.
  * Inicia los módulos en orden: interfaz, bus, estado, escena,
- * modelo de Bohr, arrastre, química, gestos, comandos de átomos,
+ * modelo de Bohr, arrastre, química, gestos, realidad aumentada,
+ * comandos de átomos,
  * tutorial, reto, comandos de voz y voz.
  * Si un módulo falla, los demás siguen funcionando.
  * @author Dana Carmona Santamaria
@@ -23,6 +24,7 @@ import { iniciarQuimica } from './chemistry.js';
 import { iniciarReto } from './reto.js';
 import { iniciarIO } from './io.js';
 import { iniciarPizarra } from './pizarra.js';
+import { iniciarRA } from './ra.js';
 
 /**
  * Intenta iniciar un módulo. Si falla, emite un mensaje de error
@@ -61,6 +63,7 @@ async function iniciarApp() {
   });
   await iniciarModulo('química', iniciarQuimica);
   await iniciarModulo('gestos', iniciarGestos);
+  await iniciarModulo('realidad aumentada', iniciarRA);
   await iniciarModulo('comandos de átomos', iniciarComandosDeAtomos);
   await iniciarModulo('tutorial', iniciarTutorial);
   await iniciarModulo('exportar e importar', iniciarIO);

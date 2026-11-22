@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Prototipo AR · MolecuLab</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            height: 100%;
+            background: #0F1419;
+            overflow: hidden;
+            font-family: Inter, system-ui, sans-serif;
+        }
+
+        #contenedor {
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
+        }
+
+        #estado {
+            position: fixed;
+            left: 12px;
+            bottom: 12px;
+            z-index: 5;
+            color: #e5e7eb;
+            background: rgba(15, 20, 25, 0.85);
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+    </style>
+    <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.183.2/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.183.2/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+
+<body>
+    <div id="contenedor"></div>
+    <div id="estado">Iniciando cámara…</div>
+    <div id="cuadros"
+        style="position:fixed;right:12px;top:12px;z-index:5;color:#e5e7eb;background:rgba(15,20,25,0.85);padding:6px 10px;border-radius:8px;font:14px Inter,system-ui,sans-serif;">
+        Cuadros analizados: 0</div>
+
+    <script type="module">
+        // Prototipo de RA: MindAR (núcleo, sin su puente con Three) + un puente propio con Three 0.183.2.
+        import * as THREE from 'three';
+        import { Controller } from 'https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js';
+
+        const estado = document.getElementById('estado');
+        const contadorCuadros = document.getElementById('cuadros');
+        let cuadros = 0;
+        const contenedor = document.getElementById('contenedor');
+        const rutaMind = new URLSearchParams(location.search).get('mind') ?? 'marcador_v0.mind';
+        // Se toman de la cámara real (ver abajo): MindAR debe recibir la misma proporción que el video.
+        let ANCHO = 640, ALTO = 480;
+
+        // --- Cámara y video de fondo ---
+        const video = document.createElement('video');
+        video.setAttribute('playsinline', '');
+        video.muted = true;
+        video.style.position = 'absolute';
+        contenedor.appendChild(video);
+
+        estado.textContent = 'Paso 1: pidiendo permiso de cámara…';
+        try {
+            const flujo = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment', width: { ideal: ANCHO }, height: { ideal: ALTO } },
+                audio: false,
+            });
+            video.srcObject = flujo;
+            await video.play();
+            ANCHO = video.videoWidth;
+            ALTO = video.videoHeight;
+            // Como el ejemplo oficial: el tamaño de origen de MindAR debe ser la resolución real de la cámara.
+            video.setAttribute('width', ANCHO);
+            video.setAttribute('height', ALTO);
+            estado.textContent = 'Paso 2: cámara ' + ANCHO + '×' + ALTO + ', cargando marcador…';
+        } catch (error) {
+            estado.textContent = 'No pude abrir la cámara: ' + error.message;
+            throw error;
+        }
+
+        // --- Controlador de MindAR y el marcador ---
+        const controlador = new Controller({
+            inputWidth: ANCHO,
+            inputHeight: ALTO,
+            maxTrack: 1,
+            onUpdate: (dato) => {
+                if (dato.type === 'processDone') {
+                    cuadros++;
+                    contadorCuadros.textContent = 'Cuadros analizados: ' + cuadros;
+                    return;
+                }
+                if (dato.type !== 'updateMatrix' || dato.targetIndex !== 0) return;
+                if (dato.worldMatrix) {
+                    // worldMatrix · postMatrix: lleva el marcador al espacio del ancla (1 unidad = ancho de la tarjeta).
+                    ancla.matrix.fromArray(dato.worldMatrix).multiply(postMatrix);
+                    ancla.visible = true;
+                    estado.textContent = 'Marcador reconocido';
+                } else {
+                    ancla.visible = false;
+                    estado.textContent = 'Buscando marcador…';
+                }
+            },
+        });
+
+        let dimensiones;
+        try {
+            dimensiones = (await controlador.addImageTargets(rutaMind)).dimensions;
+        } catch (error) {
+            estado.textContent = 'Error al cargar el marcador: ' + error.message;
+            throw error;
+        }
+        estado.textContent = 'Paso 3: marcador cargado, iniciando detección…';
+        const [anchoMarcador, altoMarcador] = dimensiones[0];
+        const postMatrix = new THREE.Matrix4().compose(
+            new THREE.Vector3(anchoMarcador / 2, anchoMarcador / 2 + (altoMarcador - anchoMarcador) / 2, 0),
+            new THREE.Quaternion(),
+            new THREE.Vector3(anchoMarcador, anchoMarcador, anchoMarcador),
+        );
+
+        // --- Escena de Three.js ---
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        contenedor.appendChild(renderer.domElement);
+        const escena = new THREE.Scene();
+        const camara = new THREE.PerspectiveCamera();
+        escena.add(new THREE.HemisphereLight(0xffffff, 0x334455, 2));
+
+        const ancla = new THREE.Group();
+        ancla.matrixAutoUpdate = false;
+        ancla.visible = false;
+        escena.add(ancla);
+
+        // Molécula de prueba (agua), escalada para que quepa en la tarjeta de 8 cm.
+        const ESCALA = 0.2;
+        const molecula = new THREE.Group();
+        const material = (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.4 });
+        const esferas = [
+            { p: [0, 0, 0], r: 0.42, c: 0x2563eb },
+            { p: [0.9, 0.6, 0], r: 0.30, c: 0x2563eb },
+            { p: [-0.9, 0.6, 0], r: 0.30, c: 0x2563eb },
+        ];
+        for (const e of esferas) {
+            const m = new THREE.Mesh(new THREE.SphereGeometry(e.r, 32, 24), material(e.c));
+            m.position.set(...e.p);
+            molecula.add(m);
+        }
+        for (const extremo of [esferas[1].p, esferas[2].p]) {
+            const a = new THREE.Vector3(0, 0, 0), b = new THREE.Vector3(...extremo);
+            const cilindro = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, a.distanceTo(b), 16), material(0x6b7280));
+            cilindro.position.copy(a).add(b).multiplyScalar(0.5);
+            cilindro.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+            molecula.add(cilindro);
+        }
+        molecula.scale.setScalar(ESCALA);
+        ancla.add(molecula);
+
+        // --- Ajuste del tamaño y del campo de visión (mismo criterio que el puente de MindAR) ---
+        function ajustar() {
+            const contenedorAncho = contenedor.clientWidth, contenedorAlto = contenedor.clientHeight;
+            const relacionVideo = video.videoWidth / video.videoHeight;
+            const relacionContenedor = contenedorAncho / contenedorAlto;
+            let vw, vh;
+            if (relacionVideo > relacionContenedor) { vh = contenedorAlto; vw = vh * relacionVideo; }
+            else { vw = contenedorAncho; vh = vw / relacionVideo; }
+            video.style.width = vw + 'px';
+            video.style.height = vh + 'px';
+            video.style.left = (-(vw - contenedorAncho) / 2) + 'px';
+            video.style.top = (-(vh - contenedorAlto) / 2) + 'px';
+
+            const proy = controlador.getProjectionMatrix();
+            const relacionEntrada = ANCHO / ALTO;
+            const ajusteEntrada = relacionEntrada > relacionContenedor
+                ? video.videoWidth / ANCHO
+                : video.videoHeight / ALTO;
+            const altoVisible = relacionEntrada > relacionContenedor
+                ? contenedorAlto * ajusteEntrada
+                : (contenedorAncho / ANCHO * ALTO) * ajusteEntrada;
+            const ajusteCampo = contenedorAlto / altoVisible;
+            camara.fov = 2 * Math.atan(1 / proy[5] * ajusteCampo) * 180 / Math.PI;
+            camara.near = proy[14] / (proy[10] - 1.0);
+            camara.far = proy[14] / (proy[10] + 1.0);
+            camara.aspect = contenedorAncho / contenedorAlto;
+            camara.updateProjectionMatrix();
+            renderer.setSize(contenedorAncho, contenedorAlto);
+        }
+        window.addEventListener('resize', ajustar);
+        video.addEventListener('loadedmetadata', ajustar);
+        ajustar();
+
+        // --- Arranque ---
+        await controlador.dummyRun(video);
+        controlador.processVideo(video);
+        renderer.setAnimationLoop(() => renderer.render(escena, camara));
+        estado.textContent = 'Paso 4: buscando marcador…';
+    </script>
+</body>
+
+</html>
