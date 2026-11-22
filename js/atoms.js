@@ -790,6 +790,28 @@ function liberarGrupo(grupo) {
 }
 
 /**
+ * Reemplaza la escena por una foto guardada en un archivo. Cuenta como
+ * una sola acción en el historial, así que deshacer vuelve a la escena
+ * que había antes de importar. La foto debe venir validada.
+ * @param {{ atomos: Array, enlaces: Array }} foto Foto a restaurar.
+ * @returns {boolean} true si la escena quedó reemplazada.
+ */
+export function importarFoto(foto) {
+    ocultarTarjetaAtomo();
+    limpiarVistaPrevia();
+    guardarFoto('importar molécula');
+    restaurando = true;
+    restaurarFoto(foto);
+    restaurando = false;
+
+    const cantidadAtomos = foto.atomos.length;
+    const cantidadEnlaces = foto.enlaces.length;
+    enviarMensaje('aviso', `Molécula importada: ${cantidadAtomos} átomos y ${cantidadEnlaces} enlaces`);
+    setUltimaAccion(`Importaste una molécula (${cantidadAtomos} átomos)`);
+    return true;
+}
+
+/**
  * Deshace la última acción, restaurando la foto anterior de la
  * escena (átomos y enlaces). Guarda el estado actual en la pila
  * de rehacer, para poder volver con rehacer(). Devuelve false

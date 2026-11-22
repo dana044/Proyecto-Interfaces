@@ -58,7 +58,8 @@
       <label for="menu-info" class="boton-menu">
         <span>Información</span>
       </label>
-      <button type="button" class="boton-tema" id="boton-tema" aria-label="Cambiar a tema oscuro"><span class="solo-lector">Tema oscuro</span></button>
+      <button type="button" class="boton-tema" id="boton-tema" aria-label="Cambiar a tema oscuro"><span
+          class="solo-lector">Tema oscuro</span></button>
       <span class="chip-estado estado-ok" id="estado-accion"><strong>Última acción</strong> <span class="valor">Ninguna
           todavía</span></span>
     </div>
@@ -69,7 +70,8 @@
   <div id="zona-mensajes" class="zona-mensajes" role="status" aria-live="polite" hidden>
     <span class="icono" aria-hidden="true">i</span>
     <p></p>
-    <button class="cerrar-mensaje" type="button" aria-label="Cerrar aviso"><span class="solo-lector">Cerrar</span></button>
+    <button class="cerrar-mensaje" type="button" aria-label="Cerrar aviso"><span
+        class="solo-lector">Cerrar</span></button>
   </div>
 
   <!-- Subtítulo en vivo: lo que el micrófono entendió, 2 segundos. -->
@@ -125,7 +127,8 @@
       <div id="tarjeta-atomo" class="tarjeta-atomo" hidden></div>
 
       <!-- Pista de gestos y atajos: solo lectura. -->
-      <p class="pista-escena" aria-hidden="true">Mano para mover · Pulgar arriba para verificar · Espacio para hablar</p>
+      <p class="pista-escena" aria-hidden="true">Mano para mover · Pulgar arriba para verificar · Espacio para hablar
+      </p>
 
       <!-- Cámara en espejo con la superposición de la mano (abajo a la izquierda, como en el wireframe) -->
       <figure class="camara-flotante">
@@ -218,17 +221,32 @@
       <span class="globo" aria-hidden="true"><b>Borra la escena, con confirmación</b><small>Voz o clic</small></span>
       <span class="solo-lector">Voz o clic</span>
     </button>
+    <button class="boton tip" type="button" data-accion="exportar">
+      Exportar
+      <span class="globo" aria-hidden="true"><b>Guarda la molécula con sus posiciones en un archivo .json</b><small>Voz
+          o clic</small></span>
+      <span class="solo-lector">Voz o clic</span>
+    </button>
+    <button class="boton tip" type="button" data-accion="importar">
+      Importar
+      <span class="globo" aria-hidden="true"><b>Abre una molécula guardada en un archivo .json</b><small>Voz o
+          clic</small></span>
+      <span class="solo-lector">Voz o clic</span>
+    </button>
+    <input type="file" id="entrada-molecula" accept=".json,application/json" hidden>
 
     <hr class="separador-barra" aria-hidden="true">
 
     <button class="boton tip" data-accion="reto">
       Modo reto
-      <span class="globo" aria-hidden="true"><b>Entra al modo reto «construye una molécula»</b><small>Voz o clic</small></span>
+      <span class="globo" aria-hidden="true"><b>Entra al modo reto «construye una molécula»</b><small>Voz o
+          clic</small></span>
       <span class="solo-lector">Voz o clic</span>
     </button>
     <button class="boton boton-principal tip" data-accion="verificar">
       Verificar molécula
-      <span class="globo" aria-hidden="true"><b>Verifica la molécula</b><small>Pulgar arriba (1 s), voz o clic</small></span>
+      <span class="globo" aria-hidden="true"><b>Verifica la molécula</b><small>Pulgar arriba (1 s), voz o
+          clic</small></span>
       <span class="solo-lector">Pulgar arriba, voz o clic</span>
     </button>
     <button class="boton tip estado-aviso" data-accion="microfono" aria-keyshortcuts="Space">
@@ -239,9 +257,9 @@
     </button>
     <div class="estado-equipo">
       <span class="chip-estado estado-aviso" id="estado-camara"><strong>Cámara</strong> <span class="valor">Sin
-              permiso</span></span>
-          <span class="chip-estado estado-aviso" id="estado-mano"><strong>Mano</strong> <span class="valor">No
-              detectada</span></span>
+          permiso</span></span>
+      <span class="chip-estado estado-aviso" id="estado-mano"><strong>Mano</strong> <span class="valor">No
+          detectada</span></span>
     </div>
     <button type="button" class="boton" data-accion="silenciar-sonidos" aria-pressed="false">Silenciar tonos</button>
   </footer>
