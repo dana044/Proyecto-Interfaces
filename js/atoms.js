@@ -812,6 +812,94 @@ export function importarFoto(foto) {
 }
 
 /**
+ * Busca un lugar libre donde quepa toda la molécula, con sus átomos en la
+ * geometría indicada. Revisa que no se encime con los átomos de la escena.
+ * @param {Object<string, { x: number, y: number, z: number }>} relativas Posición de cada átomo, con el centro en el origen.
+ * @param {Object<string, number>} radios Radio de cada átomo de la molécula.
+ * @returns {{ x: number, y: number, z: number } | null} El centro del lugar, o null.
+ */
+function buscarHuecoMolecula(relativas, radios) {
+    const paso = 1.6;
+    const existentes = [...atomos.values()];
+    const cabe = (cx, cz) => Object.entries(relativas).every(([id, p]) => {
+        const x = cx + p.x;
+        const y = p.y;
+        const z = cz + p.z;
+        if (obtenerConteoParticulas().total > 0 && Math.hypot(x, y, z) < 2) return false;
+        return existentes.every((otro) => {
+            const actual = otro.grupo.position;
+            return Math.hypot(x - actual.x, y - actual.y, z - actual.z) >= radios[id] + otro.radio + 0.15;
+        });
+    });
+
+    for (let anillo = 0; anillo < 60; anillo++) {
+        for (let fila = -anillo; fila <= anillo; fila++) {
+            for (let columna = -anillo; columna <= anillo; columna++) {
+                if (Math.max(Math.abs(fila), Math.abs(columna)) !== anillo) continue;
+                const cx = columna * paso;
+                const cz = fila * paso;
+                if (cabe(cx, cz)) return { x: cx, y: 0, z: cz };
+            }
+        }
+    }
+    return null;
+}
+
+/**
+ * Agrega una molécula a la escena sin quitar lo que ya hay. Los átomos
+ * se acomodan en un lugar libre con su geometría, y cada enlace se crea
+ * entre sus átomos. Todo cuenta como una sola acción en el historial.
+ * @param {{ atomos: Array<{id: string, elemento: string}>, enlaces: Array<{desde: string, hasta: string, orden: number}> }} molecula Molécula con los ids de su catálogo.
+ * @param {string} nombre Nombre para los mensajes.
+ * @returns {boolean} true si se agregó.
+ */
+export function agregarMolecula(molecula, nombre) {
+    const contenedor = obtenerContenedorAtomos();
+    if (!contenedor) return false;
+
+    if (atomos.size + molecula.atomos.length > MAX_ATOMOS) {
+        enviarMensaje('aviso', `No cabe: la escena tendría más de ${MAX_ATOMOS} átomos`);
+        return false;
+    }
+
+    // La geometria se calcula con los ids del catálogo; los ids reales de
+    // la escena se generan después, solo si hay lugar para la molécula.
+    const identidad = new Map(molecula.atomos.map((atomo) => [atomo.id, atomo.id]));
+    const relativas = calcularGeometria(molecula, identidad);
+    const radios = Object.fromEntries(
+        molecula.atomos.map((atomo) => [atomo.id, ELEMENTOS[atomo.elemento].radio])
+    );
+    const centro = buscarHuecoMolecula(relativas, radios);
+    if (!centro) {
+        enviarMensaje('aviso', `No encontré un lugar libre para ${nombre.toLowerCase()}`);
+        return false;
+    }
+
+    guardarFoto(`agregar ${nombre.toLowerCase()}`);
+    const mapeo = new Map(molecula.atomos.map((atomo) => [atomo.id, generarId(atomo.elemento)]));
+    restaurando = true;
+    try {
+        for (const atomo of molecula.atomos) {
+            const p = relativas[atomo.id];
+            agregarAtomo(
+                atomo.elemento,
+                { x: centro.x + p.x, y: centro.y + p.y, z: centro.z + p.z },
+                mapeo.get(atomo.id),
+            );
+        }
+        for (const enlace of molecula.enlaces) {
+            crearEnlace(mapeo.get(enlace.desde), mapeo.get(enlace.hasta), enlace.orden, { explicar: false });
+        }
+    } finally {
+        restaurando = false;
+    }
+
+    enviarMensaje('aviso', `Agregaste ${nombre.toLowerCase()} a la escena`);
+    setUltimaAccion(`Agregaste ${nombre.toLowerCase()}`);
+    return true;
+}
+
+/**
  * Deshace la última acción, restaurando la foto anterior de la
  * escena (átomos y enlaces). Guarda el estado actual en la pila
  * de rehacer, para poder volver con rehacer(). Devuelve false

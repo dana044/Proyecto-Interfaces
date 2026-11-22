@@ -21,6 +21,7 @@ import { iniciarComandosDeAtomos, iniciarArrastreDeAtomos, iniciarModeloBohr } f
 import { iniciarQuimica } from './chemistry.js';
 import { iniciarReto } from './reto.js';
 import { iniciarIO } from './io.js';
+import { iniciarPizarra } from './pizarra.js';
 
 /**
  * Intenta iniciar un módulo. Si falla, emite un mensaje de error
@@ -61,6 +62,7 @@ async function iniciarApp() {
   await iniciarModulo('gestos', iniciarGestos);
   await iniciarModulo('comandos de átomos', iniciarComandosDeAtomos);
   await iniciarModulo('exportar e importar', iniciarIO);
+  await iniciarModulo('pizarra de fórmulas', iniciarPizarra);
   await iniciarModulo('reto', iniciarReto);
   await iniciarModulo('comandos de voz', iniciarComandos);
   await iniciarModulo('voz', iniciarVoz);

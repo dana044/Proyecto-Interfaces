@@ -918,6 +918,312 @@
             "angulo_referencia": "Ángulo C–O–H ≈ 106°",
             "descripcion": "Es el ácido más sencillo de todos. Tiene un carbono con un enlace doble a un oxígeno, y un grupo OH unido al otro lado.",
             "dato_curioso": "Las hormigas lo usan como defensa, y por eso su picadura arde. Su nombre viene de la palabra latina para hormiga."
+        },
+        {
+            "id": "c2h6o-dimetil",
+            "nombre": "Dimetiléter",
+            "formula": "C₂H₆O",
+            "atomos": [
+                {
+                    "id": "C1",
+                    "elemento": "C"
+                },
+                {
+                    "id": "C2",
+                    "elemento": "C"
+                },
+                {
+                    "id": "O1",
+                    "elemento": "O"
+                },
+                {
+                    "id": "H1",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H2",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H3",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H4",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H5",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H6",
+                    "elemento": "H"
+                }
+            ],
+            "enlaces": [
+                {
+                    "desde": "C1",
+                    "hasta": "O1",
+                    "orden": 1
+                },
+                {
+                    "desde": "O1",
+                    "hasta": "C2",
+                    "orden": 1
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "H1",
+                    "orden": 1
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "H2",
+                    "orden": 1
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "H3",
+                    "orden": 1
+                },
+                {
+                    "desde": "C2",
+                    "hasta": "H4",
+                    "orden": 1
+                },
+                {
+                    "desde": "C2",
+                    "hasta": "H5",
+                    "orden": 1
+                },
+                {
+                    "desde": "C2",
+                    "hasta": "H6",
+                    "orden": 1
+                }
+            ],
+            "geometria": "angular",
+            "angulo_grados": 112,
+            "angulo_referencia": "Ángulo C–O–C",
+            "descripcion": "Es un isómero del etanol: tiene la misma fórmula, pero el oxígeno está entre los dos carbonos, así que no tiene grupo OH.",
+            "dato_curioso": "Es un gas a temperatura ambiente y se ha usado como propelente en aerosoles."
+        },
+        {
+            "id": "hf",
+            "nombre": "Fluoruro de hidrógeno",
+            "formula": "HF",
+            "atomos": [
+                {
+                    "id": "H1",
+                    "elemento": "H"
+                },
+                {
+                    "id": "F1",
+                    "elemento": "F"
+                }
+            ],
+            "enlaces": [
+                {
+                    "desde": "H1",
+                    "hasta": "F1",
+                    "orden": 1
+                }
+            ],
+            "geometria": "lineal",
+            "angulo_grados": 180,
+            "angulo_referencia": "Molécula diatómica lineal",
+            "descripcion": "Está formado por un hidrógeno unido a un flúor con un enlace sencillo.",
+            "dato_curioso": "Es un ácido capaz de atacar el vidrio, por eso se guarda en recipientes de plástico."
+        },
+        {
+            "id": "f2",
+            "nombre": "Flúor",
+            "formula": "F₂",
+            "atomos": [
+                {
+                    "id": "F1",
+                    "elemento": "F"
+                },
+                {
+                    "id": "F2",
+                    "elemento": "F"
+                }
+            ],
+            "enlaces": [
+                {
+                    "desde": "F1",
+                    "hasta": "F2",
+                    "orden": 1
+                }
+            ],
+            "geometria": "lineal",
+            "angulo_grados": 180,
+            "angulo_referencia": "Molécula diatómica lineal",
+            "descripcion": "Son dos átomos de flúor unidos por un enlace sencillo. Es el elemento más reactivo de todos.",
+            "dato_curioso": "Reacciona con casi cualquier sustancia, por eso se maneja con mucho cuidado en los laboratorios."
+        },
+        {
+            "id": "ch3f",
+            "nombre": "Fluorometano",
+            "formula": "CH₃F",
+            "atomos": [
+                {
+                    "id": "C1",
+                    "elemento": "C"
+                },
+                {
+                    "id": "F1",
+                    "elemento": "F"
+                },
+                {
+                    "id": "H1",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H2",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H3",
+                    "elemento": "H"
+                }
+            ],
+            "enlaces": [
+                {
+                    "desde": "C1",
+                    "hasta": "F1",
+                    "orden": 1
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "H1",
+                    "orden": 1
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "H2",
+                    "orden": 1
+                },
+                {
+                    "desde": "C1",
+                    "hasta": "H3",
+                    "orden": 1
+                }
+            ],
+            "geometria": "tetraédrica",
+            "angulo_grados": 109.5,
+            "angulo_referencia": "Ángulo entre enlaces del carbono",
+            "descripcion": "Es el metano en el que uno de los hidrógenos fue sustituido por un flúor.",
+            "dato_curioso": "Se usa como refrigerante y en procesos de fabricación de semiconductores."
+        },
+        {
+            "id": "lih",
+            "nombre": "Hidruro de litio",
+            "formula": "LiH",
+            "atomos": [
+                {
+                    "id": "Li1",
+                    "elemento": "Li"
+                },
+                {
+                    "id": "H1",
+                    "elemento": "H"
+                }
+            ],
+            "enlaces": [
+                {
+                    "desde": "Li1",
+                    "hasta": "H1",
+                    "orden": 1
+                }
+            ],
+            "geometria": "lineal",
+            "angulo_grados": 180,
+            "angulo_referencia": "Molécula diatómica lineal",
+            "descripcion": "Es un sólido formado por litio y un hidrógeno. En el modelo se muestra como un enlace sencillo.",
+            "dato_curioso": "Se ha usado como fuente de hidrógeno en sistemas de almacenamiento de energía."
+        },
+        {
+            "id": "beh2",
+            "nombre": "Hidruro de berilio",
+            "formula": "BeH₂",
+            "atomos": [
+                {
+                    "id": "Be1",
+                    "elemento": "Be"
+                },
+                {
+                    "id": "H1",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H2",
+                    "elemento": "H"
+                }
+            ],
+            "enlaces": [
+                {
+                    "desde": "Be1",
+                    "hasta": "H1",
+                    "orden": 1
+                },
+                {
+                    "desde": "Be1",
+                    "hasta": "H2",
+                    "orden": 1
+                }
+            ],
+            "geometria": "lineal",
+            "angulo_grados": 180,
+            "angulo_referencia": "Ángulo H–Be–H",
+            "descripcion": "El berilio está en el centro y tiene un hidrógeno a cada lado, con enlaces sencillos.",
+            "dato_curioso": "El berilio es un metal muy ligero y, en sus compuestos, es tóxico."
+        },
+        {
+            "id": "bh3",
+            "nombre": "Borano",
+            "formula": "BH₃",
+            "atomos": [
+                {
+                    "id": "B1",
+                    "elemento": "B"
+                },
+                {
+                    "id": "H1",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H2",
+                    "elemento": "H"
+                },
+                {
+                    "id": "H3",
+                    "elemento": "H"
+                }
+            ],
+            "enlaces": [
+                {
+                    "desde": "B1",
+                    "hasta": "H1",
+                    "orden": 1
+                },
+                {
+                    "desde": "B1",
+                    "hasta": "H2",
+                    "orden": 1
+                },
+                {
+                    "desde": "B1",
+                    "hasta": "H3",
+                    "orden": 1
+                }
+            ],
+            "geometria": "trigonal plana",
+            "angulo_grados": 120,
+            "angulo_referencia": "Ángulo H–B–H",
+            "descripcion": "El boro está en el centro con tres hidrógenos, separados entre sí como las puntas de un triángulo.",
+            "dato_curioso": "Es muy inestable por sí solo; en la práctica se usa unido a otras moléculas."
         }
     ]
 }
