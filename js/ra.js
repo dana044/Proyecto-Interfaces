@@ -1,10 +1,12 @@
 /**
  * @file ra.js
  * @description Modo de realidad aumentada (RA) dentro de MolecuLab. Abre la
- * cámara, reconoce la tarjeta con MindAR y dibuja sobre ella la molécula del
- * editor, actualizada en vivo. Mientras la RA está activa, la detección de manos
- * se pausa, porque MindAR y MediaPipe no pueden usar la cámara a la vez. Al salir
- * se libera la cámara y se reanudan las manos.
+ * cámara, reconoce la tarjeta con MindAR y dibuja sobre ella una de las
+ * estructuras construidas en el editor, actualizada en vivo. Cada grupo de
+ * átomos unidos por enlaces es una estructura: el estudiante elige cuál ver.
+ * Mientras la RA está activa, la detección de manos se pausa, porque MindAR y
+ * MediaPipe no pueden usar la cámara a la vez. Al salir se libera la cámara y
+ * se reanudan las manos.
  * @author Citlaly Morales Viveros
  */
 
@@ -26,14 +28,19 @@ const RUTA_MARCADOR = 'ar/marcador.mind';
 const ANCHO_ENTRADA = 640;
 const ALTO_ENTRADA = 480;
 
-/** Tamaño de la molécula respecto a la tarjeta (1 unidad = ancho de la tarjeta). */
+/** Tamaño de la estructura respecto a la tarjeta (1 unidad = ancho de la tarjeta). */
 const ESCALA_MOLECULA = 0.3;
 
 /** Vistas posibles del área de trabajo cuando la RA está activa. */
 const VISTAS = ['dividida', 'editor', 'ra'];
 
-/** @type {{boton: HTMLElement, lienzo: HTMLElement, area: HTMLElement, selector: HTMLElement, estado: HTMLElement} | null} */
+/** @type {{boton: HTMLElement, lienzo: HTMLElement, area: HTMLElement, selector: HTMLElement, estado: HTMLElement, mensaje: HTMLElement} | null} */
 let elementos = null;
+/** @type {HTMLSelectElement | null} */
+let selectorEstructura = null;
+/** @type {HTMLButtonElement | null} */
+let botonCentrar = null;
+
 let activa = false;
 let ocupado = false;
 let vista = 'dividida';
@@ -51,18 +58,32 @@ let estructura = null;
 let postMatrix = null;
 let observador = null;
 
+/** Id del átomo ancla: la selección sigue a este átomo al unir o separar estructuras. */
+let anclaId = null;
+/** Estructura que se dibuja ahora (grupo conectado del editor), o null si no hay ninguna. */
+let grupoActual = null;
+/** Firma de la composición de grupoActual; si cambia, se reconstruye y se recentra. */
+let firmaAnterior = '';
+/** Firma de la lista de estructuras del selector; si cambia, se reconstruye el selector. */
+let firmaListaAnterior = null;
+/** Desplazamiento que centra la estructura en el origen. */
+let desplazamiento = { x: 0, y: 0, z: 0 };
+/** true si el usuario pidió recentrar con el botón. */
+let centrarPedido = false;
+
 /** Átomos dibujados en la RA: id → { grupo, anillo, radio, elemento }. */
 const atomosRA = new Map();
 /** Enlaces dibujados en la RA: clave «a|b» → { grupo, cilindros, a, b, orden }. */
 const enlacesRA = new Map();
 /** Ids de átomos con cambios que se aplican en el siguiente cuadro. */
 const atomosPendientes = new Set();
-/** true cuando hay que reconstruir toda la estructura (limpiar, importar, deshacer, rehacer). */
+/** true cuando hay que reconstruir la estructura visible (cambios de topología, limpiar, importar, deshacer, rehacer). */
 let reconstruirTodo = false;
 
 /**
- * Conecta el botón de RA, el selector de vista y los eventos de la escena.
- * Debe llamarse después de iniciarGestos, porque la RA pausa y reanuda esa detección.
+ * Conecta el botón de RA, el selector de estructura, el botón de centrar y
+ * los eventos de la escena. Debe llamarse después de iniciarGestos, porque la
+ * RA pausa y reanuda esa detección.
  * @returns {boolean} true si quedó lista.
  * @throws {Error} Si falta alguno de los elementos de la RA en la página.
  */
@@ -74,15 +95,24 @@ export function iniciarRA() {
     const area = document.getElementById('area-escena');
     const selector = document.getElementById('selector-vista');
     const estado = document.getElementById('estado-ra');
-    if (!boton || !lienzo || !area || !selector || !estado) {
+    const mensaje = document.getElementById('mensaje-ra');
+    const estructuraSelect = document.getElementById('fuente-ra');
+    const centrar = document.getElementById('centrar-ra');
+    if (!boton || !lienzo || !area || !selector || !estado || !mensaje || !estructuraSelect || !centrar) {
         throw new Error('faltan elementos de la realidad aumentada en la página');
     }
 
-    elementos = { boton, lienzo, area, selector, estado };
+    elementos = { boton, lienzo, area, selector, estado, mensaje };
+    selectorEstructura = estructuraSelect;
+    botonCentrar = centrar;
+
     boton.addEventListener('click', alternarRA);
     selector.querySelectorAll('[data-vista]').forEach((opcion) => {
         opcion.addEventListener('click', () => cambiarVista(opcion.dataset.vista));
     });
+    selectorEstructura.addEventListener('change', () => seleccionarEstructura(selectorEstructura.value));
+    botonCentrar.addEventListener('click', pedirCentrado);
+
     registrarEventosDeEscena();
     return true;
 }
@@ -187,6 +217,8 @@ function desactivarRA() {
     for (const id of [...atomosRA.keys()]) quitarAtomoRA(id);
     for (const clave of [...enlacesRA.keys()]) quitarEnlaceRA(clave);
     atomosPendientes.clear();
+    grupoActual = null;
+    firmaAnterior = '';
 
     if (estructura) {
         ancla?.remove(estructura);
@@ -337,30 +369,224 @@ function crearEscena() {
 }
 
 /**
- * Sincroniza la RA con el editor en cada cuadro. Si hubo una reconstrucción,
- * la hace completa; si no, aplica solo los cambios marcados por los eventos.
+ * Sincroniza la RA con el editor en cada cuadro. Recalcula los grupos
+ * conectados, resuelve la selección y actualiza el selector. Si cambia la
+ * composición de la estructura elegida, la reconstruye y la recentra; si solo
+ * se movieron átomos, aplica esos cambios sin recentrar.
  */
 function sincronizarEstructura() {
     if (!activa || !estructura) return;
+    if (!reconstruirTodo && atomosPendientes.size === 0) return;
+
+    const grupos = calcularGrupos(obtenerListaAtomos(), obtenerListaEnlaces());
+    grupoActual = resolverGrupo(grupos);
+    actualizarSelector(grupos);
+
+    const firma = firmaDe(grupoActual);
+    if (firma !== firmaAnterior || centrarPedido) {
+        firmaAnterior = firma;
+        desplazamiento = calcularDesplazamiento(grupoActual);
+        centrarPedido = false;
+        reconstruirTodo = true;
+    }
 
     if (reconstruirTodo) {
         reconstruirEstructura();
         return;
     }
-    if (atomosPendientes.size === 0) return;
     aplicarCambios();
 }
 
 /**
- * Reconstruye toda la estructura desde el editor. Se usa al encender la RA y
- * después de limpiar, importar, deshacer o rehacer.
+ * Agrupa los átomos por conexión: dos átomos están en el mismo grupo si hay
+ * un camino de enlaces entre ellos. Solo lee ids y enlaces; no cambia el editor.
+ * @param {Array<{id: string, elemento: string, posicion: object}>} atomos
+ * @param {Array<{a: string, b: string, orden: number}>} enlaces
+ * @returns {Array<object>} Grupos ordenados por tamaño, del más grande al más chico.
+ */
+function calcularGrupos(atomos, enlaces) {
+    const padre = new Map(atomos.map((atomo) => [atomo.id, atomo.id]));
+    const raiz = (id) => {
+        let actual = id;
+        while (padre.get(actual) !== actual) {
+            padre.set(actual, padre.get(padre.get(actual)));
+            actual = padre.get(actual);
+        }
+        return actual;
+    };
+    for (const enlace of enlaces) {
+        if (padre.has(enlace.a) && padre.has(enlace.b)) padre.set(raiz(enlace.a), raiz(enlace.b));
+    }
+
+    const porRaiz = new Map();
+    for (const atomo of atomos) {
+        const r = raiz(atomo.id);
+        if (!porRaiz.has(r)) porRaiz.set(r, []);
+        porRaiz.get(r).push(atomo);
+    }
+
+    return [...porRaiz.values()]
+        .map((lista) => {
+            lista.sort((x, y) => x.id.localeCompare(y.id, 'en', { numeric: true }));
+            const ids = new Set(lista.map((atomo) => atomo.id));
+            return {
+                ids: lista.map((atomo) => atomo.id),
+                minId: lista[0].id,
+                atomos: lista,
+                enlaces: enlaces.filter((enlace) => ids.has(enlace.a) && ids.has(enlace.b)),
+                etiqueta: etiquetaDe(lista),
+            };
+        })
+        .sort((x, y) => y.ids.length - x.ids.length || x.minId.localeCompare(y.minId, 'en', { numeric: true }));
+}
+
+/**
+ * Fórmula por conteo de átomos (no compara con el catálogo). Sigue el orden de
+ * Hill: C primero, H después y el resto alfabético; sin C, todo alfabético.
+ * @param {Array<{elemento: string}>} lista
+ * @returns {string} Por ejemplo «H₂O» o «C₂H₆O».
+ */
+function etiquetaDe(lista) {
+    const conteo = new Map();
+    for (const atomo of lista) conteo.set(atomo.elemento, (conteo.get(atomo.elemento) || 0) + 1);
+
+    const elementos = [...conteo.keys()].sort();
+    if (conteo.has('C')) {
+        elementos.splice(elementos.indexOf('C'), 1);
+        elementos.unshift('C');
+        if (conteo.has('H')) {
+            elementos.splice(elementos.indexOf('H'), 1);
+            elementos.splice(1, 0, 'H');
+        }
+    }
+
+    const subindice = (n) => String(n).replace(/\d/g, (d) => '₀₁₂₃₄₅₆₇₈₉'[d]);
+    return elementos
+        .map((e) => e + (conteo.get(e) > 1 ? subindice(conteo.get(e)) : ''))
+        .join('');
+}
+
+/**
+ * Decide qué estructura se muestra. Si el ancla sigue en alguna estructura,
+ * se conserva esa; si no (el ancla se eliminó), se elige la más grande.
+ * @param {Array<object>} grupos
+ * @returns {object | null} La estructura elegida, o null si la escena está vacía.
+ */
+function resolverGrupo(grupos) {
+    if (grupos.length === 0) {
+        anclaId = null;
+        return null;
+    }
+    const grupo = grupos.find((g) => g.ids.includes(anclaId)) ?? grupos[0];
+    anclaId = grupo.ids.includes(anclaId) ? anclaId : grupo.minId;
+    return grupo;
+}
+
+/**
+ * Actualiza el selector y el mensaje de escena vacía. Solo se vuelven a
+ * escribir las opciones cuando cambia la lista, para no cerrar el menú mientras
+ * el estudiante lo usa.
+ * @param {Array<object>} grupos
+ */
+function actualizarSelector(grupos) {
+    const firmaLista = grupos.map((g) => `${g.minId}:${g.etiqueta}:${g.ids.length}`).join('|');
+    if (firmaLista !== firmaListaAnterior) {
+        firmaListaAnterior = firmaLista;
+        selectorEstructura.replaceChildren();
+        if (grupos.length === 0) {
+            selectorEstructura.appendChild(new Option('Sin estructuras', ''));
+        }
+        for (const grupo of grupos) {
+            const n = grupo.ids.length;
+            const texto = `${grupo.etiqueta} · ${n} ${n === 1 ? 'átomo' : 'átomos'}`;
+            selectorEstructura.appendChild(new Option(texto, grupo.minId));
+        }
+    }
+
+    const elegido = grupoActual?.minId ?? '';
+    if (selectorEstructura.value !== elegido) selectorEstructura.value = elegido;
+    selectorEstructura.disabled = grupos.length === 0;
+    botonCentrar.disabled = grupos.length === 0;
+    elementos.mensaje.hidden = grupos.length > 0;
+}
+
+/**
+ * Elige una estructura desde el selector. La selección pasa a su átomo
+ * elegido, así que se conserva aunque el estudiante una o separe estructuras.
+ * @param {string} valor Id del átomo con el que se identifica la estructura.
+ */
+function seleccionarEstructura(valor) {
+    if (!valor) return;
+    anclaId = valor;
+    reconstruirTodo = true;
+}
+
+/** Pide recentrar la estructura elegida (botón «Centrar»). */
+function pedirCentrado() {
+    centrarPedido = true;
+    reconstruirTodo = true;
+}
+
+/**
+ * Desplazamiento que lleva el centro de la estructura al origen de la tarjeta.
+ * @param {object | null} grupo
+ * @returns {{x: number, y: number, z: number}}
+ */
+function calcularDesplazamiento(grupo) {
+    if (!grupo || grupo.atomos.length === 0) return { x: 0, y: 0, z: 0 };
+    const centro = { x: 0, y: 0, z: 0 };
+    for (const atomo of grupo.atomos) {
+        centro.x += atomo.posicion.x / grupo.atomos.length;
+        centro.y += atomo.posicion.y / grupo.atomos.length;
+        centro.z += atomo.posicion.z / grupo.atomos.length;
+    }
+    return { x: -centro.x, y: -centro.y, z: -centro.z };
+}
+
+/**
+ * Firma de la composición de una estructura: sus átomos y sus enlaces. No
+ * cambia cuando solo se mueven los átomos.
+ * @param {object | null} grupo
+ * @returns {string}
+ */
+function firmaDe(grupo) {
+    if (!grupo) return '';
+    const enlaces = grupo.enlaces.map((e) => `${clave(e.a, e.b)}:${e.orden}`).sort().join(',');
+    return `${grupo.ids.join(',')}|${enlaces}`;
+}
+
+/**
+ * Estructura visible en este momento: los átomos y enlaces del grupo elegido,
+ * con la posición que tienen en el editor más el desplazamiento de centrado.
+ * @returns {{atomos: Array<{id: string, elemento: string, posicion: {x: number, y: number, z: number}}>, enlaces: Array<{a: string, b: string, orden: number}>}}
+ */
+function obtenerEstructuraVisible() {
+    if (!grupoActual) return { atomos: [], enlaces: [] };
+    return {
+        atomos: grupoActual.atomos.map((atomo) => ({
+            id: atomo.id,
+            elemento: atomo.elemento,
+            posicion: {
+                x: atomo.posicion.x + desplazamiento.x,
+                y: atomo.posicion.y + desplazamiento.y,
+                z: atomo.posicion.z + desplazamiento.z,
+            },
+        })),
+        enlaces: grupoActual.enlaces.map((enlace) => ({ a: enlace.a, b: enlace.b, orden: enlace.orden })),
+    };
+}
+
+/**
+ * Reconstruye la estructura visible desde cero. Se usa al encender la RA, al
+ * elegir otra estructura, al cambiar la composición de la actual y al
+ * limpiar, importar, deshacer o rehacer.
  */
 function reconstruirEstructura() {
     for (const id of [...atomosRA.keys()]) quitarAtomoRA(id);
     for (const clave of [...enlacesRA.keys()]) quitarEnlaceRA(clave);
 
-    const enlaces = obtenerListaEnlaces();
-    for (const atomo of obtenerListaAtomos()) crearAtomoRA(atomo);
+    const { atomos, enlaces } = obtenerEstructuraVisible();
+    for (const atomo of atomos) crearAtomoRA(atomo);
     for (const enlace of enlaces) crearEnlaceRA(enlace);
     actualizarAnillosRA(enlaces);
 
@@ -369,31 +595,16 @@ function reconstruirEstructura() {
 }
 
 /**
- * Aplica solo lo que cambió: quita y agrega átomos, mueve los que cambiaron de
- * posición, crea y quita enlaces, y actualiza la geometría de los enlaces
- * tocados y los anillos de valencia.
+ * Aplica solo los movimientos de los átomos de la estructura visible. Se usa
+ * cuando la composición no cambió, así que no hace falta reconstruir.
  */
 function aplicarCambios() {
-    const atomos = obtenerListaAtomos();
-    const enlaces = obtenerListaEnlaces();
-
-    const idsActuales = new Set(atomos.map((atomo) => atomo.id));
-    for (const id of [...atomosRA.keys()]) {
-        if (!idsActuales.has(id)) quitarAtomoRA(id);
-    }
+    if (atomosPendientes.size === 0) return;
+    const { atomos, enlaces } = obtenerEstructuraVisible();
 
     for (const atomo of atomos) {
         if (!atomosRA.has(atomo.id)) crearAtomoRA(atomo);
         else if (atomosPendientes.has(atomo.id)) posicionarAtomoRA(atomo);
-    }
-
-    const clavesActuales = new Map(enlaces.map((enlace) => [clave(enlace.a, enlace.b), enlace]));
-    for (const [claveEnlace, enlace] of [...enlacesRA]) {
-        const actual = clavesActuales.get(claveEnlace);
-        if (!actual || actual.orden !== enlace.orden) quitarEnlaceRA(claveEnlace);
-    }
-    for (const [claveEnlace, enlace] of clavesActuales) {
-        if (!enlacesRA.has(claveEnlace)) crearEnlaceRA(enlace);
     }
 
     for (const enlace of enlacesRA.values()) {
@@ -405,7 +616,7 @@ function aplicarCambios() {
 }
 
 /**
- * Crea la representación de un átomo del editor, con su posición.
+ * Crea la representación de un átomo, con su posición.
  * @param {{id: string, elemento: string, posicion: {x: number, y: number, z: number}}} atomo
  */
 function crearAtomoRA(atomo) {
@@ -517,7 +728,7 @@ function recibirActualizacion(dato) {
 
 /**
  * Ajusta el video y la cámara de Three al tamaño del área de RA. Usa el mismo
- * criterio que el prototipo de MindAR para que la molécula quede alineada con
+ * criterio que el prototipo de MindAR para que la estructura quede alineada con
  * el video. No hace nada mientras el área está oculta (tamaño cero).
  */
 function ajustarVista() {

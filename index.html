@@ -152,6 +152,14 @@
 
       <!-- Realidad aumentada: oculta hasta activarla. MindAR y Three colocan aquí el video y la molécula. -->
       <section id="lienzo-ra" class="lienzo lienzo-ra" aria-label="Realidad aumentada de la molécula" hidden>
+        <div class="selector-ra">
+          <label for="fuente-ra">Estructura</label>
+          <select id="fuente-ra" disabled>
+            <option value="">Sin estructuras</option>
+          </select>
+          <button type="button" id="centrar-ra" class="boton-centrar" disabled>Centrar</button>
+        </div>
+        <p id="mensaje-ra" class="mensaje-ra" hidden>Agrega átomos en el editor para verlos aquí.</p>
         <p id="estado-ra" class="estado-ra" aria-live="polite"></p>
       </section>
 
