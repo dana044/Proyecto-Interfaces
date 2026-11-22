@@ -1,0 +1,121 @@
+/*
+ * Diseño para pantallas reducidas: tabletas y celulares.
+ * Se carga después de css/styles.css y solo cambia lo que se ve mal al
+ * achicar la pantalla. @author Citlaly Morales Viveros
+ */
+
+/* Pantallas apiladas (1023 px o menos): la escena necesita altura propia.
+   Sin ella, el lienzo 3D se queda chico porque el modo apilado no le da alto. */
+@media (max-width: 1023px) {
+  .lienzo {
+    height: min(68vh, 640px);
+    min-height: 360px;
+  }
+
+  .escena {
+    gap: 12px;
+  }
+
+  .encabezado {
+    flex-wrap: wrap;
+    row-gap: 8px;
+    padding: 8px 12px;
+  }
+
+  .encabezado-der {
+    gap: 6px;
+  }
+
+  /* La barra de respaldo pasa a cuadrícula: los botones quedan del mismo tamaño. */
+  .respaldo {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .respaldo .boton {
+    min-height: 60px;
+    font-size: 12px;
+  }
+
+  .panel-atomos,
+  .panel-info {
+    max-width: none;
+    max-height: 60vh;
+  }
+
+  #pizarra-formulas {
+    max-height: 90vh;
+    overflow: auto;
+  }
+}
+
+/* Los globos de ayuda aparecen al pasar el cursor; en pantallas táctiles no
+   se pueden ver, así que se ocultan para que no tapen los botones. */
+@media (hover: none) and (max-width: 1023px) {
+  .respaldo .globo {
+    display: none;
+  }
+}
+
+/* Celulares (600 px o menos): menos espacio, textos más chicos y una sola
+   fila de pistas. */
+@media (max-width: 600px) {
+  body {
+    gap: 8px;
+    padding: 8px;
+    font-size: 15px;
+  }
+
+  .lienzo {
+    height: 60vh;
+    min-height: 300px;
+  }
+
+  .chip-estado {
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+
+  .respaldo {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .respaldo .boton {
+    font-size: 11px;
+    min-height: 56px;
+  }
+
+  /* La pista de gestos se encima con los átomos en pantallas chicas. */
+  .pista-escena {
+    display: none;
+  }
+
+  .camara-flotante {
+    width: 110px;
+    left: 8px;
+    bottom: 8px;
+  }
+
+  /* El indicador de ejes se reduce para dejar espacio al lienzo. */
+  #indicador-ejes {
+    top: 8px;
+    right: 8px;
+    transform: scale(0.8);
+    transform-origin: top right;
+  }
+
+  .tarjeta-atomo {
+    max-width: 200px;
+    font-size: 13px;
+  }
+
+  .panel {
+    padding: 14px;
+  }
+
+  .lista-elementos {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
