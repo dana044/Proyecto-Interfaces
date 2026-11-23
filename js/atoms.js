@@ -1583,6 +1583,16 @@ export function iniciarComandosDeAtomos() {
         ultimoFactorZoom = factor;
     });
     // Meñique arriba un instante: enciende o apaga el micrófono.
+    // Estado del micrófono, para apagarlo al terminar el tutorial.
+    let estadoMicrofono = 'pausado';
+    on('estado:microfono', ({ estado }) => {
+        estadoMicrofono = estado;
+    });
+    // Al terminar el tutorial, todo vuelve al inicio: escena vacía y micrófono apagado.
+    on('tutorial:terminado', () => {
+        if (estadoMicrofono === 'escuchando') alternarMicrofono();
+        if (limpiarEscena({ confirmar: false })) limpiarParticulas();
+    });
     on('gesto:microfono', () => {
         alternarMicrofono();
     });
@@ -1591,6 +1601,11 @@ export function iniciarComandosDeAtomos() {
         if (!abierta) soltarEnMano();
     });
     // Deslizar la mano a la izquierda deshace; a la derecha, rehace.
+    // Gesto de limpiar: borra átomos, enlaces y partículas, salvo si se lleva algo en la mano.
+    on('gesto:limpiar', () => {
+        if (elementoEnMano || particulaEnMano) return;
+        if (limpiarEscena({ confirmar: false })) limpiarParticulas();
+    });
     on('gesto:deshacer', () => deshacer());
     on('gesto:rehacer', () => rehacer());
     // Índice y medio arriba sobre un átomo: lo elimina, solo ese, y avisa cuál.

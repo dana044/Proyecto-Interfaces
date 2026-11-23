@@ -164,6 +164,15 @@ export function iniciarInterfaz() {
   });
   botonAyudaReto?.addEventListener('click', () => darPista());
   botonSalirReto?.addEventListener('click', () => salirModoReto());
+  // Al terminar el tutorial, si quedó en modo reto, se regresa al modo libre.
+  on('tutorial:terminado', () => {
+    if (estado.modo === 'reto') salirModoReto();
+  });
+  // I love you: entra al modo reto, o sale si ya está en él, igual que los botones.
+  on('gesto:reto', () => {
+    if (estado.modo === 'reto') salirModoReto();
+    else entrarModoReto();
+  });
 
   const botonSilenciar = document.querySelector('[data-accion="silenciar-sonidos"]');
   botonSilenciar?.addEventListener('click', () => {
