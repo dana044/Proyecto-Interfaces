@@ -1,5 +1,5 @@
 /**
- * @file ra.js
+ * @file ar.js
  * @description Modo de realidad aumentada (RA) dentro de MolecuLab. Abre la
  * cámara, reconoce la tarjeta con MindAR y dibuja sobre ella una de las
  * estructuras construidas en el editor, actualizada en vivo. Cada grupo de
