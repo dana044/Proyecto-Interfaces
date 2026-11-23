@@ -2,8 +2,8 @@
  * @file ar.js
  * @description Carga el catálogo de moléculas y los datos de los elementos,
  * llena el selector, cambia el modelo del visor de realidad aumentada
- * (model-viewer) y muestra una tarjeta con la descripción de cada átomo de la
- * molécula elegida.
+ * (model-viewer), con su GLB para Android y su USDZ para iPhone, y muestra una
+ * tarjeta con la descripción de cada átomo de la molécula elegida.
  * @author Citlaly Morales Viveros
  */
 
@@ -11,6 +11,7 @@ const selector = document.getElementById('selector');
 const visor = document.getElementById('visor');
 const info = document.getElementById('info');
 const seccionAtomos = document.getElementById('atomos');
+const subtitulo = document.getElementById('subtitulo');
 
 /** @type {Record<string, {nombre: string, z: number, valencia: number, masa: number, descripcion: string}>} */
 let elementos = {};
@@ -23,6 +24,41 @@ let elementos = {};
  */
 function simbolosDe(formula) {
     return [...new Set(formula.match(/[A-Z][a-z]?/g) ?? [])];
+}
+
+/**
+ * Escribe bajo el nombre de la molécula cuántos átomos de cada elemento tiene.
+ * Por ejemplo: «2 H (hidrógeno) y 1 O (oxígeno)».
+ * @param {Array<{elemento: string}>} atomos Átomos de la molécula, del catálogo.
+ */
+function mostrarSubtitulo(atomos = []) {
+    const conteo = new Map();
+    for (const a of atomos) conteo.set(a.elemento, (conteo.get(a.elemento) || 0) + 1);
+    const partes = [...conteo].map(([simbolo, n]) => {
+        const nombre = elementos[simbolo]?.nombre;
+        return nombre ? `${n} ${simbolo} (${nombre.toLowerCase()})` : `${n} ${simbolo}`;
+    });
+    subtitulo.textContent = partes.join(' y ');
+}
+
+/**
+ * Coloca una etiqueta con el símbolo sobre cada átomo del visor. Las etiquetas
+ * solo se ven en la vista 3D de la página, no en AR.
+ * @param {Array<{id: string, elemento: string, posicion?: number[]}>} atomos
+ */
+function mostrarEtiquetas(atomos = []) {
+    visor.querySelectorAll('.etiqueta-atomo').forEach((e) => e.remove());
+    for (const a of atomos) {
+        if (!a.posicion) continue;
+        const etiqueta = document.createElement('button');
+        etiqueta.className = 'etiqueta-atomo';
+        etiqueta.slot = `hotspot-${a.id}`;
+        etiqueta.dataset.position = a.posicion.join(' ');
+        etiqueta.dataset.normal = '0 1 0';
+        etiqueta.textContent = a.elemento;
+        etiqueta.setAttribute('aria-label', `Átomo ${elementos[a.elemento]?.nombre ?? a.elemento}`);
+        visor.appendChild(etiqueta);
+    }
 }
 
 /**
@@ -52,9 +88,13 @@ function mostrarAtomos(formula) {
 function mostrar(moleculas, id) {
     const m = moleculas.find((x) => x.id === id);
     visor.src = m.archivo;
+    if (m.usdz) visor.setAttribute('ios-src', m.usdz);
+    else visor.removeAttribute('ios-src');
     visor.alt = `${m.nombre}, fórmula ${m.formula}`;
     info.textContent = `${m.nombre} · ${m.formula}`;
     mostrarAtomos(m.formula);
+    mostrarSubtitulo(m.atomos);
+    mostrarEtiquetas(m.atomos);
 }
 
 /**

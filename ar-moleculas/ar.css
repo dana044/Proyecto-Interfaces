@@ -1,5 +1,5 @@
 /*
- * Estilos de la página de moléculas en AR (android/ar.html).
+ * Estilos de la página de moléculas en AR (ar-moleculas/ar.html).
  * Fondo oscuro, selector de molécula arriba y visor de AR ocupando el resto.
  */
 
@@ -105,4 +105,22 @@ footer {
     font-size: 14px;
     line-height: 1.5;
     color: #cbd5e1;
+}
+
+/* Subtítulo con la composición de la molécula. */
+#subtitulo {
+    margin-top: 2px;
+    font-size: 14px;
+    color: #cbd5e1;
+}
+
+/* Etiqueta con el símbolo sobre cada átomo del visor 3D. */
+.etiqueta-atomo {
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid #f1f5f9;
+    background: rgba(15, 20, 25, 0.85);
+    color: #ffffff;
+    font: 600 14px Inter, system-ui, sans-serif;
+    pointer-events: none;
 }

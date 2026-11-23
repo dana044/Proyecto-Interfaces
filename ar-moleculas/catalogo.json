@@ -1,0 +1,1176 @@
+[
+    {
+        "id": "h2",
+        "nombre": "Hidrógeno",
+        "formula": "H₂",
+        "archivo": "glb/h2.glb",
+        "usdz": "usdz/h2.usdz",
+        "atomos": [
+            {
+                "id": "H1",
+                "elemento": "H",
+                "posicion": [
+                    -0.09,
+                    0,
+                    0
+                ]
+            },
+            {
+                "id": "H2",
+                "elemento": "H",
+                "posicion": [
+                    0.09,
+                    0,
+                    0
+                ]
+            }
+        ],
+        "origen": "catalogo"
+    },
+    {
+        "id": "o2",
+        "nombre": "Oxígeno",
+        "formula": "O₂",
+        "archivo": "glb/o2.glb",
+        "usdz": "usdz/o2.usdz",
+        "atomos": [
+            {
+                "id": "O1",
+                "elemento": "O",
+                "posicion": [
+                    -0.102,
+                    0,
+                    0
+                ]
+            },
+            {
+                "id": "O2",
+                "elemento": "O",
+                "posicion": [
+                    0.102,
+                    0,
+                    0
+                ]
+            }
+        ],
+        "origen": "catalogo"
+    },
+    {
+        "id": "h2o",
+        "nombre": "Agua",
+        "formula": "H₂O",
+        "archivo": "glb/h2o.glb",
+        "usdz": "usdz/h2o.usdz",
+        "atomos": [
+            {
+                "id": "O1",
+                "elemento": "O",
+                "posicion": [
+                    -0.5277,
+                    0,
+                    0
+                ]
+            },
+            {
+                "id": "H1",
+                "elemento": "H",
+                "posicion": [
+                    -0.4102,
+                    0.1518,
+                    0
+                ]
+            },
+            {
+                "id": "H2",
+                "elemento": "H",
+                "posicion": [
+                    -0.4102,
+                    -0.1518,
+                    0
+                ]
+            }
+        ],
+        "origen": "catalogo"
+    },
+    {
+        "id": "co2",
+        "nombre": "Dióxido de carbono",
+        "formula": "CO₂",
+        "archivo": "glb/co2.glb",
+        "usdz": "usdz/co2.usdz",
+        "atomos": [
+            {
+                "id": "C1",
+                "elemento": "C",
+                "posicion": [
+                    0,
+                    0,
+                    0
+                ]
+            },
+            {
+                "id": "O1",
+                "elemento": "O",
+                "posicion": [
+                    0.207,
+                    0,
+                    0
+                ]
+            },
+            {
+                "id": "O2",
+                "elemento": "O",
+                "posicion": [
+                    -0.207,
+                    0,
+                    0
+                ]
+            }
+        ],
+        "origen": "catalogo"
+    },
+    {
+        "id": "ch4",
+        "nombre": "Metano",
+        "formula": "CH₄",
+        "archivo": "glb/ch4.glb",
+        "usdz": "usdz/ch4.usdz",
+        "atomos": [
+            {
+                "id": "C1",
+                "elemento": "C",
+                "posicion": [
+                    0,
+                    0,
+                    0
+                ]
+            },
+            {
+                "id": "H1",
+                "elemento": "H",
+                "posicion": [
+                    0.1126,
+                    0.1126,
+                    0.1126
+                ]
+            },
+            {
+                "id": "H2",
+                "elemento": "H",
+                "posicion": [
+                    0.1126,
+                    -0.1126,
+                    -0.1126
+                ]
+            },
+            {
+                "id": "H3",
+                "elemento": "H",
+                "posicion": [
+                    -0.1126,
+                    0.1126,
+                    -0.1126
+                ]
+            },
+            {
+                "id": "H4",
+                "elemento": "H",
+                "posicion": [
+                    -0.1126,
+                    -0.1126,
+                    0.1126
+                ]
+            }
+        ],
+        "origen": "catalogo"
+    },
+    {
+        "id": "nh3",
+        "nombre": "Amoníaco",
+        "formula": "NH₃",
+        "archivo": "glb/nh3.glb",
+        "usdz": "usdz/nh3.usdz",
+        "atomos": [
+            {
+                "id": "N1",
+                "elemento": "N",
+                "posicion": [
+                    -0.4455,
+                    0,
+                    -0.2972
+                ]
+            },
+            {
+                "id": "H1",
+                "elemento": "H",
+                "posicion": [
+                    -0.2673,
+                    0,
+                    -0.2257
+                ]
+            },
+            {
+                "id": "H2",
+                "elemento": "H",
+                "posicion": [
+                    -0.5347,
+                    0.1543,
+                    -0.2257
+                ]
+            },
+            {
+                "id": "H3",
+                "elemento": "H",
+                "posicion": [
+                    -0.5347,
+                    -0.1543,
+                    -0.2257
+                ]
+            }
+        ],
+        "origen": "catalogo"
+    },
+    {
+        "id": "ch3oh",
+        "nombre": "Metanol",
+        "formula": "CH₃OH",
+        "archivo": "glb/ch3oh.glb",
+        "usdz": "usdz/ch3oh.usdz",
+        "atomos": [
+            {
+                "id": "C1",
+                "elemento": "C",
+                "posicion": [
+                    0.3903,
+                    -0.9337,
+                    0.0855
+                ]
+            },
+            {
+                "id": "O1",
+                "elemento": "O",
+                "posicion": [
+                    0.4731,
+                    -0.744,
+                    0.0855
+                ]
+            },
+            {
+                "id": "H1",
+                "elemento": "H",
+                "posicion": [
+                    0.2952,
+                    -0.7875,
+                    0.1726
+                ]
+            },
+            {
+                "id": "H2",
+                "elemento": "H",
+                "posicion": [
+                    0.4042,
+                    -0.82,
+                    -0.0723
+                ]
+            },
+            {
+                "id": "H3",
+                "elemento": "H",
+                "posicion": [
+                    0.4982,
+                    -0.8525,
+                    0.2262
+                ]
+            },
+            {
+                "id": "H4",
+                "elemento": "H",
+                "posicion": [
+                    0.2044,
+                    -0.885,
+                    0.0526
+                ]
+            }
+        ],
+        "origen": "catalogo"
+    },
+    {
+        "id": "c2h6o",
+        "nombre": "Etanol",
+        "formula": "C₂H₆O",
+        "archivo": "glb/c2h6o.glb",
+        "usdz": "usdz/c2h6o.usdz",
+        "atomos": [
+            {
+                "id": "C1",
+                "elemento": "C",
+                "posicion": [
+                    0.1098,
+                    -0.7937,
+                    -0.1005
+                ]
+            },
+            {
+                "id": "C2",
+                "elemento": "C",
+                "posicion": [
+                    0.1937,
+                    -0.6012,
+                    -0.1005
+                ]
+            },
+            {
+                "id": "O1",
+                "elemento": "O",
+                "posicion": [
+                    0.0088,
+                    -0.6385,
+                    -0.008
+                ]
+            },
+            {
+                "id": "H1",
+                "elemento": "H",
+                "posicion": [
+                    0.1237,
+                    -0.68,
+                    -0.2583
+                ]
+            },
+            {
+                "id": "H2",
+                "elemento": "H",
+                "posicion": [
+                    0.2177,
+                    -0.7125,
+                    0.0402
+                ]
+            },
+            {
+                "id": "H3",
+                "elemento": "H",
+                "posicion": [
+                    -0.0761,
+                    -0.745,
+                    -0.1334
+                ]
+            },
+            {
+                "id": "H4",
+                "elemento": "H",
+                "posicion": [
+                    0.2738,
+                    -0.7775,
+                    -0.2048
+                ]
+            },
+            {
+                "id": "H5",
+                "elemento": "H",
+                "posicion": [
+                    0.0594,
+                    -0.81,
+                    0.0871
+                ]
+            },
+            {
+                "id": "H6",
+                "elemento": "H",
+                "posicion": [
+                    0.0228,
+                    -0.8425,
+                    -0.2681
+                ]
+            }
+        ],
+        "origen": "catalogo"
+    },
+    {
+        "id": "c2h4",
+        "nombre": "Etileno",
+        "formula": "C₂H₄",
+        "archivo": "glb/c2h4.glb",
+        "usdz": "usdz/c2h4.usdz",
+        "atomos": [
+            {
+                "id": "C1",
+                "elemento": "C",
+                "posicion": [
+                    0.3903,
+                    -0.9625,
+                    0.0855
+                ]
+            },
+            {
+                "id": "C2",
+                "elemento": "C",
+                "posicion": [
+                    0.4743,
+                    -0.77,
+                    0.0855
+                ]
+            },
+            {
+                "id": "H1",
+                "elemento": "H",
+                "posicion": [
+                    0.2952,
+                    -0.8162,
+                    0.1726
+                ]
+            },
+            {
+                "id": "H2",
+                "elemento": "H",
+                "posicion": [
+                    0.4042,
+                    -0.8487,
+                    -0.0723
+                ]
+            },
+            {
+                "id": "H3",
+                "elemento": "H",
+                "posicion": [
+                    0.4982,
+                    -0.8812,
+                    0.2262
+                ]
+            },
+            {
+                "id": "H4",
+                "elemento": "H",
+                "posicion": [
+                    0.2044,
+                    -0.9137,
+                    0.0526
+                ]
+            }
+        ],
+        "origen": "catalogo"
+    },
+    {
+        "id": "h2o2",
+        "nombre": "Peróxido de hidrógeno",
+        "formula": "H₂O₂",
+        "archivo": "glb/h2o2.glb",
+        "usdz": "usdz/h2o2.usdz",
+        "atomos": [
+            {
+                "id": "O1",
+                "elemento": "O",
+                "posicion": [
+                    0.0006,
+                    -0.935,
+                    0.3478
+                ]
+            },
+            {
+                "id": "O2",
+                "elemento": "O",
+                "posicion": [
+                    0.0821,
+                    -0.748,
+                    0.3478
+                ]
+            },
+            {
+                "id": "H1",
+                "elemento": "H",
+                "posicion": [
+                    -0.0931,
+                    -0.791,
+                    0.4336
+                ]
+            },
+            {
+                "id": "H2",
+                "elemento": "H",
+                "posicion": [
+                    0.0142,
+                    -0.823,
+                    0.1925
+                ]
+            }
+        ],
+        "origen": "catalogo"
+    },
+    {
+        "id": "ch2o",
+        "nombre": "Formaldehído",
+        "formula": "CH₂O",
+        "archivo": "glb/ch2o.glb",
+        "usdz": "usdz/ch2o.usdz",
+        "atomos": [
+            {
+                "id": "C1",
+                "elemento": "C",
+                "posicion": [
+                    0.0019,
+                    -0.9337,
+                    0.3533
+                ]
+            },
+            {
+                "id": "O1",
+                "elemento": "O",
+                "posicion": [
+                    0.0846,
+                    -0.744,
+                    0.3533
+                ]
+            },
+            {
+                "id": "H1",
+                "elemento": "H",
+                "posicion": [
+                    -0.0932,
+                    -0.7875,
+                    0.4404
+                ]
+            },
+            {
+                "id": "H2",
+                "elemento": "H",
+                "posicion": [
+                    0.0157,
+                    -0.82,
+                    0.1955
+                ]
+            }
+        ],
+        "origen": "catalogo"
+    },
+    {
+        "id": "c2h4o2",
+        "nombre": "Ácido acético",
+        "formula": "C₂H₄O₂",
+        "archivo": "glb/c2h4o2.glb",
+        "usdz": "usdz/c2h4o2.usdz",
+        "atomos": [
+            {
+                "id": "C1",
+                "elemento": "C",
+                "posicion": [
+                    0.1098,
+                    -0.9562,
+                    -0.0409
+                ]
+            },
+            {
+                "id": "C2",
+                "elemento": "C",
+                "posicion": [
+                    0.1937,
+                    -0.7637,
+                    -0.0409
+                ]
+            },
+            {
+                "id": "O1",
+                "elemento": "O",
+                "posicion": [
+                    0.0088,
+                    -0.801,
+                    0.0516
+                ]
+            },
+            {
+                "id": "O2",
+                "elemento": "O",
+                "posicion": [
+                    0.1245,
+                    -0.8355,
+                    -0.2083
+                ]
+            },
+            {
+                "id": "H1",
+                "elemento": "H",
+                "posicion": [
+                    0.2177,
+                    -0.875,
+                    0.0998
+                ]
+            },
+            {
+                "id": "H2",
+                "elemento": "H",
+                "posicion": [
+                    -0.0761,
+                    -0.9075,
+                    -0.0737
+                ]
+            },
+            {
+                "id": "H3",
+                "elemento": "H",
+                "posicion": [
+                    0.2738,
+                    -0.94,
+                    -0.1452
+                ]
+            },
+            {
+                "id": "H4",
+                "elemento": "H",
+                "posicion": [
+                    0.0594,
+                    -0.9725,
+                    0.1468
+                ]
+            }
+        ],
+        "origen": "catalogo"
+    },
+    {
+        "id": "c3h6o",
+        "nombre": "Acetona",
+        "formula": "C₃H₆O",
+        "archivo": "glb/c3h6o.glb",
+        "usdz": "usdz/c3h6o.usdz",
+        "atomos": [
+            {
+                "id": "C1",
+                "elemento": "C",
+                "posicion": [
+                    0.0971,
+                    -0.6312,
+                    -0.0409
+                ]
+            },
+            {
+                "id": "C2",
+                "elemento": "C",
+                "posicion": [
+                    0.181,
+                    -0.4387,
+                    -0.0409
+                ]
+            },
+            {
+                "id": "C3",
+                "elemento": "C",
+                "posicion": [
+                    -0.0054,
+                    -0.4737,
+                    0.053
+                ]
+            },
+            {
+                "id": "O1",
+                "elemento": "O",
+                "posicion": [
+                    0.1118,
+                    -0.5105,
+                    -0.2083
+                ]
+            },
+            {
+                "id": "H1",
+                "elemento": "H",
+                "posicion": [
+                    0.2049,
+                    -0.55,
+                    0.0998
+                ]
+            },
+            {
+                "id": "H2",
+                "elemento": "H",
+                "posicion": [
+                    -0.0889,
+                    -0.5825,
+                    -0.0737
+                ]
+            },
+            {
+                "id": "H3",
+                "elemento": "H",
+                "posicion": [
+                    0.261,
+                    -0.615,
+                    -0.1452
+                ]
+            },
+            {
+                "id": "H4",
+                "elemento": "H",
+                "posicion": [
+                    0.0466,
+                    -0.6475,
+                    0.1468
+                ]
+            },
+            {
+                "id": "H5",
+                "elemento": "H",
+                "posicion": [
+                    0.01,
+                    -0.68,
+                    -0.2084
+                ]
+            },
+            {
+                "id": "H6",
+                "elemento": "H",
+                "posicion": [
+                    0.2636,
+                    -0.7125,
+                    0.02
+                ]
+            }
+        ],
+        "origen": "catalogo"
+    },
+    {
+        "id": "ch4n2o",
+        "nombre": "Urea",
+        "formula": "CH₄N₂O",
+        "archivo": "glb/ch4n2o.glb",
+        "usdz": "usdz/ch4n2o.usdz",
+        "atomos": [
+            {
+                "id": "C1",
+                "elemento": "C",
+                "posicion": [
+                    0.1098,
+                    -0.9275,
+                    -0.0409
+                ]
+            },
+            {
+                "id": "O1",
+                "elemento": "O",
+                "posicion": [
+                    0.1925,
+                    -0.7377,
+                    -0.0409
+                ]
+            },
+            {
+                "id": "N1",
+                "elemento": "N",
+                "posicion": [
+                    0.0088,
+                    -0.7722,
+                    0.0516
+                ]
+            },
+            {
+                "id": "N2",
+                "elemento": "N",
+                "posicion": [
+                    0.1245,
+                    -0.8067,
+                    -0.2083
+                ]
+            },
+            {
+                "id": "H1",
+                "elemento": "H",
+                "posicion": [
+                    0.2177,
+                    -0.8462,
+                    0.0998
+                ]
+            },
+            {
+                "id": "H2",
+                "elemento": "H",
+                "posicion": [
+                    -0.0761,
+                    -0.8787,
+                    -0.0737
+                ]
+            },
+            {
+                "id": "H3",
+                "elemento": "H",
+                "posicion": [
+                    0.2738,
+                    -0.9112,
+                    -0.1452
+                ]
+            },
+            {
+                "id": "H4",
+                "elemento": "H",
+                "posicion": [
+                    0.0594,
+                    -0.9437,
+                    0.1468
+                ]
+            }
+        ],
+        "origen": "catalogo"
+    },
+    {
+        "id": "hcooh",
+        "nombre": "Ácido metanoico",
+        "formula": "HCOOH",
+        "archivo": "glb/hcooh.glb",
+        "usdz": "usdz/hcooh.usdz",
+        "atomos": [
+            {
+                "id": "C1",
+                "elemento": "C",
+                "posicion": [
+                    0.0255,
+                    -0.9337,
+                    0.0855
+                ]
+            },
+            {
+                "id": "O1",
+                "elemento": "O",
+                "posicion": [
+                    0.1082,
+                    -0.744,
+                    0.0855
+                ]
+            },
+            {
+                "id": "O2",
+                "elemento": "O",
+                "posicion": [
+                    -0.0754,
+                    -0.7785,
+                    0.178
+                ]
+            },
+            {
+                "id": "H1",
+                "elemento": "H",
+                "posicion": [
+                    0.0394,
+                    -0.82,
+                    -0.0723
+                ]
+            },
+            {
+                "id": "H2",
+                "elemento": "H",
+                "posicion": [
+                    0.1334,
+                    -0.8525,
+                    0.2262
+                ]
+            }
+        ],
+        "origen": "catalogo"
+    },
+    {
+        "id": "c2h6o-dimetil",
+        "nombre": "Dimetiléter",
+        "formula": "C₂H₆O",
+        "archivo": "glb/c2h6o-dimetil.glb",
+        "usdz": "usdz/c2h6o-dimetil.usdz",
+        "atomos": [
+            {
+                "id": "C1",
+                "elemento": "C",
+                "posicion": [
+                    0.1098,
+                    -0.7937,
+                    -0.1005
+                ]
+            },
+            {
+                "id": "C2",
+                "elemento": "C",
+                "posicion": [
+                    0.1937,
+                    -0.6012,
+                    -0.1005
+                ]
+            },
+            {
+                "id": "O1",
+                "elemento": "O",
+                "posicion": [
+                    0.0088,
+                    -0.6385,
+                    -0.008
+                ]
+            },
+            {
+                "id": "H1",
+                "elemento": "H",
+                "posicion": [
+                    0.1237,
+                    -0.68,
+                    -0.2583
+                ]
+            },
+            {
+                "id": "H2",
+                "elemento": "H",
+                "posicion": [
+                    0.2177,
+                    -0.7125,
+                    0.0402
+                ]
+            },
+            {
+                "id": "H3",
+                "elemento": "H",
+                "posicion": [
+                    -0.0761,
+                    -0.745,
+                    -0.1334
+                ]
+            },
+            {
+                "id": "H4",
+                "elemento": "H",
+                "posicion": [
+                    0.2738,
+                    -0.7775,
+                    -0.2048
+                ]
+            },
+            {
+                "id": "H5",
+                "elemento": "H",
+                "posicion": [
+                    0.0594,
+                    -0.81,
+                    0.0871
+                ]
+            },
+            {
+                "id": "H6",
+                "elemento": "H",
+                "posicion": [
+                    0.0228,
+                    -0.8425,
+                    -0.2681
+                ]
+            }
+        ],
+        "origen": "catalogo"
+    },
+    {
+        "id": "hf",
+        "nombre": "Fluoruro de hidrógeno",
+        "formula": "HF",
+        "archivo": "glb/hf.glb",
+        "usdz": "usdz/hf.usdz",
+        "atomos": [
+            {
+                "id": "H1",
+                "elemento": "H",
+                "posicion": [
+                    -0.1395,
+                    0,
+                    0
+                ]
+            },
+            {
+                "id": "F1",
+                "elemento": "F",
+                "posicion": [
+                    0.0495,
+                    0,
+                    0
+                ]
+            }
+        ],
+        "origen": "catalogo"
+    },
+    {
+        "id": "f2",
+        "nombre": "Flúor",
+        "formula": "F₂",
+        "archivo": "glb/f2.glb",
+        "usdz": "usdz/f2.usdz",
+        "atomos": [
+            {
+                "id": "F1",
+                "elemento": "F",
+                "posicion": [
+                    -0.099,
+                    0,
+                    0
+                ]
+            },
+            {
+                "id": "F2",
+                "elemento": "F",
+                "posicion": [
+                    0.099,
+                    0,
+                    0
+                ]
+            }
+        ],
+        "origen": "catalogo"
+    },
+    {
+        "id": "ch3f",
+        "nombre": "Fluorometano",
+        "formula": "CH₃F",
+        "archivo": "glb/ch3f.glb",
+        "usdz": "usdz/ch3f.usdz",
+        "atomos": [
+            {
+                "id": "C1",
+                "elemento": "C",
+                "posicion": [
+                    -0.071,
+                    -0.071,
+                    -0.071
+                ]
+            },
+            {
+                "id": "F1",
+                "elemento": "F",
+                "posicion": [
+                    0.0468,
+                    0.0468,
+                    0.0468
+                ]
+            },
+            {
+                "id": "H1",
+                "elemento": "H",
+                "posicion": [
+                    0.0416,
+                    -0.1836,
+                    -0.1836
+                ]
+            },
+            {
+                "id": "H2",
+                "elemento": "H",
+                "posicion": [
+                    -0.1836,
+                    0.0416,
+                    -0.1836
+                ]
+            },
+            {
+                "id": "H3",
+                "elemento": "H",
+                "posicion": [
+                    -0.1836,
+                    -0.1836,
+                    0.0416
+                ]
+            }
+        ],
+        "origen": "catalogo"
+    },
+    {
+        "id": "lih",
+        "nombre": "Hidruro de litio",
+        "formula": "LiH",
+        "archivo": "glb/lih.glb",
+        "usdz": "usdz/lih.usdz",
+        "atomos": [
+            {
+                "id": "Li1",
+                "elemento": "Li",
+                "posicion": [
+                    -0.0045,
+                    0,
+                    0
+                ]
+            },
+            {
+                "id": "H1",
+                "elemento": "H",
+                "posicion": [
+                    0.1945,
+                    0,
+                    0
+                ]
+            }
+        ],
+        "origen": "catalogo"
+    },
+    {
+        "id": "beh2",
+        "nombre": "Hidruro de berilio",
+        "formula": "BeH₂",
+        "archivo": "glb/beh2.glb",
+        "usdz": "usdz/beh2.usdz",
+        "atomos": [
+            {
+                "id": "Be1",
+                "elemento": "Be",
+                "posicion": [
+                    0,
+                    0,
+                    0
+                ]
+            },
+            {
+                "id": "H1",
+                "elemento": "H",
+                "posicion": [
+                    0.196,
+                    0,
+                    0
+                ]
+            },
+            {
+                "id": "H2",
+                "elemento": "H",
+                "posicion": [
+                    -0.196,
+                    0,
+                    0
+                ]
+            }
+        ],
+        "origen": "catalogo"
+    },
+    {
+        "id": "bh3",
+        "nombre": "Borano",
+        "formula": "BH₃",
+        "archivo": "glb/bh3.glb",
+        "usdz": "usdz/bh3.usdz",
+        "atomos": [
+            {
+                "id": "B1",
+                "elemento": "B",
+                "posicion": [
+                    0.0854,
+                    -0.8192,
+                    0.3515
+                ]
+            },
+            {
+                "id": "H1",
+                "elemento": "H",
+                "posicion": [
+                    0.163,
+                    -0.6413,
+                    0.3515
+                ]
+            },
+            {
+                "id": "H2",
+                "elemento": "H",
+                "posicion": [
+                    -0.0092,
+                    -0.6737,
+                    0.4381
+                ]
+            },
+            {
+                "id": "H3",
+                "elemento": "H",
+                "posicion": [
+                    0.0992,
+                    -0.706,
+                    0.1945
+                ]
+            }
+        ],
+        "origen": "catalogo"
+    }
+]

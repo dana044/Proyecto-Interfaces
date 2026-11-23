@@ -1,15 +1,43 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Generar modelos para Android · MolecuLab</title>
   <style>
-    body { margin: 0; padding: 24px; font-family: Inter, system-ui, sans-serif; background: #0F1419; color: #e5e7eb; }
-    button { padding: 12px 18px; border: none; border-radius: 10px; background: #15803d; color: #fff; font: 600 16px Inter, system-ui, sans-serif; cursor: pointer; }
-    button:disabled { opacity: .5; cursor: wait; }
-    #estado { margin-top: 16px; font-size: 15px; line-height: 1.5; }
-    p { max-width: 640px; }
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: Inter, system-ui, sans-serif;
+      background: #0F1419;
+      color: #e5e7eb;
+    }
+
+    button {
+      padding: 12px 18px;
+      border: none;
+      border-radius: 10px;
+      background: #15803d;
+      color: #fff;
+      font: 600 16px Inter, system-ui, sans-serif;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: .5;
+      cursor: wait;
+    }
+
+    #estado {
+      margin-top: 16px;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    p {
+      max-width: 640px;
+    }
   </style>
   <script type="importmap">
   {
@@ -21,14 +49,19 @@
   }
   </script>
 </head>
+
 <body>
-  <p>Genera un modelo GLB por cada molécula del catálogo, con la misma geometría de MolecuLab. Al terminar se descarga <strong>modelos-ar.zip</strong>: descomprímelo y copia su contenido en la carpeta <code>android/</code>.</p>
+  <p>Genera un modelo GLB (Android) y un USDZ (iPhone) por cada molécula del catálogo, con la misma geometría de
+    MolecuLab. Al terminar se descarga <strong>modelos-ar.zip</strong> con las carpetas <code>glb/</code> y
+    <code>usdz/</code> y el archivo <code>catalogo.json</code>: descomprímelo dentro de la carpeta
+    <code>ar-moleculas/</code>.</p>
   <button id="generar">Generar y descargar modelos</button>
   <div id="estado"></div>
 
   <script type="module">
     import * as THREE from 'three';
     import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+    import { USDZExporter } from 'three/addons/exporters/USDZExporter.js';
     import JSZip from 'jszip';
     import { ELEMENTOS } from '../js/elementos.js';
     import { calcularGeometria } from '../js/molecules.js';
@@ -80,16 +113,42 @@
         const zip = new JSZip();
         const manifiesto = [];
         const exportador = new GLTFExporter();
+        const exportadorUsdz = new USDZExporter();
 
         for (const [i, molecula] of moleculas.entries()) {
           estado.textContent = `Generando ${i + 1} de ${moleculas.length}: ${molecula.nombre}…`;
-          const glb = await exportador.parseAsync(construirMolecula(molecula), { binary: true });
+          const modelo = construirMolecula(molecula);
+          const glb = await exportador.parseAsync(modelo, { binary: true });
           zip.file(`glb/${molecula.id}.glb`, glb);
+
+          // USDZ necesita las matrices ya calculadas y un nodo padre para conservar la escala del grupo.
+          const raiz = new THREE.Group();
+          raiz.add(modelo);
+          raiz.updateMatrixWorld(true);
+          const usdz = await exportadorUsdz.parseAsync(raiz);
+          zip.file(`usdz/${molecula.id}.usdz`, usdz);
+
+          // Posición de cada átomo en metros, en el mismo sistema que el GLB, para las etiquetas del visor.
+          const posicionDeAtomo = new Map(
+            modelo.children
+              .filter((hijo) => hijo.isMesh && hijo.name)
+              .map((esfera) => {
+                const v = esfera.getWorldPosition(new THREE.Vector3());
+                return [esfera.name, [v.x, v.y, v.z].map((n) => Number(n.toFixed(4)))];
+              }),
+          );
+
           manifiesto.push({
             id: molecula.id,
             nombre: molecula.nombre,
             formula: molecula.formula,
             archivo: `glb/${molecula.id}.glb`,
+            usdz: `usdz/${molecula.id}.usdz`,
+            atomos: molecula.atomos.map((a) => ({
+              id: a.id,
+              elemento: a.elemento,
+              posicion: posicionDeAtomo.get(a.id),
+            })),
             origen: 'catalogo',
           });
         }
@@ -112,4 +171,5 @@
     });
   </script>
 </body>
+
 </html>
