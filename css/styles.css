@@ -2208,3 +2208,93 @@ body.modo-ra .camara-flotante {
   margin: 8px auto;
   border-radius: 12px;
 }
+/* Indicadores de voz, cámara y manos trasladados al encabezado */
+.encabezado .indicadores-superiores {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.encabezado .indicadores-superiores [data-accion="microfono"] {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 6px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.encabezado .indicadores-superiores [data-accion="microfono"]::before {
+  content: "";
+  display: inline-block;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'%3E%3Crect x='9' y='3' width='6' height='11' rx='3'/%3E%3Cpath d='M5 11a7 7 0 0 0 14 0M12 18v3'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'%3E%3Crect x='9' y='3' width='6' height='11' rx='3'/%3E%3Cpath d='M5 11a7 7 0 0 0 14 0M12 18v3'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.encabezado .indicadores-superiores .estado-equipo {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  width: auto;
+  gap: 8px;
+}
+.encabezado .indicadores-superiores .estado-equipo .chip-estado {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
+  width: auto;
+  min-height: 40px;
+  padding: 6px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.encabezado .indicadores-superiores .estado-equipo .chip-estado::before {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+}
+.encabezado .indicadores-superiores .estado-equipo .chip-estado .valor {
+  white-space: nowrap;
+}
+@media (max-width: 1200px) {
+  .encabezado { flex-wrap: wrap; }
+  .encabezado-der { flex: 1; }
+
+
+/* Micrófono compacto en el encabezado */
+.encabezado [data-accion="microfono"] {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 40px;
+    padding: 6px 10px;
+    font-size: 14px;
+    font-weight: 400;
+    white-space: nowrap;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+.encabezado [data-accion="microfono"]::before {
+    content: none;
+}
+
+.encabezado [data-accion="microfono"] .estado-boton {
+    font-weight: 600;
+    color: var(--estado);
+}
+
+.encabezado [data-accion="microfono"] .punto-estado {
+    width: 8px;
+    height: 8px;
+}
+
+}

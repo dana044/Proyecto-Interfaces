@@ -46,16 +46,31 @@
         <span>Átomos</span>
       </label>
       <h1 class="marca">
-        <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true">
-          <circle cx="16" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2" />
-          <circle cx="8" cy="24" r="4" fill="none" stroke="currentColor" stroke-width="2" />
-          <circle cx="24" cy="24" r="4" fill="none" stroke="currentColor" stroke-width="2" />
-          <path d="M14 11 9 20M18 11l5 9" stroke="currentColor" stroke-width="2" />
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9 3h6M10 3v7l-5.6 8.7A2 2 0 0 0 6.1 22h11.8a2 2 0 0 0 1.7-3.3L14 10V3" />
+          <path d="M7.5 16h9" />
+          <circle cx="11" cy="18.5" r=".7" fill="currentColor" stroke="none" />
         </svg>
         MolecuLab
       </h1>
     </div>
     <div class="encabezado-der">
+      <div class="indicadores-superiores" aria-label="Estado de voz y gestos">
+        <button class="boton tip estado-aviso" type="button" data-accion="microfono" aria-keyshortcuts="Space"
+          title="Activar o poner en espera el micrófono">
+          <span class="punto-estado" aria-hidden="true"></span>
+          <span>Micrófono</span>
+          <span class="estado-boton">Pausado</span>
+        </button>
+
+        <div class="estado-equipo">
+          <span class="chip-estado estado-aviso" id="estado-camara"><strong>Cámara</strong> <span class="valor">Sin
+              permiso</span></span>
+          <span class="chip-estado estado-aviso" id="estado-mano"><strong>Mano</strong> <span class="valor">No
+              detectada</span></span>
+        </div>
+      </div>
       <label for="menu-info" class="boton-menu">
         <span>Información</span>
       </label>
@@ -293,19 +308,6 @@
     </button>
 
     <hr class="separador-barra" aria-hidden="true">
-
-    <button class="boton tip estado-aviso" data-accion="microfono" aria-keyshortcuts="Space">
-      <span class="punto-estado" aria-hidden="true"></span>
-      Micrófono · <span class="estado-boton">Pausado</span>
-      <span class="globo" aria-hidden="true"><b>Activa o pausa el micrófono</b><small>Atajo: Espacio</small></span>
-      <span class="solo-lector">Tecla Espacio o clic</span>
-    </button>
-    <div class="estado-equipo">
-      <span class="chip-estado estado-aviso" id="estado-camara"><strong>Cámara</strong> <span class="valor">Sin
-          permiso</span></span>
-      <span class="chip-estado estado-aviso" id="estado-mano"><strong>Mano</strong> <span class="valor">No
-          detectada</span></span>
-    </div>
     <button type="button" class="boton" data-accion="silenciar-sonidos" aria-pressed="false">Silenciar tonos</button>
     <button class="boton tip" type="button" data-accion="exportar">
       Exportar

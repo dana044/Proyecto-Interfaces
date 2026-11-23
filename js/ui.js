@@ -13,11 +13,14 @@ import { identificarElemento } from './chemistry.js';
 import { ELEMENTOS } from './elementos.js';
 import { estado, setUltimaAccion } from './state.js';
 
+
 const estadosMicrofono = {
-  escuchando: { texto: 'Escuchando', clase: 'estado-ok' },
-  pausado: { texto: 'Pausado', clase: 'estado-aviso' },
-  error: { texto: 'Error', clase: 'estado-error' },
+  escuchando: { texto: 'Activo', clase: 'estado-ok' },
+  espera: { texto: 'En espera', clase: 'estado-aviso' },
+  pausado: { texto: 'Desactivado', clase: 'estado-aviso' },
+  error: { texto: 'Desactivado', clase: 'estado-error' },
 };
+
 
 const estadosCamara = {
   activa: { texto: 'Activa', clase: 'estado-ok' },
