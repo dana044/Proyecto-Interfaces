@@ -30,6 +30,14 @@
     </footer>
 
     <script type="module" src="ar.js"></script>
+    <script>
+        setTimeout(function () {
+            var sel = document.getElementById('selector');
+            if (sel && sel.options.length === 1 && sel.options[0].textContent.indexOf('Cargando') === 0) {
+                document.getElementById('info').textContent = 'No se cargó ar.js. Revisa que ar.js esté en la misma carpeta que ar.html.';
+            }
+        }, 8000);
+    </script>
 </body>
 
 </html>
