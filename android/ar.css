@@ -66,3 +66,43 @@ footer {
     color: #94a3b8;
     font-size: 13px;
 }
+
+/* Tarjetas con la descripción de cada átomo de la molécula. */
+.atomos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.atomo {
+    flex: 1 1 260px;
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid #334155;
+    background: #111827;
+}
+
+.atomo h2 {
+    font-size: 16px;
+    margin: 0 0 4px;
+    color: #f1f5f9;
+}
+
+.atomo h2 span {
+    color: #94a3b8;
+    font-weight: 400;
+}
+
+.atomo .datos {
+    margin: 0 0 8px;
+    font-size: 13px;
+    color: #94a3b8;
+}
+
+.atomo p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #cbd5e1;
+}

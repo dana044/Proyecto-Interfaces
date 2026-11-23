@@ -1,0 +1,58 @@
+{
+    "B": {
+        "nombre": "Boro",
+        "z": 5,
+        "valencia": 3,
+        "masa": 11,
+        "descripcion": "Es un metaloide. Tiene 3 electrones en su capa externa y puede formar 3 enlaces, como en el borano (BH₃)."
+    },
+    "Be": {
+        "nombre": "Berilio",
+        "z": 4,
+        "valencia": 2,
+        "masa": 9,
+        "descripcion": "Es un metal alcalinotérreo. Tiene 2 electrones en su capa externa, así que forma 2 enlaces, como en el hidruro de berilio (BeH₂)."
+    },
+    "C": {
+        "nombre": "Carbono",
+        "z": 6,
+        "valencia": 4,
+        "masa": 12,
+        "descripcion": "Puede formar 4 enlaces, por eso es la base de las moléculas orgánicas, como el metano y el etanol."
+    },
+    "F": {
+        "nombre": "Flúor",
+        "z": 9,
+        "valencia": 1,
+        "masa": 19,
+        "descripcion": "Es el elemento más reactivo de la tabla periódica. Forma 1 enlace, como en el fluoruro de hidrógeno (HF)."
+    },
+    "H": {
+        "nombre": "Hidrógeno",
+        "z": 1,
+        "valencia": 1,
+        "masa": 1,
+        "descripcion": "Es el elemento más ligero y el más abundante del universo. Tiene 1 electrón, así que solo puede formar 1 enlace."
+    },
+    "Li": {
+        "nombre": "Litio",
+        "z": 3,
+        "valencia": 1,
+        "masa": 7,
+        "descripcion": "Es un metal muy ligero y reactivo. Tiene 1 electrón en su capa externa, por eso solo forma 1 enlace, como en el hidruro de litio (LiH)."
+    },
+    "N": {
+        "nombre": "Nitrógeno",
+        "z": 7,
+        "valencia": 3,
+        "masa": 14,
+        "descripcion": "Está en el aire que respiramos y en las proteínas. Puede formar 3 enlaces, como en el amoníaco (NH₃)."
+    },
+    "O": {
+        "nombre": "Oxígeno",
+        "z": 8,
+        "valencia": 2,
+        "masa": 16,
+        "descripcion": "Le faltan 2 electrones para completar su capa externa, así que forma 2 enlaces. Está presente en el agua y en el aire que respiramos."
+    }
+}
