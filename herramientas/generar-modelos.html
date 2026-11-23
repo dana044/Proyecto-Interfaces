@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Generar modelos para Android · MolecuLab</title>
+  <style>
+    body { margin: 0; padding: 24px; font-family: Inter, system-ui, sans-serif; background: #0F1419; color: #e5e7eb; }
+    button { padding: 12px 18px; border: none; border-radius: 10px; background: #15803d; color: #fff; font: 600 16px Inter, system-ui, sans-serif; cursor: pointer; }
+    button:disabled { opacity: .5; cursor: wait; }
+    #estado { margin-top: 16px; font-size: 15px; line-height: 1.5; }
+    p { max-width: 640px; }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.183.2/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.183.2/examples/jsm/",
+      "jszip": "https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm"
+    }
+  }
+  </script>
+</head>
+<body>
+  <p>Genera un modelo GLB por cada molécula del catálogo, con la misma geometría de MolecuLab. Al terminar se descarga <strong>modelos-ar.zip</strong>: descomprímelo y copia su contenido en la carpeta <code>android/</code>.</p>
+  <button id="generar">Generar y descargar modelos</button>
+  <div id="estado"></div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+    import JSZip from 'jszip';
+    import { ELEMENTOS } from '../js/elementos.js';
+    import { calcularGeometria } from '../js/molecules.js';
+    import { crearMallaEnlace, actualizarMallaEnlace } from '../js/modelos.js';
+
+    // 1 unidad de MolecuLab = 10 cm, para que en AR la molécula tenga tamaño real y manejable.
+    const ESCALA_METROS = 0.1;
+    const estado = document.getElementById('estado');
+
+    // Mismo criterio que el editor: esferas del color de grupo y radio de elementos.js,
+    // y enlaces con la misma geometría de modelos.js (Etapa 0).
+    function construirMolecula(molecula) {
+      const identidad = new Map(molecula.atomos.map((atomo) => [atomo.id, atomo.id]));
+      const posiciones = calcularGeometria(molecula, identidad);
+      const grupo = new THREE.Group();
+
+      for (const atomo of molecula.atomos) {
+        const elemento = ELEMENTOS[atomo.elemento];
+        const esfera = new THREE.Mesh(
+          new THREE.SphereGeometry(elemento.radio, 24, 16),
+          new THREE.MeshStandardMaterial({ color: elemento.color, roughness: 0.4, metalness: 0 }),
+        );
+        const p = posiciones[atomo.id];
+        esfera.position.set(p.x, p.y, p.z);
+        esfera.name = atomo.id;
+        grupo.add(esfera);
+      }
+
+      for (const enlace of molecula.enlaces) {
+        const a = posiciones[enlace.desde];
+        const b = posiciones[enlace.hasta];
+        const { grupo: malla, cilindros } = crearMallaEnlace(enlace.orden === 2 ? 2 : 1, enlace.desde, enlace.hasta);
+        actualizarMallaEnlace({ cilindros }, new THREE.Vector3(a.x, a.y, a.z), new THREE.Vector3(b.x, b.y, b.z));
+        grupo.add(malla);
+      }
+
+      // Centrar la molécula en el origen y pasar a metros.
+      const centro = new THREE.Box3().setFromObject(grupo).getCenter(new THREE.Vector3());
+      grupo.position.sub(centro);
+      grupo.scale.setScalar(ESCALA_METROS);
+      return grupo;
+    }
+
+    document.getElementById('generar').addEventListener('click', async (evento) => {
+      const boton = evento.currentTarget;
+      boton.disabled = true;
+      try {
+        const { moleculas } = await (await fetch('../data/moleculas.json')).json();
+        const zip = new JSZip();
+        const manifiesto = [];
+        const exportador = new GLTFExporter();
+
+        for (const [i, molecula] of moleculas.entries()) {
+          estado.textContent = `Generando ${i + 1} de ${moleculas.length}: ${molecula.nombre}…`;
+          const glb = await exportador.parseAsync(construirMolecula(molecula), { binary: true });
+          zip.file(`glb/${molecula.id}.glb`, glb);
+          manifiesto.push({
+            id: molecula.id,
+            nombre: molecula.nombre,
+            formula: molecula.formula,
+            archivo: `glb/${molecula.id}.glb`,
+            origen: 'catalogo',
+          });
+        }
+        zip.file('catalogo.json', JSON.stringify(manifiesto, null, 2) + '\n');
+
+        estado.textContent = 'Empaquetando…';
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const enlace = document.createElement('a');
+        enlace.href = URL.createObjectURL(blob);
+        enlace.download = 'modelos-ar.zip';
+        document.body.appendChild(enlace);
+        enlace.click();
+        enlace.remove();
+        estado.textContent = `Listo: ${manifiesto.length} modelos en modelos-ar.zip`;
+      } catch (error) {
+        estado.textContent = 'Error: ' + error.message;
+      } finally {
+        boton.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

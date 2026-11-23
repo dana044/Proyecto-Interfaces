@@ -1,0 +1,9 @@
+# Cabeceras para Cloudflare Pages y Netlify.
+# Scene Viewer necesita el tipo de contenido correcto para los GLB; GitHub Pages no permite configurarlo.
+/*
+  X-Content-Type-Options: nosniff
+
+/glb/*
+  Content-Type: model/gltf-binary
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=86400
