@@ -1620,26 +1620,27 @@ label[for="menu-info"].boton-menu::before {
 
 /* ==========================================================
    Tutorial de gestos
-   Tarjeta abajo a la derecha. El contenedor no bloquea los
-   clics: solo la tarjeta responde, así la paleta sigue usable.
+   Tarjeta chica, centrada a la derecha. El contenedor no bloquea
+   los clics: solo la tarjeta responde, así la escena sigue usable.
    ========================================================== */
 
 .tutorial {
   position: fixed;
+  top: 50%;
   right: 24px;
-  bottom: 24px;
+  transform: translateY(-50%);
   z-index: 40;
-  width: min(380px, calc(100vw - 48px));
+  width: min(300px, calc(100vw - 48px));
   pointer-events: none;
 }
 
 .tutorial-tarjeta {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   max-height: calc(100vh - 48px);
   overflow-y: auto;
-  padding: 16px 18px;
+  padding: 12px 14px;
   pointer-events: auto;
   background: var(--superficie);
   border: 1px solid var(--borde);
@@ -1650,31 +1651,25 @@ label[for="menu-info"].boton-menu::before {
 .tutorial-titulo {
   margin: 0;
   font-family: var(--fuente-titulo);
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--texto);
 }
 
-.tutorial-descripcion,
-.tutorial-calibracion {
+.tutorial-descripcion {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.4;
   color: var(--texto-secundario);
 }
 
-.tutorial-calibracion {
-  color: var(--accion);
-  font-weight: 600;
-}
-
-/* Zona de la demostración del paso actual */
+/* Zona de la demostración: tamaño fijo para que todas las animaciones queden iguales */
 
 .tutorial-paso-zona {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
+  gap: 6px;
+  padding: 10px;
   background: var(--lienzo);
   border: 1px solid var(--borde);
   border-radius: 12px;
@@ -1684,32 +1679,33 @@ label[for="menu-info"].boton-menu::before {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 110px;
+  height: 110px;
+  overflow: hidden;
 }
 
 .tutorial-demo {
   width: 100%;
-  max-width: 220px;
-  height: auto;
-  overflow: visible;
+  height: 100%;
+  max-width: 200px;
+  overflow: hidden;
 }
 
 .tutorial-paso-titulo {
   margin: 0;
   font-family: var(--fuente-titulo);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--accion);
 }
 
 .tutorial-paso-texto-actual {
   margin: 0;
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.4;
   color: var(--texto);
 }
 
-/* Lista de pasos */
+/* Lista de pasos: solo el paso actual y los que faltan */
 
 .tutorial-pasos {
   display: flex;
@@ -1725,7 +1721,7 @@ label[for="menu-info"].boton-menu::before {
   align-items: center;
   gap: 8px;
   padding: 4px 8px;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--texto-secundario);
   border-radius: 8px;
 }
@@ -1738,6 +1734,7 @@ label[for="menu-info"].boton-menu::before {
 
 .tutorial-paso-completo {
   color: var(--ok);
+  font-weight: 600;
 }
 
 .tutorial-palomita {
@@ -1750,7 +1747,7 @@ label[for="menu-info"].boton-menu::before {
   align-self: flex-end;
   padding: 6px 8px;
   font-family: var(--fuente-texto);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--accion);
   background: transparent;
@@ -1807,6 +1804,8 @@ label[for="menu-info"].boton-menu::before {
 }
 
 .tutorial-demo .demo-arco {
+  stroke: var(--accion-suave);
+  stroke-width: 3;
   stroke-dasharray: 4 6;
 }
 
@@ -1866,146 +1865,76 @@ label[for="menu-info"].boton-menu::before {
 }
 
 @keyframes tutorial-dedo {
-
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-
-  50% {
-    transform: translateX(30px);
-  }
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(30px); }
 }
 
 @keyframes tutorial-atomo-mover {
-
-  0%,
-  100% {
-    transform: translateX(-20px);
-  }
-
-  50% {
-    transform: translateX(20px);
-  }
+  0%, 100% { transform: translateX(-20px); }
+  50% { transform: translateX(20px); }
 }
 
 @keyframes tutorial-girar {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }
 
 @keyframes tutorial-marco-izq {
-  from {
-    transform: translate(0, 0);
-  }
-
-  to {
-    transform: translate(10px, 10px);
-  }
+  from { transform: translate(0, 0); }
+  to { transform: translate(10px, 10px); }
 }
 
 @keyframes tutorial-marco-der {
-  from {
-    transform: translate(0, 0);
-  }
-
-  to {
-    transform: translate(-10px, -10px);
-  }
+  from { transform: translate(0, 0); }
+  to { transform: translate(-10px, -10px); }
 }
 
 @keyframes tutorial-paleta {
-  0% {
-    transform: translateX(40px);
-    opacity: 0;
-  }
-
-  30%,
-  80% {
-    transform: translateX(0);
-    opacity: 1;
-  }
-
-  100% {
-    transform: translateX(40px);
-    opacity: 0;
-  }
+  0% { transform: translateX(40px); opacity: 0; }
+  30%, 80% { transform: translateX(0); opacity: 1; }
+  100% { transform: translateX(40px); opacity: 0; }
 }
 
 @keyframes tutorial-caer {
-  0% {
-    transform: translateY(-30px);
-    opacity: 0;
-  }
-
-  40%,
-  80% {
-    transform: translateY(0);
-    opacity: 1;
-  }
-
-  100% {
-    transform: translateY(0);
-    opacity: 0;
-  }
+  0% { transform: translateY(-30px); opacity: 0; }
+  40%, 80% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(0); opacity: 0; }
 }
 
 @keyframes tutorial-pulso {
-
-  0%,
-  100% {
-    transform: scale(0.9);
-    opacity: 0.5;
-  }
-
-  50% {
-    transform: scale(1.1);
-    opacity: 1;
-  }
+  0%, 100% { transform: scale(0.9); opacity: 0.5; }
+  50% { transform: scale(1.1); opacity: 1; }
 }
 
 @keyframes tutorial-pulso-suave {
-
-  0%,
-  100% {
-    opacity: 0.6;
-  }
-
-  50% {
-    opacity: 1;
-  }
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 
 @keyframes tutorial-check {
-  from {
-    stroke-dashoffset: 60;
-  }
-
-  to {
-    stroke-dashoffset: 0;
-  }
+  from { stroke-dashoffset: 60; }
+  to { stroke-dashoffset: 0; }
 }
 
-/* Móvil: la tarjeta ocupa el ancho bajo la escena */
+/* Móvil: la tarjeta va abajo, a todo el ancho */
 
 @media (max-width: 1023px) {
   .tutorial {
-    left: 12px;
+    top: auto;
     right: 12px;
     bottom: 12px;
+    left: 12px;
     width: auto;
+    transform: none;
   }
 
   .tutorial-tarjeta {
-    max-height: 60vh;
+    max-height: 50vh;
   }
 }
 
 /* Quien prefiere menos movimiento ve la demostración quieta */
 
 @media (prefers-reduced-motion: reduce) {
-
   .tutorial *,
   .tutorial-demo * {
     animation: none !important;

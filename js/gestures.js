@@ -30,7 +30,9 @@ const FPS_MINIMO = 20;
 const SEGUNDOS_LENTOS_ANTES_DE_BAJAR = 2;
 const ANCHO_BAJA_RESOLUCION = 640;
 const ALTO_BAJA_RESOLUCION = 480;
-const ALFA_SUAVIZADO = 0.4;
+const ALFA_SUAVIZADO = 0.5;
+// Ganancia del cursor alrededor del centro: con 1.5, la orilla se alcanza con menos movimiento. Si tiembla, bájala.
+const GANANCIA_CURSOR = 2.0;
 const MS_MANO_PERDIDA = 500;
 const PUNTO_INDICE = 8;
 const FACTOR_DEDO_EXTENDIDO = 1.1;
@@ -43,7 +45,9 @@ const ZOOM_MINIMO = 0.5;
 const ZOOM_MAXIMO = 3;
 const CAMBIO_MINIMO_ZOOM = 0.02;
 const MOVIMIENTO_MINIMO_MOVER = 0.005;
-const VELOCIDAD_GIRO = 0.012;
+const VELOCIDAD_GIRO = 0.03;
+// Multiplica el movimiento de mover la escena.
+const SENSIBILIDAD_MOVER = 2.0;
 const ZONA_NEUTRA_GIRO = 0.06;
 const MS_MANTENER_LISTO = 1000;
 const MS_MANTENER_PALETA = 500;
@@ -52,8 +56,9 @@ const MS_MANTENER_ELIMINAR = 500;
 /** El cursor no se puede mover más que esto mientras se mantiene el pellizco para pulsar. */
 const UMBRAL_PULGAR_LADO_X = 0.08;
 const UMBRAL_PULGAR_LADO_Y = 0.05;
-const UMBRAL_PULGAR_ARRIBA_ALTO = 0.12;
-const FACTOR_PULGAR_ARRIBA = 1.2;
+const FACTOR_TAMANO_PULGAR_ESTIRADO = 1.2;
+const FACTOR_PULGAR_ARRIBA_ALTO = 0.5;
+const FACTOR_PULGAR_EN_PALMA = 0.6;
 const MOVIMIENTO_MINIMO_GIRAR = 0.002;
 // Un dedo está estirado si su punta queda más lejos de la muñeca que
 // esto por el tamaño de la mano, y plegado si queda más cerca.
@@ -61,8 +66,9 @@ const FACTOR_TAMANO_ESTIRADO = 1.5;
 const FACTOR_TAMANO_PLEGADO = 1.15;
 const FACTOR_TAMANO_ESTIRADO_GIRAR = 1.3;
 // Pulgar tocando un dedo: las puntas quedan a menos de esta fracción del tamaño de la mano.
-const FACTOR_TOQUE_DEDOS = 0.4;
-const MS_MANTENER_DESHACER = 400;
+const MS_MANTENER_RETO = 500;
+const MS_MANTENER_LIMPIAR = 1000;
+const MS_MANTENER_DESHACER = 500;
 const FACTOR_DEDO_PLEGADO_SUAVE = 1.05;
 // Pon -1 para invertir el sentido del giro.
 const SENTIDO_GIRO = 1;
@@ -468,17 +474,15 @@ function esIndiceArriba(puntos) {
 }
 
 /**
- * Pulgar arriba: el pulgar estirado y bien por encima de la muñeca,
- * con los otros cuatro dedos plegados.
+ * Puño con pulgar arriba (👍): los cuatro dedos plegados y el pulgar
+ * levantado, con la punta bien por encima de la muñeca.
  * @param {Array<{x: number, y: number}>} puntos
  */
 function esPulgarArriba(puntos) {
-  return relacionDedo(puntos, 4, 3) > FACTOR_PULGAR_ARRIBA
-    && puntos[0].y - puntos[4].y > UMBRAL_PULGAR_ARRIBA_ALTO
-    && relacionDedo(puntos, 8, 6) < FACTOR_DEDO_PLEGADO
-    && relacionDedo(puntos, 12, 10) < FACTOR_DEDO_PLEGADO
-    && relacionDedo(puntos, 16, 14) < FACTOR_DEDO_PLEGADO
-    && relacionDedo(puntos, 20, 18) < FACTOR_DEDO_PLEGADO;
+  const tamano = tamanoMano(puntos);
+  return [8, 12, 16, 20].every((punta) => distanciaPx(puntos[punta], puntos[0]) < FACTOR_TAMANO_PLEGADO * tamano)
+    && (puntos[0].y - puntos[4].y) * video.videoHeight > FACTOR_PULGAR_ARRIBA_ALTO * tamano
+    && distanciaPx(puntos[4], puntos[8]) > umbralesPellizco.soltar * video.videoWidth;
 }
 
 /**
@@ -653,6 +657,8 @@ const mantenedorListo = crearMantenedor(MS_MANTENER_LISTO);
 const mantenedorPaleta = crearMantenedor(MS_MANTENER_PALETA);
 const mantenedorMicrofono = crearMantenedor(MS_MANTENER_MICROFONO);
 const mantenedorEliminar = crearMantenedor(MS_MANTENER_ELIMINAR);
+const mantenedorReto = crearMantenedor(MS_MANTENER_RETO);
+const mantenedorLimpiar = crearMantenedor(MS_MANTENER_LIMPIAR);
 const mantenedorDeshacer = crearMantenedor(MS_MANTENER_DESHACER);
 const mantenedorRehacer = crearMantenedor(MS_MANTENER_DESHACER);
 
@@ -780,7 +786,7 @@ function procesarMover(resultado) {
   const dy = suavizadoMover.y - referenciaMover.y;
   referenciaMover = { ...suavizadoMover };
   if (Math.hypot(dx, dy) < MOVIMIENTO_MINIMO_MOVER) return;
-  emit('gesto:mover', { dx, dy });
+  emit('gesto:mover', { dx: dx * SENSIBILIDAD_MOVER, dy: dy * SENSIBILIDAD_MOVER });
 }
 
 /**
@@ -831,33 +837,82 @@ function procesarGirar(resultado) {
 }
 
 /**
- * Pulgar tocando un dedo: la punta del pulgar cerca de la punta del dedo
- * indicado y lejos del índice, para no confundirlo con la pinza.
+ * I love you (🤟): pulgar, índice y meñique estirados; medio y anular plegados.
  * @param {Array<{x: number, y: number}>} puntos
- * @param {number} dedo - 12 para el medio, 16 para el anular
  */
-function pulgarTocaDedo(puntos, dedo) {
+function esIloveyou(puntos) {
   const tamano = tamanoMano(puntos);
-  return distanciaPx(puntos[4], puntos[dedo]) < FACTOR_TOQUE_DEDOS * tamano
-    && distanciaPx(puntos[4], puntos[8]) > 2 * FACTOR_TOQUE_DEDOS * tamano;
+  const lejos = (punta) => distanciaPx(puntos[punta], puntos[0]);
+  return lejos(4) > FACTOR_TAMANO_PULGAR_ESTIRADO * tamano
+    && lejos(8) > FACTOR_TAMANO_ESTIRADO_GIRAR * tamano
+    && lejos(20) > FACTOR_TAMANO_ESTIRADO_GIRAR * tamano
+    && lejos(12) < FACTOR_TAMANO_PLEGADO * tamano
+    && lejos(16) < FACTOR_TAMANO_PLEGADO * tamano;
 }
 
 /**
- * Pulgar tocando el dedo medio medio segundo: deshace. Pulgar tocando el
- * anular medio segundo: rehace. Cada gesto se emite una vez hasta que se
- * suelta la pose.
+ * Limpiar: índice, medio, anular y meñique estirados, con el pulgar
+ * metido dentro de la palma.
+ * @param {Array<{x: number, y: number}>} puntos
+ */
+function esLimpiar(puntos) {
+  const tamano = tamanoMano(puntos);
+  const lejos = (punta) => distanciaPx(puntos[punta], puntos[0]);
+  return lejos(8) > FACTOR_TAMANO_ESTIRADO_GIRAR * tamano
+    && lejos(12) > FACTOR_TAMANO_ESTIRADO_GIRAR * tamano
+    && lejos(16) > FACTOR_TAMANO_ESTIRADO_GIRAR * tamano
+    && lejos(20) > FACTOR_TAMANO_ESTIRADO_GIRAR * tamano
+    && distanciaPx(puntos[4], puntos[9]) < FACTOR_PULGAR_EN_PALMA * tamano
+    && distanciaPx(puntos[4], puntos[8]) > umbralesPellizco.soltar * video.videoWidth;
+}
+
+
+
+/**
+ * Llamada (🤙): pulgar y meñique estirados, los otros tres dedos plegados.
+ * El meñique apunta a la izquierda: deshacer. A la derecha: rehacer.
+ * Devuelve -1 (izquierda), 1 (derecha) o 0 si no es la llamada.
+ * @param {Array<{x: number, y: number}>} puntos
+ */
+function direccionLlamada(puntos) {
+  const tamano = tamanoMano(puntos);
+  const lejos = (punta) => distanciaPx(puntos[punta], puntos[0]);
+  const llamada = lejos(4) > FACTOR_TAMANO_PULGAR_ESTIRADO * tamano
+    && lejos(20) > FACTOR_TAMANO_ESTIRADO_GIRAR * tamano
+    && lejos(8) < FACTOR_TAMANO_PLEGADO * tamano
+    && lejos(12) < FACTOR_TAMANO_PLEGADO * tamano
+    && lejos(16) < FACTOR_TAMANO_PLEGADO * tamano;
+  if (!llamada) return 0;
+  // La x de la pantalla está en espejo, así que se invierte para leer la dirección.
+  const dx = -(puntos[20].x - puntos[0].x);
+  const dy = puntos[20].y - puntos[0].y;
+  if (Math.abs(dx) <= Math.abs(dy)) return 0;
+  return Math.sign(dx);
+}
+
+/**
+ * Poses que se mantienen: I love you emite gesto:reto (entra o sale del
+ * modo reto), la llamada a la izquierda emite gesto:deshacer, a la
+ * derecha gesto:rehacer, y limpiar emite gesto:limpiar.
  * @param {import('@mediapipe/tasks-vision').HandLandmarkerResult} resultado
  * @param {number} ahora
  */
-function procesarDeshacerRehacer(resultado, ahora) {
+function procesarPosesNuevas(resultado, ahora) {
   const manos = resultado.landmarks || [];
   const x = suavizado ? suavizado.x : 0.5;
   const y = suavizado ? suavizado.y : 0.5;
-  if (mantenedorDeshacer.actualizar(manos.some((p) => pulgarTocaDedo(p, 12)), ahora, x, y)) {
+  const direcciones = manos.map((puntos) => direccionLlamada(puntos));
+  if (mantenedorReto.actualizar(manos.some((p) => esIloveyou(p)), ahora, x, y)) {
+    emit('gesto:reto');
+  }
+  if (mantenedorDeshacer.actualizar(direcciones.includes(-1), ahora, x, y)) {
     emit('gesto:deshacer');
   }
-  if (mantenedorRehacer.actualizar(manos.some((p) => pulgarTocaDedo(p, 16)), ahora, x, y)) {
+  if (mantenedorRehacer.actualizar(direcciones.includes(1), ahora, x, y)) {
     emit('gesto:rehacer');
+  }
+  if (mantenedorLimpiar.actualizar(manos.some((p) => esLimpiar(p)), ahora, x, y)) {
+    emit('gesto:limpiar');
   }
 }
 
@@ -906,6 +961,8 @@ function procesarManoPerdida(ahora) {
   palmaAntes = false;
   puntoPunoAnterior = null;
   puntoPunoSuave = null;
+  mantenedorReto.reiniciar();
+  mantenedorLimpiar.reiniciar();
   mantenedorDeshacer.reiniciar();
   mantenedorRehacer.reiniciar();
   cuadrosSinIndice = 0;
@@ -956,8 +1013,9 @@ function procesarAgarre(resultado, ahora) {
   manoEnCuadro = true;
 
   // La x se refleja aquí para que coincida con la vista en espejo.
-  const x = 1 - puntos[PUNTO_INDICE].x;
-  const y = puntos[PUNTO_INDICE].y;
+  // Ganancia alrededor del centro: el cursor llega a la orilla con menos movimiento.
+  const x = Math.min(1, Math.max(0, 0.5 + (1 - puntos[PUNTO_INDICE].x - 0.5) * GANANCIA_CURSOR));
+  const y = Math.min(1, Math.max(0, 0.5 + (puntos[PUNTO_INDICE].y - 0.5) * GANANCIA_CURSOR));
   suavizado = suavizado
     ? {
       x: ALFA_SUAVIZADO * x + (1 - ALFA_SUAVIZADO) * suavizado.x,
@@ -1018,7 +1076,7 @@ function bucleDeteccion() {
     procesarAgarre(resultado, ahora);
     procesarMover(resultado);
     procesarGirar(resultado);
-    procesarDeshacerRehacer(resultado, ahora);
+    procesarPosesNuevas(resultado, ahora);
     procesarZoom(resultado);
     medirFPS(ahora);
   } catch (error) {
@@ -1080,6 +1138,8 @@ export function detenerGestos() {
   palmaAntes = false;
   puntoPunoAnterior = null;
   puntoPunoSuave = null;
+  mantenedorReto.reiniciar();
+  mantenedorLimpiar.reiniciar();
   mantenedorDeshacer.reiniciar();
   mantenedorRehacer.reiniciar();
   ultimoBloqueoAgarre = '';

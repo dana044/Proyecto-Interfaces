@@ -66,19 +66,31 @@ const PASOS = [
   {
     id: 'deshacer',
     titulo: 'Deshacer',
-    texto: 'Toca el pulgar con el dedo medio y mantenlo medio segundo para deshacer.',
+    texto: 'Con la mano derecha, haz la llamada con el meñique hacia la izquierda y mantenla medio segundo para deshacer.',
     evento: 'gesto:deshacer',
   },
   {
     id: 'rehacer',
     titulo: 'Rehacer',
-    texto: 'Toca el pulgar con el anular y mantenlo medio segundo para rehacer.',
+    texto: 'Con la mano izquierda, haz la llamada con el meñique hacia la derecha y mantenla medio segundo para rehacer.',
     evento: 'gesto:rehacer',
+  },
+  {
+    id: 'reto',
+    titulo: 'Reto',
+    texto: 'Forma un «I love you» (pulgar, índice y meñique estirados) y mantenlo medio segundo para entrar o salir del modo reto.',
+    evento: 'gesto:reto',
+  },
+  {
+    id: 'limpiar',
+    titulo: 'Limpiar',
+    texto: 'Estira los cuatro dedos largos con el pulgar dentro de la palma y mantenlo un segundo para borrar todo.',
+    evento: 'gesto:limpiar',
   },
   {
     id: 'listo',
     titulo: 'Listo',
-    texto: 'Pulgar arriba un segundo para confirmar la molécula.',
+    texto: 'Cierra la mano con el pulgar hacia arriba y mantenlo un segundo para confirmar la molécula.',
     evento: 'gesto:listo',
   },
 ];
@@ -90,7 +102,7 @@ const ATOMO_DEMO = '<g class="demo-atomo"><circle cx="80" cy="50" r="18"/><text 
 const DEMOS = {
   agarrar: `<circle class="demo-dedo" cx="30" cy="50" r="6"/>${ATOMO_DEMO}`,
   mover: `${ATOMO_DEMO}<path class="demo-flecha" d="M30 85 H130"/>`,
-  girar: `${ATOMO_DEMO}<circle class="demo-orbita" cx="120" cy="50" r="5"/><circle class="demo-orbita" cx="40" cy="50" r="5"/><path class="demo-arco" d="M30 20 A50 50 0 0 1 130 20"/>`,
+  girar: `<circle class="demo-arco" cx="80" cy="50" r="44"/>${ATOMO_DEMO}<circle class="demo-orbita" cx="120" cy="50" r="5"/><circle class="demo-orbita" cx="40" cy="50" r="5"/>`,
   acercar: `${ATOMO_DEMO}<path class="demo-marco" d="M12 25 L12 12 L30 12"/><path class="demo-marco" d="M148 75 L148 88 L130 88"/>`,
   paleta: `${ATOMO_DEMO}<rect class="demo-paleta" x="118" y="10" width="34" height="80" rx="4"/>`,
   colocar: `<rect class="demo-tablero" x="20" y="15" width="120" height="70" rx="4"/><g class="demo-caer">${ATOMO_DEMO}</g>`,
@@ -98,6 +110,8 @@ const DEMOS = {
   eliminar: `${ATOMO_DEMO}<path class="demo-flecha" d="M140 20 V75"/><path class="demo-flecha" d="M133 68 L140 78 L147 68"/>`,
   deshacer: `${ATOMO_DEMO}<path class="demo-flecha" d="M130 85 H30"/><path class="demo-flecha" d="M42 78 L30 85 L42 92"/>`,
   rehacer: `${ATOMO_DEMO}<path class="demo-flecha" d="M30 85 H130"/><path class="demo-flecha" d="M118 78 L130 85 L118 92"/>`,
+  reto: `<rect class="demo-paleta" x="40" y="20" width="80" height="60" rx="8"/><text x="80" y="60" text-anchor="middle" font-size="12">I love you</text>`,
+  limpiar: `<rect class="demo-tablero" x="30" y="15" width="100" height="70" rx="4"/><path class="demo-flecha" d="M55 35 L105 65 M105 35 L55 65"/>`,
   listo: `<path class="demo-check" d="M55 50 L74 69 L106 33"/>`,
 };
 
@@ -110,6 +124,8 @@ let tituloPaso = null;
 let textoPaso = null;
 let pasoActual = 0;
 let idTemporizador = 0;
+let listaPasos = null;
+let completando = false;
 
 /** Lee la calibración guardada del pellizco y la aplica, si la hay. */
 function aplicarCalibracionGuardada() {
@@ -131,6 +147,7 @@ function cerrar() {
   contenedor?.remove();
   contenedor = null;
   emit('tutorial:atomo-ejemplo', { mostrar: false });
+  emit('tutorial:terminado', {});
   try {
     sessionStorage.setItem(CLAVE_VISTO, '1');
   } catch (error) {
@@ -198,14 +215,13 @@ function construirPantalla() {
   zonaDemo.appendChild(tituloPaso);
   zonaDemo.appendChild(textoPaso);
 
-  const lista = crearElemento('ol', 'tutorial-pasos');
+  listaPasos = crearElemento('ol', 'tutorial-pasos');
   elementosPasos = PASOS.map((paso) => {
     const item = crearElemento('li', 'tutorial-paso');
     const palomita = crearElemento('span', 'tutorial-palomita', '○');
     const texto = crearElemento('span', 'tutorial-paso-texto', paso.titulo);
     item.appendChild(palomita);
     item.appendChild(texto);
-    lista.appendChild(item);
     return { item, palomita };
   });
 
@@ -215,31 +231,58 @@ function construirPantalla() {
   tarjeta.appendChild(titulo);
   tarjeta.appendChild(descripcion);
   tarjeta.appendChild(zonaDemo);
-  tarjeta.appendChild(lista);
+  renderizarLista();
+  tarjeta.appendChild(listaPasos);
   tarjeta.appendChild(boton);
   contenedor.appendChild(tarjeta);
 }
 
-/** Marca el paso actual como hecho y muestra el siguiente. Al terminar, cierra. */
+/** Muestra solo el paso actual y los que faltan. */
+function renderizarLista() {
+  listaPasos.replaceChildren(...elementosPasos.slice(pasoActual, pasoActual + 1).map((elemento) => elemento.item));
+}
+
+/** Aviso al entrar al modo reto: oculta la tarjeta un momento para que se vea el panel del reto. */
+function avisarEntradaReto() {
+  emit('ui:mensaje', { tipo: 'correcto', texto: 'Entraste al modo reto. Para salir, vuelve a hacer «I love you».' });
+  if (!contenedor) return;
+  contenedor.style.display = 'none';
+  setTimeout(() => {
+    if (contenedor) contenedor.style.display = '';
+  }, 2000);
+}
+
+/**
+ * Marca el paso actual en verde y, un momento después, pasa al siguiente.
+ * Al terminar el último, cierra el tutorial.
+ */
 function completarPaso() {
   const actual = elementosPasos[pasoActual];
-  if (!actual) return;
+  if (!actual || completando) return;
+  completando = true;
   actual.item.classList.remove('tutorial-paso-actual');
   actual.item.classList.add('tutorial-paso-completo');
   actual.palomita.textContent = '✓';
-  pasoActual += 1;
-  if (pasoActual >= PASOS.length) {
-    emit('ui:mensaje', { tipo: 'correcto', texto: 'Tutorial completo. Ya puedes usar los gestos.' });
-    cerrar();
-    return;
-  }
-  mostrarPasoActual();
+  if (PASOS[pasoActual].id === 'reto') avisarEntradaReto();
+
+  setTimeout(() => {
+    completando = false;
+    if (!activo) return;
+    pasoActual += 1;
+    if (pasoActual >= PASOS.length) {
+      emit('ui:mensaje', { tipo: 'correcto', texto: 'Tutorial completo. Ya puedes usar los gestos.' });
+      cerrar();
+      return;
+    }
+    mostrarPasoActual();
+    renderizarLista();
+  }, 900);
 }
 
 // Cada gesto completa su paso solo si es el que toca.
 PASOS.forEach((paso, i) => {
   on(paso.evento, () => {
-    if (!activo || pasoActual !== i) return;
+    if (!activo || completando || pasoActual !== i) return;
     completarPaso();
   });
 });
