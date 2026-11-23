@@ -6,71 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Moléculas en AR · MolecuLab</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.4.0/model-viewer.min.js"></script>
-    <style>
-        html,
-        body {
-            margin: 0;
-            height: 100%;
-            background: #0F1419;
-            color: #e5e7eb;
-            font-family: Inter, system-ui, sans-serif;
-        }
-
-        body {
-            display: flex;
-            flex-direction: column;
-        }
-
-        header {
-            padding: 12px 16px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        h1 {
-            font-size: 18px;
-            margin: 0;
-        }
-
-        select {
-            flex: 1;
-            min-width: 180px;
-            max-width: 420px;
-            padding: 10px;
-            border-radius: 10px;
-            border: 1px solid #334155;
-            background: #111827;
-            color: #e5e7eb;
-            font: 15px Inter, system-ui, sans-serif;
-        }
-
-        model-viewer {
-            flex: 1;
-            width: 100%;
-            min-height: 55vh;
-            background: radial-gradient(circle at 50% 40%, #1e293b, #0F1419);
-        }
-
-        footer {
-            padding: 10px 16px 16px;
-            font-size: 14px;
-            line-height: 1.5;
-            color: #cbd5e1;
-        }
-
-        #info {
-            font-weight: 600;
-            color: #f1f5f9;
-        }
-
-        #aviso {
-            margin: 4px 0 0;
-            color: #94a3b8;
-            font-size: 13px;
-        }
-    </style>
+    <link rel="stylesheet" href="ar.css">
 </head>
 
 <body>
@@ -82,9 +18,7 @@
         </select>
     </header>
 
-    <!-- ar-scale fixed: la molécula se ve de tamaño real (1 unidad del modelo = 10 cm). -->
-    <model-viewer id="visor" alt="Molécula" ar ar-modes="scene-viewer" ar-scale="fixed" camera-controls auto-rotate
-        shadow-intensity="1" ar-placement="floor"></model-viewer>
+    <model-viewer id="visor" alt="Molécula" ar camera-controls shadow-intensity="1" touch-action="pan-y"></model-viewer>
 
     <footer>
         <div id="info"></div>
@@ -92,31 +26,7 @@
             Si el botón no aparece, este dispositivo no es compatible con la realidad aumentada de Google (ARCore).</p>
     </footer>
 
-    <script type="module">
-        const selector = document.getElementById('selector');
-        const visor = document.getElementById('visor');
-        const info = document.getElementById('info');
-
-        // catalogo.json y la carpeta glb/ los genera herramientas/generar-modelos.html.
-        // Descomprime modelos-ar.zip dentro de esta carpeta.
-        function mostrar(moleculas, id) {
-            const m = moleculas.find((x) => x.id === id);
-            visor.src = m.archivo;
-            visor.alt = `${m.nombre}, fórmula ${m.formula}`;
-            info.textContent = `${m.nombre} · ${m.formula}`;
-        }
-
-        try {
-            const moleculas = await(await fetch('catalogo.json')).json();
-            selector.replaceChildren(...moleculas.map((m) => new Option(`${m.nombre} (${m.formula})`, m.id)));
-            selector.addEventListener('change', () => mostrar(moleculas, selector.value));
-            mostrar(moleculas, moleculas[0].id);
-        } catch (error) {
-            selector.replaceChildren(new Option('No se pudo cargar el catálogo', ''));
-            info.textContent = 'Revisa que catalogo.json y la carpeta glb/ estén publicados.';
-            console.error('[ar] No se pudo cargar el catálogo:', error);
-        }
-    </script>
+    <script type="module" src="ar.js"></script>
 </body>
 
 </html>

@@ -1,0 +1,68 @@
+/*
+ * Estilos de la página de moléculas en AR (android/ar.html).
+ * Fondo oscuro, selector de molécula arriba y visor de AR ocupando el resto.
+ */
+
+html,
+body {
+    margin: 0;
+    height: 100%;
+    background: #0F1419;
+    color: #e5e7eb;
+    font-family: Inter, system-ui, sans-serif;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+h1 {
+    font-size: 18px;
+    margin: 0;
+}
+
+select {
+    flex: 1;
+    min-width: 180px;
+    max-width: 420px;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid #334155;
+    background: #111827;
+    color: #e5e7eb;
+    font: 15px Inter, system-ui, sans-serif;
+}
+
+model-viewer {
+    flex: 1;
+    width: 100%;
+    min-height: 55vh;
+    background: radial-gradient(circle at 50% 40%, #1e293b, #0F1419);
+}
+
+footer {
+    padding: 10px 16px 16px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #cbd5e1;
+}
+
+#info {
+    font-weight: 600;
+    color: #f1f5f9;
+}
+
+#aviso {
+    margin: 4px 0 0;
+    color: #94a3b8;
+    font-size: 13px;
+}
