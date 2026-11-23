@@ -1,31 +1,25 @@
+
 /**
  * @file voice.js
  * @author Dana Carmona Santamaria
  * @author Stephanie Elizdeth Hernández Prieto
- * @author Citlaly Morales Viveros 
+ * @author Citlaly Morales Viveros
  */
 
 import { emit } from './bus.js';
 
 const AVISO_COMPATIBILIDAD = 'Usa Chrome o Edge para los comandos de voz';
 
-/**
- * Frases que interrumpen una respuesta hablada. Se exportan para
- * que commands.js entienda exactamente las mismas que el
- * reconocimiento deja pasar mientras suena la locución.
- */
-export const FRASES_PARAR = ['para', 'parar', 'calla', 'callate', 'silencio', 'basta'];
+export const FRASES_PARAR = [
+    'para', 'parar', 'calla', 'callate', 'silencio', 'basta'
+];
 
-/**
- * Respuestas cortas que también pasan mientras suena una locución:
- * sin ellas, el "¿Seguro? Di sí o no." de limpiar nunca se podía
- * contestar, porque la propia pregunta tapaba la respuesta.
- */
 export const FRASES_RESPUESTA = ['si', 'no'];
 
 let reconocimiento;
 let inicializada = false;
 let escuchaSolicitada = false;
+let modoMicrofono = 'escuchando';
 let sesion = 'inactiva';
 let estadoMicrofono;
 let reinicio;
@@ -69,24 +63,45 @@ function detenerEscucha() {
     reconocimiento.abort();
 }
 
+export function establecerModoMicrofono(encender) {
+    if (!reconocimiento) {
+        informarError(AVISO_COMPATIBILIDAD);
+        return;
+    }
+
+    if (!escuchaSolicitada) {
+        if (!encender) return;
+
+        escuchaSolicitada = true;
+        modoMicrofono = 'escuchando';
+        publicarEstado('pausado');
+        iniciarEscucha();
+        return;
+    }
+
+    modoMicrofono = encender ? 'escuchando' : 'espera';
+    publicarEstado(modoMicrofono);
+}
+
 export function alternarMicrofono() {
     if (!reconocimiento) {
         informarError(AVISO_COMPATIBILIDAD);
         return;
     }
 
-    escuchaSolicitada = !escuchaSolicitada;
-    publicarEstado('pausado');
-
-    if (escuchaSolicitada) iniciarEscucha();
-    else detenerEscucha();
+    if (escuchaSolicitada) {
+        establecerModoMicrofono(modoMicrofono !== 'escuchando');
+    } else {
+        establecerModoMicrofono(true);
+    }
 }
 
 export function iniciarVoz() {
     if (inicializada) return;
     inicializada = true;
 
-    const Reconocimiento = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const Reconocimiento =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (!Reconocimiento) {
         informarError(AVISO_COMPATIBILIDAD);
@@ -102,7 +117,7 @@ export function iniciarVoz() {
         if (sesion === 'cerrando') return;
 
         sesion = 'activa';
-        publicarEstado('escuchando');
+        publicarEstado(modoMicrofono);
     };
 
     reconocimiento.onresult = ({ resultIndex, results }) => {
@@ -120,12 +135,27 @@ export function iniciarVoz() {
 
             if (!texto) continue;
 
-            // Mientras suena una respuesta, el micrófono sigue abierto
-            // solo para "para" y para un "sí"/"no" (la confirmación
-            // de limpiar se contesta mientras suena la pregunta):
-            // todo lo demás se ignora para que la propia voz de la
-            // app no se tome por un comando.
-            if (locucion && !FRASES_PARAR.includes(texto) && !FRASES_RESPUESTA.includes(texto)) continue;
+            if (modoMicrofono === 'espera') {
+                const activar =
+                    /^(?:enciende|encender|activa|activar|prende|prender) (?:el )?microfono[.!?]*$/.test(texto);
+
+                if (activar) {
+                    establecerModoMicrofono(true);
+                    emit('ui:mensaje', {
+                        tipo: 'correcto',
+                        texto: 'Micrófono activado. Ya puedes dar comandos.'
+                    });
+                }
+                continue;
+            }
+
+            if (
+                locucion &&
+                !FRASES_PARAR.includes(texto) &&
+                !FRASES_RESPUESTA.includes(texto)
+            ) {
+                continue;
+            }
 
             emit('voz:texto', { texto });
         }
@@ -134,7 +164,8 @@ export function iniciarVoz() {
     reconocimiento.onerror = ({ error }) => {
         if (error === 'no-speech' || error === 'aborted') return;
 
-        const permisoDenegado = error === 'not-allowed' || error === 'service-not-allowed';
+        const permisoDenegado =
+            error === 'not-allowed' || error === 'service-not-allowed';
 
         informarError(
             permisoDenegado
@@ -146,12 +177,10 @@ export function iniciarVoz() {
     reconocimiento.onend = () => {
         sesion = 'inactiva';
 
-        // Si hay una locución sonando, no se hace nada: al terminar,
-        // el onend de la frase reabre el micrófono.
         if (locucion) return;
 
         if (escuchaSolicitada) {
-            publicarEstado('pausado');
+            publicarEstado(modoMicrofono);
             reinicio = setTimeout(iniciarEscucha, 250);
         }
     };
@@ -175,7 +204,10 @@ export function hablar(texto) {
     if (!texto?.trim()) return;
 
     if (!sintesis || !window.SpeechSynthesisUtterance) {
-        emit('ui:mensaje', { tipo: 'aviso', texto: AVISO_COMPATIBILIDAD });
+        emit('ui:mensaje', {
+            tipo: 'aviso',
+            texto: AVISO_COMPATIBILIDAD
+        });
         return;
     }
 
@@ -197,18 +229,9 @@ export function hablar(texto) {
 
     locucion = frase;
     sintesis.cancel();
-
-    // El micrófono sigue abierto mientras suena la respuesta: onresult
-    // solo deja pasar "para", así se puede interrumpir la locución
-    // por voz y la propia voz de la app no se toma por un comando.
     reproducirLocucion();
 }
 
-/**
- * Para la respuesta hablada en curso, si la hay, y deja el
- * micrófono escuchando. Devuelve true si había algo que parar.
- * Lo usan el comando de voz "para" y el botón de silencio.
- */
 export function detenerLocucion() {
     if (!locucion) return false;
 
@@ -218,8 +241,6 @@ export function detenerLocucion() {
     frase.onerror = null;
     window.speechSynthesis?.cancel();
 
-    // Si el micrófono estaba cerrado, se reabre aquí; si estaba
-    // abierto, sigue escuchando sin interrupción.
     iniciarEscucha();
     return true;
 }

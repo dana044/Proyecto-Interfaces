@@ -964,6 +964,84 @@ async function cargarCatalogo() {
     }
 }
 
+
+/** Cuenta estructuras conectadas, incluyendo átomos aislados. */
+function contarEstructuras(atomosActuales, enlacesActuales) {
+    const ids = new Set(atomosActuales.map(a => a.id));
+    const vecinos = new Map([...ids].map(id => [id, []]));
+
+    for (const { a, b } of enlacesActuales) {
+        if (ids.has(a) && ids.has(b)) {
+            vecinos.get(a).push(b);
+            vecinos.get(b).push(a);
+        }
+    }
+
+    let grupos = 0;
+
+    while (ids.size) {
+        grupos++;
+        const pila = [ids.values().next().value];
+
+        while (pila.length) {
+            const id = pila.pop();
+            if (!ids.delete(id)) continue;
+            pila.push(...vecinos.get(id));
+        }
+    }
+
+    return grupos;
+}
+
+/** Identifica sin mover átomos ni alterar el historial. */
+export async function consultarMoleculaActual() {
+    const actuales = obtenerListaAtomos();
+
+    if (!actuales.length) {
+        emit('voz:respuesta', {
+            texto: 'No hay ninguna molécula. Agrega átomos para comenzar.'
+        });
+        return;
+    }
+
+    const enlacesActuales = obtenerListaEnlaces();
+
+    if (contarEstructuras(actuales, enlacesActuales) > 1) {
+        emit('voz:respuesta', {
+            texto: 'Hay varias estructuras o átomos separados. Deja solamente una molécula para identificarla.'
+        });
+        return;
+    }
+
+    if (!await cargarCatalogo()) return;
+
+    const resultado = identificarMolecula(
+        { atomos: actuales, enlaces: enlacesActuales },
+        catalogoMoleculas.moleculas || []
+    );
+
+    if (resultado.estado === 'completa') {
+        const { nombre, formula } = resultado.molecula;
+
+        emit('voz:respuesta', {
+            texto: `Es ${nombre}. Su fórmula es ${formula}.`,
+            tipo: 'correcto'
+        });
+    } else if (resultado.estado === 'incompleta') {
+        emit('voz:respuesta', {
+            texto: resultado.mensaje ||
+                'Todavía faltan átomos o enlaces para completar la molécula.'
+        });
+    } else {
+        emit('voz:respuesta', {
+            texto: resultado.motivo ||
+                resultado.mensaje ||
+                'No reconozco esa estructura en el catálogo.'
+        });
+    }
+}
+
+
 export async function verificarMolecula() {
     // Destello morado del botón Verificar al usarlo (clic, voz o gesto).
     const botonVerificar = document.querySelector('[data-accion="verificar"]');
@@ -977,6 +1055,28 @@ export async function verificarMolecula() {
         enviarMensaje('aviso', 'La escena está vacía. Agrega átomos y pulsa Verificar molécula.');
         return null;
     }
+
+
+    const enlacesParaGrupos = obtenerListaEnlaces();
+
+    if (contarEstructuras(actuales, enlacesParaGrupos) > 1) {
+        const texto =
+            'Hay varias estructuras o átomos separados. Deja solamente una molécula para verificarla.';
+
+        emit('escena:molecula-identificada', {
+            nombre: null,
+            formula: null,
+            completa: false
+        });
+
+        enviarMensaje('aviso', texto);
+        emit('voz:hablar', { texto });
+
+        setUltimaAccion('Verificación: varias estructuras');
+
+        return null;
+    }
+
 
     if (!await cargarCatalogo()) return null;
 
@@ -1635,6 +1735,12 @@ export function iniciarComandosDeAtomos() {
     on('escena:electrones-compartidos', ({ a, b, pares }) => {
         void animarElectronesCompartidos(a, b, pares);
     });
+
+
+    on('voz:consultar-molecula', () => {
+        void consultarMoleculaActual();
+    });
+
     on('voz:comando', ({ intencion, parametros }) => {
         if (intencion === 'deshacer') {
             deshacer();
