@@ -4,83 +4,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <title>Prueba Scene Viewer · MolecuLab</title>
-
+  <title>Prueba AR · MolecuLab</title>
   <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.4.0/model-viewer.min.js"></script>
-
-  <style>
-    body {
-      margin: 0;
-      padding: 16px;
-      font-family: Inter, system-ui, sans-serif;
-      background: #0F1419;
-      color: #e5e7eb;
-    }
-
-    model-viewer {
-      width: 100%;
-      height: 55vh;
-      background: #0F1419;
-    }
-
-    p {
-      font-size: 15px;
-      line-height: 1.6;
-    }
-
-    .pruebas {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      margin-top: 20px;
-    }
-
-    .pruebas a {
-      padding: 14px;
-      border-radius: 8px;
-      background: #2563eb;
-      color: white;
-      text-decoration: none;
-      text-align: center;
-      font-weight: 600;
-    }
-  </style>
 </head>
 
 <body>
+  <h2>Astronauta</h2>
+  <model-viewer src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" alt="Astronauta" ar
+    ar-modes="scene-viewer" camera-controls style="width:100%;height:45vh"></model-viewer>
 
-  <h2>Prueba de realidad aumentada</h2>
-
-  <!-- Prueba mediante model-viewer -->
-  <model-viewer src="https://modelviewer.dev/shared-assets/models/NeilArmstrong.glb" alt="Neil Armstrong" ar
-    ar-modes="scene-viewer" camera-controls shadow-intensity="1"></model-viewer>
-
-  <p>
-    Primero puedes probar el botón AR del visor.
-    Después utiliza los enlaces directos de abajo.
-  </p>
-
-  <!-- Pruebas directas con Scene Viewer -->
-  <div class="pruebas">
-
-    <a
-      href="intent://arvr.google.com/scene-viewer/1.0?file=https://modelviewer.dev/shared-assets/models/Astronaut.glb&amp;mode=ar_only#Intent;scheme=https;package=com.google.ar.core;action=android.intent.action.VIEW;S.browser_fallback_url=https://developers.google.com/ar;end;">
-      Probar astronauta en AR
-    </a>
-
-    <a
-      href="intent://arvr.google.com/scene-viewer/1.0?file=https://dana044.github.io/Proyecto-Interfaces/pruebas/agua.glb&amp;mode=ar_only#Intent;scheme=https;package=com.google.ar.core;action=android.intent.action.VIEW;S.browser_fallback_url=https://developers.google.com/ar;end;">
-      Probar agua en AR
-    </a>
-
-  </div>
-
-  <p>
-    Abre esta página desde Chrome en Android.
-    Prueba primero el astronauta y después el agua.
-  </p>
-
+  <h2>Agua</h2>
+  <model-viewer src="https://dana044.github.io/Proyecto-Interfaces/pruebas/agua.glb" alt="Molécula de agua" ar
+    ar-modes="scene-viewer" camera-controls style="width:100%;height:45vh"></model-viewer>
 </body>
 
 </html>
