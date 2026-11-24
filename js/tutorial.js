@@ -9,6 +9,7 @@
 
 import { emit, on } from './bus.js';
 import { configurarPellizco, obtenerEstadoCamara } from './gestures.js';
+import { DEMOS } from './tutorial-animaciones.js';
 
 const CLAVE_VISTO = 'moleculab-tutorial-visto';
 const CLAVE_UMBRAL = 'moleculab-umbral-pellizco';
@@ -101,26 +102,6 @@ const PASOS = [
   },
 ];
 
-/** Átomo de ejemplo que se dibuja dentro de cada demostración. */
-const ATOMO_DEMO = '<g class="demo-atomo"><circle cx="80" cy="50" r="18"/><text x="80" y="56" text-anchor="middle">H</text></g>';
-
-/** Animación de cada gesto, en SVG. Las clases demo-* sirven para animarlas con CSS. */
-const DEMOS = {
-  agarrar: `<circle class="demo-dedo" cx="30" cy="50" r="6"/>${ATOMO_DEMO}`,
-  mover: `${ATOMO_DEMO}<path class="demo-flecha" d="M30 85 H130"/>`,
-  girar: `<circle class="demo-arco" cx="80" cy="50" r="44"/>${ATOMO_DEMO}<circle class="demo-orbita" cx="120" cy="50" r="5"/><circle class="demo-orbita" cx="40" cy="50" r="5"/>`,
-  acercar: `${ATOMO_DEMO}<path class="demo-marco" d="M12 25 L12 12 L30 12"/><path class="demo-marco" d="M148 75 L148 88 L130 88"/>`,
-  paleta: `${ATOMO_DEMO}<rect class="demo-paleta" x="118" y="10" width="34" height="80" rx="4"/>`,
-  colocar: `<rect class="demo-tablero" x="20" y="15" width="120" height="70" rx="4"/><g class="demo-caer">${ATOMO_DEMO}</g>`,
-  microfono: `<circle class="demo-anillo" cx="80" cy="50" r="30"/><rect class="demo-mic" x="74" y="32" width="12" height="22" rx="6"/>`,
-  eliminar: `${ATOMO_DEMO}<path class="demo-flecha" d="M140 20 V75"/><path class="demo-flecha" d="M133 68 L140 78 L147 68"/>`,
-  deshacer: `${ATOMO_DEMO}<path class="demo-flecha" d="M130 85 H30"/><path class="demo-flecha" d="M42 78 L30 85 L42 92"/>`,
-  rehacer: `${ATOMO_DEMO}<path class="demo-flecha" d="M30 85 H130"/><path class="demo-flecha" d="M118 78 L130 85 L118 92"/>`,
-  reto: `<rect class="demo-paleta" x="40" y="20" width="80" height="60" rx="8"/><text x="80" y="60" text-anchor="middle" font-size="12">I love you</text>`,
-  limpiar: `<rect class="demo-tablero" x="30" y="15" width="100" height="70" rx="4"/><path class="demo-flecha" d="M55 35 L105 65 M105 35 L55 65"/>`,
-  listo: `<path class="demo-check" d="M55 50 L74 69 L106 33"/>`,
-};
-
 let activo = false;
 let contenedor = null;
 let elementosPasos = [];
@@ -189,7 +170,7 @@ function mostrarPasoActual() {
   const paso = PASOS[pasoActual];
   if (!paso) return;
 
-  cajaDemo.innerHTML = `<svg viewBox="0 0 160 100" class="tutorial-demo demo-${paso.id}" aria-hidden="true">${DEMOS[paso.id]}</svg>`;
+  cajaDemo.innerHTML = `<div class="tutorial-demo demo-${paso.id}" aria-hidden="true">${DEMOS[paso.id]}</div>`;
   tituloPaso.textContent = paso.titulo;
   textoPaso.textContent = paso.texto;
 

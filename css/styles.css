@@ -1684,6 +1684,11 @@ label[for="menu-info"].boton-menu::before {
 }
 
 .tutorial-demo {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   width: 100%;
   height: 100%;
   max-width: 200px;
@@ -1761,229 +1766,184 @@ label[for="menu-info"].boton-menu::before {
   color: var(--accion-hover);
 }
 
-/* Demostraciones (SVG) con el átomo de ejemplo */
+/* Demostraciones: una mano o un emoji animado por gesto (de Citlaly).
+   Las clases mg-* se animan aquí, bajo .tutorial-demo, para no tocar
+   nada más. */
 
-.tutorial-demo .demo-atomo circle {
-  fill: var(--atomo-h);
-  stroke: var(--accion);
-  stroke-width: 2;
+.tutorial-demo .mg-mano {
+  display: inline-block;
+  line-height: 1.2;
+  font-size: 48px;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  will-change: transform;
 }
 
-.tutorial-demo .demo-atomo text {
-  font-family: var(--fuente-titulo);
-  font-size: 16px;
-  font-weight: 700;
-  fill: var(--texto);
+.tutorial-demo .mg-mano svg {
+  width: 58px;
+  height: 62px;
+  vertical-align: middle;
 }
 
-.tutorial-demo path,
-.tutorial-demo rect,
-.tutorial-demo circle {
-  fill: none;
-  stroke: var(--accion);
-  stroke-width: 2.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+/* Las dos pinzas de Acercar son más chicas para que quepan las dos. */
+.tutorial-demo.demo-acercar .mg-mano {
+  font-size: 36px;
 }
 
-.tutorial-demo .demo-dedo,
-.tutorial-demo .demo-orbita,
-.tutorial-demo .demo-mic {
-  fill: var(--accion);
-  stroke: none;
+/* Animaciones de cada gesto */
+
+.tutorial-demo .mg-seleccionar {
+  animation: mg-select 2s infinite;
 }
 
-.tutorial-demo .demo-tablero {
-  stroke: var(--borde-fuerte);
-  stroke-dasharray: 6 4;
+.tutorial-demo .mg-mover {
+  animation: mg-move 2.5s infinite;
 }
 
-.tutorial-demo .demo-paleta {
-  fill: var(--superficie);
-  stroke: var(--borde-fuerte);
+.tutorial-demo .mg-girar {
+  animation: mg-turn 3s infinite;
 }
 
-.tutorial-demo .demo-arco {
-  stroke: var(--accion-suave);
-  stroke-width: 3;
-  stroke-dasharray: 4 6;
+.tutorial-demo .mg-paleta {
+  animation: mg-palette 2s infinite;
 }
 
-.tutorial-demo .demo-check {
-  stroke: var(--ok);
-  stroke-width: 4;
+.tutorial-demo .mg-deshacer {
+  animation: mg-undo 2.5s infinite;
 }
 
-.tutorial-demo .demo-anillo {
-  stroke: var(--accion-suave);
-  stroke-width: 6;
+.tutorial-demo .mg-rehacer {
+  animation: mg-redo 2.5s infinite;
 }
 
-/* Animaciones de cada gesto. El giro y el pulso usan el centro (80, 50). */
-
-.demo-agarrar .demo-dedo {
-  animation: tutorial-dedo 2.4s ease-in-out infinite;
+/* La mano sube: así se levanta el meñique, los dos dedos o el pulgar. */
+.tutorial-demo .mg-subir {
+  animation: mg-subir 2s infinite;
 }
 
-.demo-mover .demo-atomo {
-  animation: tutorial-atomo-mover 2.4s ease-in-out infinite;
+/* La mano se mece: así se muestra el reto. */
+.tutorial-demo .mg-mecer {
+  animation: mg-mecer 2s infinite;
 }
 
-.demo-girar .demo-orbita {
-  transform-origin: 80px 50px;
-  animation: tutorial-girar 3s linear infinite;
+/* La mano barre de lado a lado: así se limpia. */
+.tutorial-demo .mg-barrer {
+  animation: mg-barrer 2.2s infinite;
 }
 
-.demo-acercar path:nth-of-type(1) {
-  animation: tutorial-marco-izq 2s ease-in-out infinite alternate;
+/* La mano baja: así se pone el pulgar hacia abajo. */
+.tutorial-demo .mg-bajar {
+  animation: mg-bajar 2s infinite;
 }
 
-.demo-acercar path:nth-of-type(2) {
-  animation: tutorial-marco-der 2s ease-in-out infinite alternate;
+.tutorial-demo.demo-acercar .mg-izquierda {
+  animation: mg-left 2.4s infinite;
 }
 
-.demo-paleta .demo-paleta {
-  animation: tutorial-paleta 2.4s ease-out infinite;
+.tutorial-demo.demo-acercar .mg-derecha {
+  animation: mg-right 2.4s infinite;
 }
 
-.demo-colocar .demo-caer {
-  animation: tutorial-caer 2.4s ease-in infinite;
+.tutorial-demo.demo-colocar .mg-fase1,
+.tutorial-demo.demo-colocar .mg-fase2,
+.tutorial-demo.demo-colocar .mg-fase3 {
+  position: absolute;
 }
 
-.demo-microfono .demo-anillo {
-  transform-origin: 80px 50px;
-  animation: tutorial-pulso 1.6s ease-in-out infinite;
+.tutorial-demo.demo-colocar .mg-fase1 {
+  animation: mg-phase1 4.5s infinite;
 }
 
-.demo-tablero .demo-tablero {
-  animation: tutorial-pulso-suave 2.4s ease-in-out infinite;
+.tutorial-demo.demo-colocar .mg-fase2 {
+  animation: mg-phase2 4.5s infinite;
 }
 
-.demo-listo .demo-check {
-  stroke-dasharray: 60;
-  animation: tutorial-check 2s ease-out infinite;
+.tutorial-demo.demo-colocar .mg-fase3 {
+  animation: mg-phase3 4.5s infinite;
 }
 
-@keyframes tutorial-dedo {
-
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-
-  50% {
-    transform: translateX(30px);
-  }
+@keyframes mg-select {
+  0%, 100% { transform: translateY(12px); }
+  50% { transform: translateY(-14px); }
 }
 
-@keyframes tutorial-atomo-mover {
-
-  0%,
-  100% {
-    transform: translateX(-20px);
-  }
-
-  50% {
-    transform: translateX(20px);
-  }
+@keyframes mg-move {
+  0%, 100% { transform: translateX(-36px); }
+  50% { transform: translateX(36px); }
 }
 
-@keyframes tutorial-girar {
-  to {
-    transform: rotate(360deg);
-  }
+@keyframes mg-turn {
+  0%, 100% { transform: translateX(-12px) rotate(-15deg); }
+  25% { transform: translateY(-10px); }
+  50% { transform: translateX(12px) rotate(15deg); }
+  75% { transform: translateY(10px); }
 }
 
-@keyframes tutorial-marco-izq {
-  from {
-    transform: translate(0, 0);
-  }
-
-  to {
-    transform: translate(10px, 10px);
-  }
+@keyframes mg-left {
+  0%, 15% { transform: translateX(7px) scaleX(-1); }
+  65%, 100% { transform: translateX(-14px) scaleX(-1); }
 }
 
-@keyframes tutorial-marco-der {
-  from {
-    transform: translate(0, 0);
-  }
-
-  to {
-    transform: translate(-10px, -10px);
-  }
+@keyframes mg-right {
+  0%, 15% { transform: translateX(-7px); }
+  65%, 100% { transform: translateX(14px); }
 }
 
-@keyframes tutorial-paleta {
-  0% {
-    transform: translateX(40px);
-    opacity: 0;
-  }
-
-  30%,
-  80% {
-    transform: translateX(0);
-    opacity: 1;
-  }
-
-  100% {
-    transform: translateX(40px);
-    opacity: 0;
-  }
+@keyframes mg-palette {
+  0%, 100% { transform: rotate(-90deg); }
+  50% { transform: rotate(-90deg) translateY(-7px); }
 }
 
-@keyframes tutorial-caer {
-  0% {
-    transform: translateY(-30px);
-    opacity: 0;
-  }
-
-  40%,
-  80% {
-    transform: translateY(0);
-    opacity: 1;
-  }
-
-  100% {
-    transform: translateY(0);
-    opacity: 0;
-  }
+@keyframes mg-undo {
+  0%, 100% { transform: rotate(-90deg) translateX(0); }
+  25% { transform: rotate(-90deg) translateX(-12px); }
+  75% { transform: rotate(-90deg) translateX(12px); }
 }
 
-@keyframes tutorial-pulso {
-
-  0%,
-  100% {
-    transform: scale(0.9);
-    opacity: 0.5;
-  }
-
-  50% {
-    transform: scale(1.1);
-    opacity: 1;
-  }
+@keyframes mg-redo {
+  0%, 100% { transform: scaleX(-1) rotate(-90deg) translateX(0); }
+  25% { transform: scaleX(-1) rotate(-90deg) translateX(-12px); }
+  75% { transform: scaleX(-1) rotate(-90deg) translateX(12px); }
 }
 
-@keyframes tutorial-pulso-suave {
-
-  0%,
-  100% {
-    opacity: 0.6;
-  }
-
-  50% {
-    opacity: 1;
-  }
+@keyframes mg-subir {
+  0%, 100% { transform: translateY(12px); }
+  50% { transform: translateY(-16px); }
 }
 
-@keyframes tutorial-check {
-  from {
-    stroke-dashoffset: 60;
-  }
+@keyframes mg-mecer {
+  0%, 100% { transform: rotate(-12deg); }
+  50% { transform: rotate(12deg); }
+}
 
-  to {
-    stroke-dashoffset: 0;
-  }
+@keyframes mg-barrer {
+  0%, 100% { transform: translateX(-30px); }
+  50% { transform: translateX(30px); }
+}
+
+@keyframes mg-bajar {
+  0%, 100% { transform: translateY(-10px); }
+  50% { transform: translateY(16px); }
+}
+
+/* Cada emoji dura 1.5 s (de 4.5 s en total): 🖐️ sube, ☝️ se mueve a la izquierda, 🖐️ baja a la derecha */
+@keyframes mg-phase1 {
+  0% { opacity: 1; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-14px); }
+  33.3%, 100% { opacity: 0; transform: translateY(-14px); }
+}
+
+@keyframes mg-phase2 {
+  0%, 33.3% { opacity: 0; transform: translateX(-30px); }
+  33.4% { opacity: 1; transform: translateX(-30px); }
+  63% { opacity: 1; transform: translateX(-30px); }
+  66.6%, 100% { opacity: 0; transform: translateX(-30px); }
+}
+
+@keyframes mg-phase3 {
+  0%, 66.5% { opacity: 0; transform: translateY(14px); }
+  66.6% { opacity: 1; transform: translateY(14px); }
+  96% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
 /* Móvil: la tarjeta va abajo, a todo el ancho */
@@ -2007,10 +1967,26 @@ label[for="menu-info"].boton-menu::before {
 
 @media (prefers-reduced-motion: reduce) {
 
-  .tutorial *,
-  .tutorial-demo * {
+  /* Las demostraciones del tutorial siempre se animan: el gesto es el contenido. */
+  .tutorial *:not(.tutorial-demo, .tutorial-demo *) {
     animation: none !important;
     transition: none !important;
+  }
+
+  .tutorial-demo .mg-paleta {
+    transform: rotate(-90deg);
+  }
+
+  .tutorial-demo .mg-deshacer {
+    transform: rotate(-90deg);
+  }
+
+  .tutorial-demo .mg-rehacer {
+    transform: scaleX(-1) rotate(-90deg);
+  }
+
+  .tutorial-demo .mg-izquierda {
+    transform: scaleX(-1);
   }
 }
 
