@@ -38,6 +38,8 @@ Gestos:
   enlaces y partículas, salvo que se lleve algo en la mano.
 - Micrófono: meñique arriba 0.8 s emite `gesto:microfono`.
 - Listo: puño con pulgar arriba (👍) un segundo emite `gesto:listo`.
+- Realidad aumentada: pulgar abajo (👎) medio segundo emite `gesto:ra`.
+
 
 Los gestos con espera muestran un círculo de progreso que se oculta en
 cuanto la pose se rompe.
@@ -65,6 +67,7 @@ en el cursor con `cursor:elemento` {simbolo, color}.
 | gesto:limpiar            | —                 |
 | gesto:microfono          | —                 |
 | gesto:listo              | —                 |
+| gesto:ra                 | —                 |
 | ui:paleta                | {abierta}         |
 | cursor:elemento          | {simbolo, color}  |
 | tutorial:atomo-ejemplo   | {mostrar}         |

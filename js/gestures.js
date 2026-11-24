@@ -53,6 +53,7 @@ const MS_MANTENER_LISTO = 1000;
 const MS_MANTENER_PALETA = 500;
 const MS_MANTENER_MICROFONO = 800;
 const MS_MANTENER_ELIMINAR = 500;
+const MS_MANTENER_RA = 500;
 /** El cursor no se puede mover más que esto mientras se mantiene el pellizco para pulsar. */
 const UMBRAL_PULGAR_LADO_X = 0.08;
 const UMBRAL_PULGAR_LADO_Y = 0.05;
@@ -486,6 +487,19 @@ function esPulgarArriba(puntos) {
 }
 
 /**
+ * Pulgar abajo: los cuatro dedos plegados y la punta del pulgar
+ * claramente debajo de la muñeca. Es el espejo del pulgar arriba,
+ * así que no se confunde con él ni con el pulgar hacia un lado.
+ * @param {Array<{x: number, y: number}>} puntos
+ */
+function esPulgarAbajo(puntos) {
+  const tamano = tamanoMano(puntos);
+  return [8, 12, 16, 20].every((punta) => distanciaPx(puntos[punta], puntos[0]) < FACTOR_TAMANO_PLEGADO * tamano)
+    && (puntos[4].y - puntos[0].y) * video.videoHeight > FACTOR_PULGAR_ARRIBA_ALTO * tamano
+    && distanciaPx(puntos[4], puntos[8]) > umbralesPellizco.soltar * video.videoWidth;
+}
+
+/**
  * Índice y medio levantados, con el anular y el meñique plegados.
  * Sirve para eliminar el átomo bajo el cursor.
  * @param {Array<{x: number, y: number}>} puntos
@@ -657,6 +671,7 @@ const mantenedorListo = crearMantenedor(MS_MANTENER_LISTO);
 const mantenedorPaleta = crearMantenedor(MS_MANTENER_PALETA);
 const mantenedorMicrofono = crearMantenedor(MS_MANTENER_MICROFONO);
 const mantenedorEliminar = crearMantenedor(MS_MANTENER_ELIMINAR);
+const mantenedorRA = crearMantenedor(MS_MANTENER_RA);
 const mantenedorReto = crearMantenedor(MS_MANTENER_RETO);
 const mantenedorLimpiar = crearMantenedor(MS_MANTENER_LIMPIAR);
 const mantenedorDeshacer = crearMantenedor(MS_MANTENER_DESHACER);
@@ -736,6 +751,19 @@ function procesarEliminar(puntos, ahora) {
   if (!suavizado) return;
   if (mantenedorEliminar.actualizar(esDosDedos(puntos), ahora, suavizado.x, suavizado.y)) {
     emit('gesto:eliminar-pedido', { ...suavizado });
+  }
+}
+
+/**
+ * Pulgar abajo medio segundo: emite gesto:ra para entrar o salir
+ * de la realidad aumentada.
+ * @param {Array<{x: number, y: number}>} puntos
+ * @param {number} ahora
+ */
+function procesarRA(puntos, ahora) {
+  if (!suavizado) return;
+  if (mantenedorRA.actualizar(esPulgarAbajo(puntos), ahora, suavizado.x, suavizado.y)) {
+    emit('gesto:ra', { ...suavizado });
   }
 }
 
@@ -977,6 +1005,7 @@ function procesarManoPerdida(ahora) {
   mantenedorPaleta.reiniciar();
   mantenedorMicrofono.reiniciar();
   mantenedorEliminar.reiniciar();
+  mantenedorRA.reiniciar();
   ocultarProgreso();
   if (!agarrando) {
     ocultarCursor();
@@ -1051,6 +1080,7 @@ function procesarAgarre(resultado, ahora) {
   procesarMicrofono(puntos, ahora);
   procesarSoltar(puntos);
   procesarEliminar(puntos, ahora);
+  procesarRA(puntos, ahora);
   mostrarCursor(suavizado.x, suavizado.y);
 }
 

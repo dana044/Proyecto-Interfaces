@@ -149,6 +149,7 @@ function registrarEventosDeEscena() {
     on('escena:enlace-eliminado', marcarEnlace);
     on('escena:escena-limpia', pedirReconstruccion);
     on('escena:reconstruir', pedirReconstruccion);
+    on('gesto:ra', alternarRA);
 }
 
 /** Enciende la RA si está apagada, o la apaga si está encendida. */

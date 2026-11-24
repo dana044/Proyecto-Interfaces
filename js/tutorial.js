@@ -93,6 +93,12 @@ const PASOS = [
     texto: 'Cierra la mano con el pulgar hacia arriba y mantenlo un segundo para confirmar la molécula.',
     evento: 'gesto:listo',
   },
+  {
+    id: 'ra',
+    titulo: 'Realidad aumentada',
+    texto: 'Baja el pulgar (pulgar hacia abajo) y mantenlo medio segundo para entrar o salir de la realidad aumentada.',
+    evento: 'gesto:ra',
+  },
 ];
 
 /** Átomo de ejemplo que se dibuja dentro de cada demostración. */
@@ -252,6 +258,16 @@ function avisarEntradaReto() {
   }, 2000);
 }
 
+/** Aviso al entrar a la realidad aumentada: oculta la tarjeta un momento para que se vea la vista de RA. */
+function avisarEntradaRA() {
+  emit('ui:mensaje', { tipo: 'correcto', texto: 'Entraste a la realidad aumentada. Para salir, pulsa el botón de RA.' });
+  if (!contenedor) return;
+  contenedor.style.display = 'none';
+  setTimeout(() => {
+    if (contenedor) contenedor.style.display = '';
+  }, 2000);
+}
+
 /**
  * Marca el paso actual en verde y, un momento después, pasa al siguiente.
  * Al terminar el último, cierra el tutorial.
@@ -264,6 +280,7 @@ function completarPaso() {
   actual.item.classList.add('tutorial-paso-completo');
   actual.palomita.textContent = '✓';
   if (PASOS[pasoActual].id === 'reto') avisarEntradaReto();
+  if (PASOS[pasoActual].id === 'ra') avisarEntradaRA();
 
   setTimeout(() => {
     completando = false;
