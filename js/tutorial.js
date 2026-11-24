@@ -126,15 +126,18 @@ function aplicarCalibracionGuardada() {
   }
 }
 
-/** Cierra el tutorial, quita el átomo de ejemplo y marca que ya se vio. */
-function cerrar() {
+/**
+ * Cierra el tutorial, quita el átomo de ejemplo y marca que ya se vio.
+ * @param {boolean} [completo] true solo si se terminaron todos los pasos.
+ */
+function cerrar(completo = false) {
   if (!activo) return;
   activo = false;
   clearTimeout(idTemporizador);
   contenedor?.remove();
   contenedor = null;
   emit('tutorial:atomo-ejemplo', { mostrar: false });
-  emit('tutorial:terminado', {});
+  emit('tutorial:terminado', { completo });
   try {
     sessionStorage.setItem(CLAVE_VISTO, '1');
   } catch (error) {
@@ -269,7 +272,7 @@ function completarPaso() {
     pasoActual += 1;
     if (pasoActual >= PASOS.length) {
       emit('ui:mensaje', { tipo: 'correcto', texto: 'Tutorial completo. Ya puedes usar los gestos.' });
-      cerrar();
+      cerrar(true);
       return;
     }
     mostrarPasoActual();

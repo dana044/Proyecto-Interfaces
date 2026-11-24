@@ -50,6 +50,8 @@ let botonCentrar = null;
 
 let activa = false;
 let ocupado = false;
+/** Se pidió salir de la RA mientras se estaba encendiendo: se aplica al terminar. */
+let salidaPendiente = false;
 let vista = 'dividida';
 let ultimoEstado = '';
 let oyentesRegistrados = false;
@@ -150,6 +152,7 @@ function registrarEventosDeEscena() {
     on('escena:escena-limpia', pedirReconstruccion);
     on('escena:reconstruir', pedirReconstruccion);
     on('gesto:ra', alternarRA);
+    on('tutorial:terminado', ({ completo }) => { if (completo) salirDeRA(); });
 }
 
 /** Enciende la RA si está apagada, o la apaga si está encendida. */
@@ -195,7 +198,27 @@ async function activarRA() {
         emit('ui:mensaje', { tipo: 'aviso', texto: mensajeDeError(error) });
     } finally {
         ocupado = false;
+        if (salidaPendiente) {
+            salidaPendiente = false;
+            desactivarRA();
+        }
     }
+}
+
+/**
+ * Sale de la RA al terminar el tutorial completo: apaga la RA y deja el
+ * editor solo, como en el modo normal. Si la RA aún se está encendiendo, la
+ * salida se aplica cuando termine. No hace nada si la RA ya está apagada.
+ */
+function salirDeRA() {
+    if (!elementos) return;
+    if (ocupado) {
+        salidaPendiente = true;
+        return;
+    }
+    if (!activa && !document.body.classList.contains('modo-ra')) return;
+    desactivarRA();
+    vista = 'editor';
 }
 
 /**
