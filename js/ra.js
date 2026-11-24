@@ -23,7 +23,7 @@ import { setUltimaAccion } from './state.js';
 const URL_MINDAR = 'https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js';
 
 /** Marcador de la tarjeta. Es el prototipo; se reemplazará por el definitivo de 8 × 8 cm. */
-const RUTA_MARCADOR = 'ar/marcador.mind';
+const RUTA_MARCADOR = 'ar/card.mind';
 
 /** Resolución que se pide a la cámara. MindAR usa la real del video, no esta. */
 const ANCHO_ENTRADA = 640;
