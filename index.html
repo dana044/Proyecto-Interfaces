@@ -253,16 +253,14 @@
   </main>
 
   <!-- Acciones de respaldo: funcionan sin cámara ni voz.
-       Grupo 1 (edición) y grupo 2 (juego), separados por una línea fina.
-       Los íconos son ::before en CSS: el JavaScript no los borra. -->
-  <!-- Acciones de respaldo: funcionan sin cámara ni voz.
        Tres grupos, separados por una línea fina: 1) edición
        (deshacer, rehacer, limpiar), 2) lo que se hace en el
        programa (pizarra, reto, verificar) y 3) voz, sonido y
-       archivo (micrófono, silenciar, exportar, importar).
+       archivo (silenciar, exportar, importar).
        Las pastillas de cámara y mano son estado, no acciones,
-       y van al final. Los íconos son ::before en CSS: el
-       JavaScript no los borra. -->
+       y van en el encabezado. Los íconos son ::before en CSS:
+       el JavaScript no los borra. En celular la barra se desliza
+       en horizontal (ver css/responsive.css). -->
   <footer id="botones-respaldo" class="respaldo">
     <button class="boton tip" data-accion="deshacer">
       Deshacer

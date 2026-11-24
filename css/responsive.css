@@ -1,14 +1,19 @@
 /*
  * Diseño para pantallas reducidas: tabletas y celulares.
- * Se carga después de css/styles.css y solo cambia lo que se ve mal al
- * achicar la pantalla. @author Citlaly Morales Viveros
+ * Se carga después de css/styles.css. En celular los textos no bajan de
+ * 16 px (guía visual y criterio de accesibilidad del proyecto), salvo los
+ * botones de la barra inferior, que bajan a 14 px para ocupar menos espacio.
+ * @author Citlaly Morales Viveros
  */
 
-/* Pantallas apiladas (1023 px o menos): la escena necesita altura propia.
-   Sin ella, el lienzo 3D se queda chico porque el modo apilado no le da alto. */
+/* Tabletas y pantallas apiladas (1023 px o menos). */
 @media (max-width: 1023px) {
+
+  /* La escena necesita altura propia en modo apilado; sin ella el lienzo
+     3D queda chico. */
   .lienzo {
     height: min(68vh, 640px);
+    height: min(68dvh, 640px);
     min-height: 360px;
   }
 
@@ -26,32 +31,48 @@
     gap: 6px;
   }
 
-  /* La barra de respaldo pasa a cuadrícula: los botones quedan del mismo tamaño. */
+  /* La barra de respaldo pasa a cuadrícula en tabletas. */
   .respaldo {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
-    gap: 6px;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
     padding: 8px;
   }
 
   .respaldo .boton {
-    min-height: 60px;
-    font-size: 12px;
+    min-height: 48px;
+    font-size: 16px;
   }
 
+  /* overflow-y: auto es necesario: .panel-atomos trae overflow: hidden y
+     cortaría la lista de átomos y el modelo de Bohr. */
   .panel-atomos,
   .panel-info {
     max-width: none;
-    max-height: 60vh;
+    max-height: 50vh;
+    max-height: 50dvh;
+    overflow-y: auto;
   }
 
   #pizarra-formulas {
     max-height: 90vh;
     overflow: auto;
   }
+
+  /* Realidad aumentada en pantallas apiladas: el editor arriba y la RA abajo,
+     cada una con una altura que deja ver la otra. */
+  .area-escena.vista-dividida {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+  }
+
+  .area-escena.vista-dividida .lienzo {
+    height: min(46vh, 420px);
+    min-height: 280px;
+  }
 }
 
-/* Los globos de ayuda aparecen al pasar el cursor; en pantallas táctiles no
+/* Los globos de ayuda aparecen al pasar el cursor. En pantallas táctiles no
    se pueden ver, así que se ocultan para que no tapen los botones. */
 @media (hover: none) and (max-width: 1023px) {
   .respaldo .globo {
@@ -59,32 +80,188 @@
   }
 }
 
-/* Celulares (600 px o menos): menos espacio, textos más chicos y una sola
-   fila de pistas. */
+/* Celulares (600 px o menos). */
 @media (max-width: 600px) {
   body {
     gap: 8px;
-    padding: 8px;
-    font-size: 15px;
+    padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    font-size: 16px;
+  }
+
+  /* Encabezado compacto: Átomos a la izquierda y MolecuLab a la derecha en
+     la primera fila; indicadores y botones en filas más bajas. */
+  .encabezado {
+    padding: 4px 6px;
+    gap: 4px;
+    row-gap: 4px;
+  }
+
+  .encabezado-izq {
+    width: 100%;
+    gap: 6px;
+  }
+
+  .encabezado-izq .boton-menu {
+    order: 1;
+    min-height: 36px;
+    padding: 4px 10px;
+  }
+
+  .marca {
+    order: 2;
+    margin-left: auto;
+    font-size: 20px;
+    gap: 6px;
+  }
+
+  .marca svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .encabezado-der {
+    width: 100%;
+    gap: 4px 6px;
+  }
+
+  .encabezado .indicadores-superiores {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+  }
+
+  .encabezado .estado-equipo {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+  }
+
+  /* Micrófono, cámara y mano: menos padding y altura; el texto queda en 16 px. */
+  .encabezado [data-accion="microfono"] {
+    min-height: 32px;
+    padding: 2px 8px;
+    gap: 4px;
+  }
+
+  .encabezado .chip-estado {
+    padding: 2px 8px;
+    gap: 4px;
+    line-height: 1.2;
+  }
+
+  .encabezado-der>.boton-menu {
+    min-height: 36px;
+    padding: 4px 10px;
+  }
+
+  .boton-tema {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+  }
+
+  #estado-accion {
+    flex: 1 1 100%;
+    padding: 2px 8px;
+  }
+
+  /* Barra de respaldo como franja horizontal: se desliza a izquierda y derecha,
+     queda pegada al fondo y así siempre está a la mano sin ocupar la pantalla. */
+  .respaldo {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 6px;
+    padding: 6px 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    margin: 0 -8px -8px;
+    border-radius: 0;
+  }
+
+  /* Botones más angostos y bajos; el texto va en 14 px (ver nota del encabezado). */
+  .respaldo .boton {
+    flex: 0 0 112px;
+    width: 112px;
+    min-height: 52px;
+    padding: 4px 4px;
+    gap: 2px;
+    font-size: 14px;
+    line-height: 1.15;
+    scroll-snap-align: start;
+  }
+
+  /* Línea vertical fina entre grupos de botones. */
+  .respaldo .separador-barra {
+    flex: none;
+    width: 0;
+    height: auto;
+    align-self: stretch;
+    margin: 4px 2px;
+    border: 0;
+    border-left: 1px solid var(--borde);
+  }
+
+  /* El tutorial sube para no tapar la franja inferior. */
+  .tutorial {
+    bottom: 88px;
   }
 
   .lienzo {
     height: 60vh;
+    height: 60dvh;
     min-height: 300px;
   }
 
-  .chip-estado {
-    font-size: 12px;
-    padding: 4px 8px;
+  .panel {
+    padding: 14px;
   }
 
-  .respaldo {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* Panel de Átomos: como máximo una cuarta parte de la pantalla. Los átomos
+     van en dos filas que se desplazan a los lados y se ven primero; el modelo
+     de Bohr queda debajo y se desplaza verticalmente dentro del mismo panel. */
+  .panel-atomos {
+    max-height: 25vh;
+    max-height: 25dvh;
+    padding: 8px 12px;
+    gap: 8px;
   }
 
-  .respaldo .boton {
-    font-size: 11px;
-    min-height: 56px;
+  .panel-atomos h2 {
+    margin-bottom: 4px;
+  }
+
+  .lista-elementos {
+    display: grid;
+    grid-template-columns: none;
+    grid-template-rows: repeat(2, auto);
+    grid-auto-flow: column;
+    grid-auto-columns: 128px;
+    gap: 6px;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 4px;
+  }
+
+  .lista-elementos .boton-atomo {
+    min-height: 40px;
+  }
+
+  .panel-bohr h3 {
+    margin: 0 0 6px;
+  }
+
+  .panel-info {
+    max-height: 50vh;
+    max-height: 50dvh;
   }
 
   /* La pista de gestos se encima con los átomos en pantallas chicas. */
@@ -98,44 +275,45 @@
     bottom: 8px;
   }
 
-  /* El indicador de ejes se reduce para dejar espacio al lienzo. */
-  #indicador-ejes {
-    top: 8px;
-    right: 8px;
-    transform: scale(0.8);
-    transform-origin: top right;
+  .camara-flotante figcaption {
+    font-size: 16px;
   }
 
   .tarjeta-atomo {
     max-width: 200px;
-    font-size: 13px;
+    font-size: 16px;
   }
 
-  .panel {
-    padding: 14px;
-  }
-
-  .lista-elementos {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  @media (max-width: 600px) {
-    .tutorial {
-      bottom: 96px;
-    }
-  }
-}
-
-/* Realidad aumentada en pantallas apiladas: el editor va arriba y la RA abajo,
-   cada una con una altura que deja ver la otra. */
-@media (max-width: 1023px) {
-  .area-escena.vista-dividida {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto;
-  }
-
-  .area-escena.vista-dividida .lienzo {
-    height: min(46vh, 420px);
-    min-height: 280px;
+  /* Textos que en styles_1.css están por debajo de 16 px. Los botones de la
+     barra inferior quedan fuera de esta lista: tienen su propio tamaño arriba. */
+  .chip-estado,
+  .estado-equipo .chip-estado,
+  .encabezado .indicadores-superiores .estado-equipo .chip-estado,
+  .encabezado [data-accion="microfono"],
+  .encabezado .indicadores-superiores [data-accion="microfono"],
+  .boton-menu,
+  .icono,
+  .lista-elementos .boton-atomo,
+  .lista-elementos .boton-atomo span:last-child,
+  .nombre-particula,
+  .carga-particula,
+  .etiqueta-contador,
+  .masa-formada,
+  .aviso-modelo,
+  .aviso-molecula,
+  .explicacion-enlace,
+  .subtitulo-voz,
+  .simbolo,
+  .panel-info dt,
+  .panel-reto h3,
+  .reto-sugerencia,
+  .reto-progreso,
+  .nota-privacidad,
+  .tutorial-descripcion,
+  .tutorial-paso-titulo,
+  .tutorial-paso-texto-actual,
+  .tutorial-paso,
+  .tutorial-boton-saltar {
+    font-size: 16px;
   }
 }
