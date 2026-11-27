@@ -103,6 +103,11 @@ function obtenerFotoEscena() {
             orden: enlace.orden,
         })),
         particulas: obtenerFotoParticulas(),
+        // Dónde está el modelo de Bohr en la foto: el deshacer
+        // lo devuelve ahí si se había movido con un protón.
+        modeloBohr: grupoBohr
+            ? { x: grupoBohr.position.x, y: grupoBohr.position.y, z: grupoBohr.position.z }
+            : null,
     };
 }
 
@@ -112,11 +117,16 @@ function obtenerFotoEscena() {
  * se actualizan solos los anillos de valencia, así que deshacer
  * un enlace devuelve la valencia a los átomos. Las partículas
  * vuelven como estaban, sueltas o en el modelo.
- * @param {{ atomos: Array, enlaces: Array, particulas?: Array }} foto La foto a restaurar.
+ * @param {{ atomos: Array, enlaces: Array, particulas?: Array, modeloBohr?: {x: number, y: number, z: number} }} foto La foto a restaurar.
  */
 function restaurarFoto(foto) {
     limpiarEscena({ confirmar: false });
     vaciarParticulas();
+    // El modelo vuelve a donde estaba en la foto, antes de
+    // reconstruir sus partículas.
+    if (foto.modeloBohr && grupoBohr) {
+        grupoBohr.position.set(foto.modeloBohr.x, foto.modeloBohr.y, foto.modeloBohr.z);
+    }
     for (const atomo of foto.atomos) {
         agregarAtomo(atomo.elemento, atomo.posicion, atomo.id);
     }
@@ -1063,9 +1073,11 @@ export async function consultarMoleculaActual() {
  * Forma átomos con las partículas: las sueltas que están juntas
  * son un grupo, y el modelo de Bohr es otro grupo, y cada grupo
  * con los protones de un elemento y tantos electrones como
- * protones se convierte en un átomo (el del modelo, en el origen;
- * el de un grupo suelto, en su centro). Si un grupo todavía no
- * es un átomo neutro, se avisa qué le falta y no se forma ninguno.
+ * protones se convierte en un átomo (el del modelo, donde está
+ * el modelo; el de un grupo suelto, en su centro). Si un grupo
+ * todavía no es un átomo neutro, se avisa qué le falta y no se
+ * forma ninguno. El modelo se revisa primero: si es él el que
+ * está incompleto, su aviso es el que se muestra.
  * Devuelve los átomos formados o null si no se formó ninguno.
  * @returns {Array<{simbolo: string, nombre: string, id: string}> | null} Los átomos formados.
  */
@@ -1076,19 +1088,8 @@ function formarAtomosDesdeParticulas() {
     const grupos = agruparParticulas(libres);
     // Primero se revisan todos los grupos: si uno no es un átomo
     // neutro, se avisa qué le falta y no se forma ninguno.
-    const evaluados = grupos.map((grupo) => {
-        const protones = grupo.filter((p) => p.tipo === 'proton').length;
-        const neutrones = grupo.filter((p) => p.tipo === 'neutron').length;
-        const electrones = grupo.filter((p) => p.tipo === 'electron').length;
-        const cx = grupo.reduce((suma, p) => suma + p.posicion.x, 0) / grupo.length;
-        const cz = grupo.reduce((suma, p) => suma + p.posicion.z, 0) / grupo.length;
-        return {
-            grupo,
-            evaluacion: evaluarFormacionAtomo(protones, neutrones, electrones),
-            x: cx,
-            z: cz
-        };
-    });
+    // El modelo va primero, para que su aviso sea el que se vea.
+    const evaluados = [];
     if (modelo.length > 0) {
         const protones = modelo.filter((p) => p.tipo === 'proton').length;
         const neutrones = modelo.filter((p) => p.tipo === 'neutron').length;
@@ -1096,9 +1097,24 @@ function formarAtomosDesdeParticulas() {
         evaluados.push({
             grupo: modelo,
             evaluacion: evaluarFormacionAtomo(protones, neutrones, electrones),
-            x: 0,
-            z: 0,
+            // El átomo del modelo se forma donde está el modelo,
+            // que sigue al primer protón: no siempre en el centro.
+            x: grupoBohr.position.x,
+            z: grupoBohr.position.z,
             esModelo: true
+        });
+    }
+    for (const grupo of grupos) {
+        const protones = grupo.filter((p) => p.tipo === 'proton').length;
+        const neutrones = grupo.filter((p) => p.tipo === 'neutron').length;
+        const electrones = grupo.filter((p) => p.tipo === 'electron').length;
+        const cx = grupo.reduce((suma, p) => suma + p.posicion.x, 0) / grupo.length;
+        const cz = grupo.reduce((suma, p) => suma + p.posicion.z, 0) / grupo.length;
+        evaluados.push({
+            grupo,
+            evaluacion: evaluarFormacionAtomo(protones, neutrones, electrones),
+            x: cx,
+            z: cz
         });
     }
     const incompleto = evaluados.find(({ evaluacion }) => !evaluacion.ok);
@@ -1308,18 +1324,46 @@ const RADIO_ENCAJE_ORBITA = 0.25;
  * o sobre alguna de sus órbitas. Las órbitas son círculos en el
  * plano XY: la distancia a un círculo es la hipotenusa entre lo
  * que el punto se aparta del radio y lo que se aparta del plano.
+ * Se mide desde donde está el modelo, que sigue al primer
+ * protón: ya no siempre es el centro de la escena.
  * Es lo que decide si una partícula soltada se une al modelo.
  * @param {{x: number, y: number, z: number}} posicion
  * @returns {boolean} true si cae sobre el modelo.
  */
 function estaSobreModeloBohr(posicion) {
-    const aOrigen = Math.hypot(posicion.x, posicion.y, posicion.z);
-    if (aOrigen < RADIO_ENCAJE_NUCLEO) return true;
-    const radial = Math.hypot(posicion.x, posicion.y);
+    const centro = grupoBohr?.position ?? { x: 0, y: 0, z: 0 };
+    const dx = posicion.x - centro.x;
+    const dy = posicion.y - centro.y;
+    const dz = posicion.z - centro.z;
+    if (Math.hypot(dx, dy, dz) < RADIO_ENCAJE_NUCLEO) return true;
+    const radial = Math.hypot(dx, dy);
     for (const radio of RADIOS_ORBITAS) {
-        if (Math.hypot(radial - radio, posicion.z) < RADIO_ENCAJE_ORBITA) return true;
+        if (Math.hypot(radial - radio, dz) < RADIO_ENCAJE_ORBITA) return true;
     }
     return false;
+}
+
+/**
+ * Centra el modelo de Bohr en un punto: el modelo sigue al
+ * protón. El núcleo y las órbitas se mueven juntos, porque son
+ * hijos del mismo grupo.
+ * @param {{x: number, y: number, z: number}} posicion Dónde centrar el modelo.
+ */
+function moverModeloBohr(posicion) {
+    if (!bohrIniciado && !iniciarModeloBohr()) return;
+    grupoBohr.position.set(posicion.x, posicion.y, posicion.z);
+}
+
+/**
+ * Si el modelo está vacío, vuelve al centro: su posición anterior
+ * era de un modelo que ya no existe y no debe atraer partículas
+ * ni hacer que un protón nuevo se una en el lugar equivocado.
+ * Se revisa antes de soltar o de arrastrar una partícula.
+ */
+function centrarModeloSiVacio() {
+    if (grupoBohr && obtenerParticulasModelo().length === 0) {
+        grupoBohr.position.set(0, 0, 0);
+    }
 }
 const RADIO_PARTICULA_NUCLEO = 0.16;
 const RADIO_ELECTRON = 0.14;
@@ -1518,7 +1562,10 @@ function agregarParticulaSuelta(tipo, posicion) {
  * Agrega una partícula. Sin posición va al modelo de Bohr: los
  * protones y neutrones al núcleo y cada electrón nuevo a la
  * primera capa con lugar libre. Con posición, si cae cerca del
- * centro se une al modelo y si no queda suelta en la escena.
+ * modelo se une a él y si no queda suelta en la escena. Pero si
+ * el modelo está vacío y lo que se suelta es un protón, el modelo
+ * nace donde cae ese protón: el modelo sigue al protón y ya no
+ * hace falta ponerlo en el centro para construirlo.
  * Devuelve el id de la partícula o null si no se pudo agregar.
  * @param {string} tipo 'proton', 'neutron' o 'electron'.
  * @param {{x: number, y: number, z: number}} [posicion] Dónde soltarla; sin ella va al modelo.
@@ -1536,9 +1583,20 @@ export function agregarParticula(tipo, posicion) {
         return null;
     }
 
+    // Si el modelo está vacío, vuelve al centro antes de decidir
+    // dónde cae la partícula: su posición anterior era de un
+    // modelo que ya no existe.
+    centrarModeloSiVacio();
+
     // Suelta en la escena: sobre el modelo se une a él; si no, queda suelta.
+    // Pero si el modelo está vacío y lo que se suelta es un protón, el
+    // modelo nace donde cae ese protón y el protón se une a él ahí.
     if (posicion && !estaSobreModeloBohr(posicion)) {
-        return agregarParticulaSuelta(tipo, posicion);
+        if (tipo === 'proton' && obtenerParticulasModelo().length === 0) {
+            moverModeloBohr(posicion);
+        } else {
+            return agregarParticulaSuelta(tipo, posicion);
+        }
     }
 
     let capa = -1;
@@ -1717,12 +1775,15 @@ function sacarParticulaDelModelo(particula) {
 
 /**
  * Une una partícula suelta al modelo de Bohr si se soltó cerca
- * del centro. Los electrones van a la primera capa con lugar
+ * de él. Los electrones van a la primera capa con lugar
  * libre; si las tres están llenas, se queda suelta.
  * Devuelve true si se unió y false si se quedó suelta.
  */
 function unirParticulaAlModelo(particula) {
     if (!particula.libre) return true;
+    // Si el modelo está vacío, vuelve al centro antes de decidir
+    // si la partícula cae sobre él.
+    centrarModeloSiVacio();
     if (!estaSobreModeloBohr(particula.grupo.position)) return false;
     if (particula.tipo === 'electron') {
         const porCapa = [0, 0, 0];

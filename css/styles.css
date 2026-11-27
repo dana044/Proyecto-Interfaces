@@ -461,13 +461,6 @@ p {
   color: var(--texto-secundario);
 }
 
-/* Botón Crear átomo del panel del modelo de Bohr: ocupa todo el
-ancho del panel, con el mismo estilo que Verificar molécula. */
-.boton-crear-atomo {
-  width: 100%;
-  margin-top: 12px;
-}
-
 /* Contador del modelo de Bohr en el panel de información */
 .contador-bohr {
   display: grid;
@@ -1005,6 +998,11 @@ ancho del panel, con el mismo estilo que Verificar molécula. */
 .respaldo [data-accion="verificar"]::before {
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%229%22/%3E%3Cpath d=%22m8 12.5 2.8 2.8L16 9.8%22/%3E%3C/svg%3E");
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%229%22/%3E%3Cpath d=%22m8 12.5 2.8 2.8L16 9.8%22/%3E%3C/svg%3E");
+}
+
+.respaldo [data-accion="crear-atomo"]::before {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x=%223%22 y=%223%22 width=%2218%22 height=%2218%22 rx=%224%22/%3E%3Cpath d=%22M12 8v8M8 12h8%22/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x=%223%22 y=%223%22 width=%2218%22 height=%2218%22 rx=%224%22/%3E%3Cpath d=%22M12 8v8M8 12h8%22/%3E%3C/svg%3E");
 }
 
 .respaldo [data-accion="microfono"]::before {
