@@ -453,6 +453,21 @@ p {
   font-size: 18px;
 }
 
+/* Pista del modelo de Bohr: cómo soltar las partículas. */
+.pista-bohr {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--texto-secundario);
+}
+
+/* Botón Crear átomo del panel del modelo de Bohr: ocupa todo el
+ancho del panel, con el mismo estilo que Verificar molécula. */
+.boton-crear-atomo {
+  width: 100%;
+  margin-top: 12px;
+}
+
 /* Contador del modelo de Bohr en el panel de información */
 .contador-bohr {
   display: grid;

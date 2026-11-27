@@ -7,7 +7,7 @@
 
 import { emit, on } from './bus.js';
 import { alternarMicrofono, detenerLocucion, hablar } from './voice.js';
-import { agregarAtomo, agregarParticula, deshacer, limpiarEscena, limpiarParticulas, quitarParticula, rehacer, verificarMolecula } from './atoms.js';
+import { agregarAtomo, crearAtomoDesdeParticulas, deshacer, limpiarEscena, limpiarParticulas, quitarParticula, rehacer, tomarParticula, verificarMolecula } from './atoms.js';
 import { darPista, entrarModoReto, formatearTiempo, salirModoReto } from './reto.js';
 import { identificarElemento } from './chemistry.js';
 import { ELEMENTOS } from './elementos.js';
@@ -152,12 +152,13 @@ export function iniciarInterfaz() {
   // antes un solo elemento ausente dejaba mudos la barra y los mensajes.
   if (!microfono || !mensajes || !indicadorCamara || !indicadorMano) return;
 
-  // Botones del modelo de Bohr: agregar y quitar partículas.
+  // Botones del modelo de Bohr: el + toma la partícula en la mano
+  // (se suelta tocando la escena) y el − quita la última de ese tipo.
   document.querySelectorAll('[data-particula]').forEach((boton) => {
     boton.addEventListener('click', () => {
       const tipo = boton.dataset.particula;
       if (boton.dataset.accionParticula === 'quitar') quitarParticula(tipo);
-      else agregarParticula(tipo);
+      else tomarParticula(tipo);
     });
   });
 
@@ -168,6 +169,7 @@ export function iniciarInterfaz() {
   const botonRehacer = document.querySelector('[data-accion="rehacer"]');
   const botonLimpiar = document.querySelector('[data-accion="limpiar"]');
   const botonVerificar = document.querySelector('[data-accion="verificar"]');
+  const botonCrearAtomo = document.querySelector('[data-accion="crear-atomo"]');
   const botonReto = document.querySelector('[data-accion="reto"]');
   const botonAyudaReto = document.querySelector('[data-accion="ayuda-reto"]');
   const botonSalirReto = document.querySelector('[data-accion="salir-reto"]');
@@ -179,6 +181,9 @@ export function iniciarInterfaz() {
     if (limpiarEscena()) limpiarParticulas();
   });
   botonVerificar?.addEventListener('click', () => verificarMolecula());
+  // Crear átomo es una acción propia, independiente de verificar:
+  // convierte las partículas (del modelo o sueltas) en átomos.
+  botonCrearAtomo?.addEventListener('click', () => crearAtomoDesdeParticulas());
   // El botón de reto alterna entre entrar y salir del modo reto;
   // su texto cambia con el evento reto:actualizado.
   botonReto?.addEventListener('click', () => {
@@ -320,8 +325,11 @@ export function iniciarInterfaz() {
   // filas de partículas del panel de átomos. Al cambiar los protones
   // se identifica el elemento formado (Z = protones) y se muestra su
   // masa aproximada (protones + neutrones); los neutrones solos no
-  // cambian el elemento, solo la masa.
-  on('escena:particulas-cambiadas', ({ protones, neutrones, electrones }) => {
+  // cambian el elemento, solo la masa. El panel solo se abre solo
+  // cuando hay partículas en el modelo: al soltar partículas
+  // sueltas no se abre, para no tapar la escena ni empujarlas
+  // fuera de la vista.
+  on('escena:particulas-cambiadas', ({ protones, neutrones, electrones, enModelo }) => {
     const panelInfo = document.querySelector('#panel-info');
     if (!panelInfo) return;
     const escribir = (campo, numero) => {
@@ -344,7 +352,7 @@ export function iniciarInterfaz() {
       lineaMasa.hidden = !identificado.simbolo;
       valorMasa.textContent = String(identificado.simbolo ? identificado.masa : 0);
     }
-    if (protones + neutrones + electrones > 0) mostrarPanelInfo();
+    if (enModelo > 0) mostrarPanelInfo();
   });
 
   // Explicación del enlace: al formarse, el panel dice qué

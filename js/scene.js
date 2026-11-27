@@ -226,6 +226,3 @@ export function obtenerCamara() {
 export function obtenerLienzo() {
     return renderer ? renderer.domElement : null;
 }
-
-// Nota: la esfera de prueba se quitó a propósito; no hay
-// función que la quite porque la escena ya inicia sin ella.

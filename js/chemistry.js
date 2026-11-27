@@ -128,6 +128,91 @@ export function identificarElemento(protones, neutrones) {
 }
 
 /**
+ * Distancia máxima entre dos partículas sueltas para contarlas
+ * como parte del mismo grupo al verificar. Con 1 las partículas
+ * tienen que estar juntas de verdad, pero no pegadas: dos esferas
+ * de 0.16 de radio se tocan a 0.32, así que 1 deja margen para
+ * soltarlas a mano sin que dos grupos se mezclen.
+ */
+export const DISTANCIA_AGRUPAR_PARTICULAS = 1;
+
+/**
+ * Agrupa partículas sueltas por cercanía: dos partículas están
+ * en el mismo grupo si están a menos de DISTANCIA_AGRUPAR_PARTICULAS,
+ * y los grupos se encadenan (A cerca de B y B cerca de C es un
+ * solo grupo). Es lógica pura, sin escena, para poder probarla
+ * sin WebGL.
+ * @param {Array<{id: string, tipo: string, posicion: {x: number, y: number, z: number}}>} particulas
+ * @param {number} [distancia=DISTANCIA_AGRUPAR_PARTICULAS] Distancia máxima entre vecinas del grupo.
+ * @returns {Array<Array>} Un grupo por cada conjunto junto.
+ */
+export function agruparParticulas(particulas, distancia = DISTANCIA_AGRUPAR_PARTICULAS) {
+    const grupos = [];
+    const asignadas = new Set();
+    for (const particula of particulas) {
+        if (asignadas.has(particula.id)) continue;
+        const grupo = [particula];
+        asignadas.add(particula.id);
+        let crecio = true;
+        while (crecio) {
+            crecio = false;
+            for (const otra of particulas) {
+                if (asignadas.has(otra.id)) continue;
+                const junto = grupo.some((miembro) => Math.hypot(
+                    otra.posicion.x - miembro.posicion.x,
+                    otra.posicion.y - miembro.posicion.y,
+                    otra.posicion.z - miembro.posicion.z,
+                ) <= distancia);
+                if (!junto) continue;
+                grupo.push(otra);
+                asignadas.add(otra.id);
+                crecio = true;
+            }
+        }
+        grupos.push(grupo);
+    }
+    return grupos;
+}
+
+/**
+ * Decide si un grupo de partículas forma un átomo neutro: el
+ * elemento lo dan los protones (hasta el neón) y los electrones
+ * tienen que ser tantos como los protones. Los neutrones no
+ * cambian el elemento, solo la masa.
+ * @param {number} protones Cantidad de protones del grupo.
+ * @param {number} neutrones Cantidad de neutrones del grupo.
+ * @param {number} electrones Cantidad de electrones del grupo.
+ * @returns {{ok: true, simbolo: string, nombre: string, z: number, valencia: number, masa: number, mensaje: string} | {ok: false, motivo: string}}
+ *   El átomo formado, o el motivo en lenguaje sencillo si el
+ *   grupo todavía no es un átomo neutro.
+ */
+export function evaluarFormacionAtomo(protones, neutrones, electrones) {
+    if (protones <= 0) {
+        return { ok: false, motivo: 'Ese grupo no tiene protones. Agrega protones para formar un elemento.' };
+    }
+    const identificado = identificarElemento(protones, neutrones);
+    if (!identificado.simbolo) return { ok: false, motivo: identificado.motivo };
+    const nombre = identificado.nombre.toLowerCase();
+    if (electrones < protones) {
+        const faltan = protones - electrones;
+        return { ok: false, motivo: `Tienes ${protones} protones y ${electrones} electrones juntos: te ${faltan === 1 ? 'falta' : 'faltan'} ${faltan} ${faltan === 1 ? 'electrón' : 'electrones'} para el ${nombre} neutro. Esta configuración no corresponde a un átomo neutro: debe tener tantos electrones como protones.` };
+    }
+    if (electrones > protones) {
+        const sobran = electrones - protones;
+        return { ok: false, motivo: `Tienes ${protones} protones y ${electrones} electrones juntos: te ${sobran === 1 ? 'sobra' : 'sobran'} ${sobran} ${sobran === 1 ? 'electrón' : 'electrones'} para el ${nombre} neutro. Esta configuración no corresponde a un átomo neutro: debe tener tantos electrones como protones.` };
+    }
+    return {
+        ok: true,
+        simbolo: identificado.simbolo,
+        nombre: identificado.nombre,
+        z: identificado.z,
+        valencia: identificado.valencia,
+        masa: identificado.masa,
+        mensaje: identificado.mensaje,
+    };
+}
+
+/**
  * Decide si dos átomos pueden unirse.
  *
  * @param {object} datos

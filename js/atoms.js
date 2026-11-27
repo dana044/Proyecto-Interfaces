@@ -14,11 +14,13 @@ import { AVISO_ELEMENTO_DESCONOCIDO, ELEMENTOS, MAX_ATOMOS } from './elementos.j
 import { setUltimaAccion } from './state.js';
 import {
     actualizarAnilloValencia,
+    agruparParticulas,
     animarHasta,
     animarSacudida,
     buscarVecinoMasCercano,
     distanciaEnlace,
     enlacesUsados,
+    evaluarFormacionAtomo,
     evaluarUnion,
     valenciaDe,
     valenciaLibre,
@@ -88,8 +90,9 @@ function guardarFoto(descripcion = 'cambio') {
 
 /**
  * Foto completa de la escena: los átomos (con su id, elemento y
- * posición) y los enlaces (con sus dos átomos y su orden).
- * @returns {{ atomos: Array, enlaces: Array }} La foto de la escena.
+ * posición), los enlaces (con sus dos átomos y su orden) y las
+ * partículas (con su tipo, si está suelta, su capa y su posición).
+ * @returns {{ atomos: Array, enlaces: Array, particulas: Array }} La foto de la escena.
  */
 function obtenerFotoEscena() {
     return {
@@ -99,6 +102,7 @@ function obtenerFotoEscena() {
             b: enlace.b,
             orden: enlace.orden,
         })),
+        particulas: obtenerFotoParticulas(),
     };
 }
 
@@ -106,17 +110,20 @@ function obtenerFotoEscena() {
  * Reconstruye la escena desde una foto: primero los átomos con
  * sus ids originales y después sus enlaces. Al crear cada enlace
  * se actualizan solos los anillos de valencia, así que deshacer
- * un enlace devuelve la valencia a los átomos.
- * @param {{ atomos: Array, enlaces: Array }} foto La foto a restaurar.
+ * un enlace devuelve la valencia a los átomos. Las partículas
+ * vuelven como estaban, sueltas o en el modelo.
+ * @param {{ atomos: Array, enlaces: Array, particulas?: Array }} foto La foto a restaurar.
  */
 function restaurarFoto(foto) {
     limpiarEscena({ confirmar: false });
+    vaciarParticulas();
     for (const atomo of foto.atomos) {
         agregarAtomo(atomo.elemento, atomo.posicion, atomo.id);
     }
     for (const enlace of foto.enlaces) {
         crearEnlace(enlace.a, enlace.b, enlace.orden, { explicar: false });
     }
+    restaurarParticulas(foto.particulas ?? []);
     emit('escena:reconstruir', {});
 }
 
@@ -394,6 +401,15 @@ function buscarPosicionLibre(radio) {
                         posicion.z - actual.z
                     );
                     return distancia < radio + atomo.radio + margen;
+                }) || obtenerParticulasLibres().some((particula) => {
+                    const actual = particula.posicion;
+                    const distancia = Math.hypot(
+                        posicion.x - actual.x,
+                        posicion.y - actual.y,
+                        posicion.z - actual.z
+                    );
+                    const radioParticula = particula.tipo === 'electron' ? RADIO_ELECTRON : RADIO_PARTICULA_NUCLEO;
+                    return distancia < radio + radioParticula + margen;
                 });
 
                 if (!ocupada) return posicion;
@@ -611,6 +627,7 @@ export function limpiarEscena({ confirmar = true } = {}) {
         return false;
     }
 
+    soltarEnMano();
     ocultarTarjetaAtomo();
     limpiarVistaPrevia();
     guardarFoto('limpiar la escena');
@@ -1042,6 +1059,107 @@ export async function consultarMoleculaActual() {
 }
 
 
+/**
+ * Forma átomos con las partículas: las sueltas que están juntas
+ * son un grupo, y el modelo de Bohr es otro grupo, y cada grupo
+ * con los protones de un elemento y tantos electrones como
+ * protones se convierte en un átomo (el del modelo, en el origen;
+ * el de un grupo suelto, en su centro). Si un grupo todavía no
+ * es un átomo neutro, se avisa qué le falta y no se forma ninguno.
+ * Devuelve los átomos formados o null si no se formó ninguno.
+ * @returns {Array<{simbolo: string, nombre: string, id: string}> | null} Los átomos formados.
+ */
+function formarAtomosDesdeParticulas() {
+    const libres = obtenerParticulasLibres();
+    const modelo = obtenerParticulasModelo();
+    if (libres.length === 0 && modelo.length === 0) return null;
+    const grupos = agruparParticulas(libres);
+    // Primero se revisan todos los grupos: si uno no es un átomo
+    // neutro, se avisa qué le falta y no se forma ninguno.
+    const evaluados = grupos.map((grupo) => {
+        const protones = grupo.filter((p) => p.tipo === 'proton').length;
+        const neutrones = grupo.filter((p) => p.tipo === 'neutron').length;
+        const electrones = grupo.filter((p) => p.tipo === 'electron').length;
+        const cx = grupo.reduce((suma, p) => suma + p.posicion.x, 0) / grupo.length;
+        const cz = grupo.reduce((suma, p) => suma + p.posicion.z, 0) / grupo.length;
+        return {
+            grupo,
+            evaluacion: evaluarFormacionAtomo(protones, neutrones, electrones),
+            x: cx,
+            z: cz
+        };
+    });
+    if (modelo.length > 0) {
+        const protones = modelo.filter((p) => p.tipo === 'proton').length;
+        const neutrones = modelo.filter((p) => p.tipo === 'neutron').length;
+        const electrones = modelo.filter((p) => p.tipo === 'electron').length;
+        evaluados.push({
+            grupo: modelo,
+            evaluacion: evaluarFormacionAtomo(protones, neutrones, electrones),
+            x: 0,
+            z: 0,
+            esModelo: true
+        });
+    }
+    const incompleto = evaluados.find(({ evaluacion }) => !evaluacion.ok);
+    if (incompleto) {
+        // Si el que falla es el modelo, se dice dónde está el
+        // problema para que se corrija ahí; las partículas no se
+        // tocan y la molécula que haya tampoco.
+        const motivo = incompleto.esModelo
+            ? `En el modelo de Bohr: ${incompleto.evaluacion.motivo}`
+            : incompleto.evaluacion.motivo;
+        enviarMensaje('aviso', motivo);
+        emit('voz:hablar', { texto: motivo });
+        setUltimaAccion('Crear átomo: grupo incompleto');
+        return null;
+    }
+    if (atomos.size + evaluados.length > MAX_ATOMOS) {
+        enviarMensaje('aviso', 'Ya llegaste al límite de 20 átomos. Quita uno para formar otro.');
+        setUltimaAccion('Crear átomo: límite de átomos');
+        return null;
+    }
+    const formados = [];
+    // La foto va antes de tocar nada: al deshacer, las partículas
+    // vuelven sueltas y el átomo formado se quita. El restaurar
+    // suprime la foto que agregarAtomo guarda por su cuenta.
+    guardarFoto('formar átomo con partículas');
+    restaurando = true;
+    try {
+        for (const { grupo, evaluacion, x, z } of evaluados) {
+            for (const p of grupo) quitarParticulaPorId(p.id);
+            const id = agregarAtomo(evaluacion.simbolo, { x, y: 0, z });
+            if (id) formados.push({ simbolo: evaluacion.simbolo, nombre: evaluacion.nombre, id });
+        }
+    } finally {
+        restaurando = false;
+    }
+    emitirConteoParticulas();
+    return formados;
+}
+
+/**
+ * Crea átomos con las partículas (botón Crear átomo del panel
+ * del modelo de Bohr): es una acción propia, independiente de
+ * verificar la molécula. Si un grupo está incompleto, solo se
+ * avisa qué debe corregir; no se borra ninguna partícula ni se
+ * toca la molécula que ya haya en la escena.
+ * Devuelve los átomos formados o null si no se formó ninguno.
+ * @returns {Array<{simbolo: string, nombre: string, id: string}> | null} Los átomos formados.
+ */
+export function crearAtomoDesdeParticulas() {
+    const formados = formarAtomosDesdeParticulas();
+    if (!formados) return null;
+    const nombres = formados.map(({ nombre }) => nombre.toLowerCase());
+    const texto = formados.length === 1
+        ? `¡Muy bien! Formaste ${nombres[0]}.`
+        : `¡Muy bien! Formaste ${nombres.slice(0, -1).join(', ')} y ${nombres[nombres.length - 1]}.`;
+    enviarMensaje('correcto', texto);
+    emit('voz:hablar', { texto });
+    setUltimaAccion(`Creaste ${nombres.join(', ')}`);
+    return formados;
+}
+
 export async function verificarMolecula() {
     // Destello morado del botón Verificar al usarlo (clic, voz o gesto).
     const botonVerificar = document.querySelector('[data-accion="verificar"]');
@@ -1050,12 +1168,20 @@ export async function verificarMolecula() {
         setTimeout(() => botonVerificar.classList.remove('destello'), 1200);
     }
 
+    // Verificar solo valida la molécula: no forma átomos ni toca
+    // las partículas. Si no hay átomos, se dice qué falta; si solo
+    // hay partículas, se guía hacia el botón Crear átomo.
     const actuales = obtenerListaAtomos();
     if (actuales.length === 0) {
-        enviarMensaje('aviso', 'La escena está vacía. Agrega átomos y pulsa Verificar molécula.');
+        const libres = obtenerParticulasLibres();
+        const enModelo = obtenerParticulasModelo();
+        if (libres.length > 0 || enModelo.length > 0) {
+            enviarMensaje('aviso', 'Todavía no hay átomos en la escena. Forma uno con el botón Crear átomo del modelo de Bohr.');
+        } else {
+            enviarMensaje('aviso', 'La escena está vacía. Agrega átomos y pulsa Verificar molécula.');
+        }
         return null;
     }
-
 
     const enlacesParaGrupos = obtenerListaEnlaces();
 
@@ -1164,8 +1290,37 @@ export async function verificarMolecula() {
    en órbitas circulares. Las órbitas son un modelo sencillo para
    aprender, no la forma real de los átomos. */
 const MAX_PARTICULAS = 30;
-const CAPACIDADES_CAPAS = [2, 8, 8];
+/* Capacidad de cada nivel de energía: 2n² (nivel 1: 2, nivel 2: 8,
+   nivel 3: 18). El helio ya completa el primer nivel con 2; el
+   neón llega a 8 en el segundo; el tercero solo se ocupa
+   parcialmente en los elementos que conoce el prototipo. */
+const CAPACIDADES_CAPAS = [2, 8, 18];
 const RADIOS_ORBITAS = [0.9, 1.3, 1.7];
+/* El modelo se une al soltar sobre él: cerca del núcleo (0.5) o
+   sobre alguna órbita (0.25 del círculo). No es un radio desde el
+   centro: con 1.9 el modelo se comía casi toda la escena y no
+   quedaba dónde soltar una partícula suelta. */
+const RADIO_ENCAJE_NUCLEO = 0.5;
+const RADIO_ENCAJE_ORBITA = 0.25;
+
+/**
+ * Dice si un punto cae sobre el modelo de Bohr: cerca del núcleo
+ * o sobre alguna de sus órbitas. Las órbitas son círculos en el
+ * plano XY: la distancia a un círculo es la hipotenusa entre lo
+ * que el punto se aparta del radio y lo que se aparta del plano.
+ * Es lo que decide si una partícula soltada se une al modelo.
+ * @param {{x: number, y: number, z: number}} posicion
+ * @returns {boolean} true si cae sobre el modelo.
+ */
+function estaSobreModeloBohr(posicion) {
+    const aOrigen = Math.hypot(posicion.x, posicion.y, posicion.z);
+    if (aOrigen < RADIO_ENCAJE_NUCLEO) return true;
+    const radial = Math.hypot(posicion.x, posicion.y);
+    for (const radio of RADIOS_ORBITAS) {
+        if (Math.hypot(radial - radio, posicion.z) < RADIO_ENCAJE_ORBITA) return true;
+    }
+    return false;
+}
 const RADIO_PARTICULA_NUCLEO = 0.16;
 const RADIO_ELECTRON = 0.14;
 const RADIO_NUCLEO = 0.32;
@@ -1202,21 +1357,23 @@ function capaConLugarLibre(porCapa) {
     return -1;
 }
 
-/** Número de partículas de cada tipo y en total. */
+/** Número de partículas de cada tipo, en total y en el modelo. */
 export function obtenerConteoParticulas() {
     const protones = particulas.proton.length;
     const neutrones = particulas.neutron.length;
     const electrones = particulas.electron.length;
-    return { protones, neutrones, electrones, total: protones + neutrones + electrones };
+    const enModelo = [...particulas.proton, ...particulas.neutron, ...particulas.electron]
+        .filter((p) => !p.libre).length;
+    return { protones, neutrones, electrones, total: protones + neutrones + electrones, enModelo };
 }
 
 function emitirConteoParticulas() {
     emit('escena:particulas-cambiadas', obtenerConteoParticulas());
 }
 
-/** Reparte las partículas del núcleo en una esfera pequeña. */
+/** Reparte las partículas del núcleo en una esfera pequeña. Solo las del modelo: las sueltas se quedan donde están. */
 function reorganizarNucleo() {
-    const nucleo = [...particulas.proton, ...particulas.neutron];
+    const nucleo = [...particulas.proton, ...particulas.neutron].filter((p) => !p.libre);
     const total = nucleo.length;
     nucleo.forEach((particula, indice) => {
         if (total === 1) {
@@ -1234,10 +1391,11 @@ function reorganizarNucleo() {
     });
 }
 
-/** Reparte los electrones en sus órbitas, en su capa. */
+/** Reparte los electrones en sus órbitas, en su capa. Solo los del modelo: los sueltos se quedan donde están. */
 function reorganizarElectrones() {
     const porCapa = [0, 0, 0];
     for (const electron of particulas.electron) {
+        if (electron.libre) continue;
         const capa = electron.capa;
         const enCapa = particulas.electron.filter((otro) => otro.capa === capa);
         const indice = enCapa.indexOf(electron);
@@ -1315,12 +1473,57 @@ export function iniciarModeloBohr() {
 }
 
 /**
- * Agrega una partícula al modelo de Bohr. Los protones y neutrones van
- * al núcleo; cada electrón nuevo va a la primera capa con lugar libre.
+ * Registra una partícula ya creada en la escena: le da su id, la
+ * guarda en su lista, avisa el conteo nuevo y la deja como última
+ * acción. La usan el modelo de Bohr y las partículas sueltas.
+ * @param {string} tipo 'proton', 'neutron' o 'electron'.
+ * @param {THREE.Group} grupo El grupo visual de la partícula.
+ * @param {number} capa Capa del modelo (-1 si está suelta).
+ * @param {boolean} libre true si está suelta en la escena.
+ * @returns {{id: string, tipo: string, capa: number, grupo: THREE.Group, libre: boolean}} La partícula.
+ */
+function registrarParticula(tipo, grupo, capa, libre) {
+    contadoresParticula[tipo] += 1;
+    const id = `${NOMBRES_PARTICULA[tipo].prefijo}${contadoresParticula[tipo]}`;
+    grupo.userData.id = id;
+    grupo.userData.tipo = 'particula';
+    grupo.userData.particula = tipo;
+    const particula = { id, tipo, capa, grupo, libre };
+    particulas[tipo].push(particula);
+    const nuevoConteo = obtenerConteoParticulas();
+    emit('escena:particula-agregada', { id, tipo, capa });
+    emitirConteoParticulas();
+    const datos = NOMBRES_PARTICULA[tipo];
+    enviarMensaje('aviso', `Agregaste un ${datos.nombre}. Ahora tienes ${nuevoConteo.protones} protones, ${nuevoConteo.neutrones} neutrones y ${nuevoConteo.electrones} electrones.`);
+    setUltimaAccion(`Agregaste un ${datos.nombre} (${id})`);
+    return particula;
+}
+
+/**
+ * Agrega una partícula suelta en la escena, en la posición dada.
+ * Se puede arrastrar como un átomo y, al verificar, forma un
+ * átomo con las partículas que tenga juntas.
+ * @param {string} tipo 'proton', 'neutron' o 'electron'.
+ * @param {{x: number, y: number, z: number}} posicion Dónde soltarla.
+ * @returns {string} El id de la partícula.
+ */
+function agregarParticulaSuelta(tipo, posicion) {
+    const grupo = crearParticulaVisual(tipo);
+    grupo.position.set(posicion.x, posicion.y, posicion.z);
+    obtenerContenedorAtomos().add(grupo);
+    return registrarParticula(tipo, grupo, -1, true).id;
+}
+
+/**
+ * Agrega una partícula. Sin posición va al modelo de Bohr: los
+ * protones y neutrones al núcleo y cada electrón nuevo a la
+ * primera capa con lugar libre. Con posición, si cae cerca del
+ * centro se une al modelo y si no queda suelta en la escena.
  * Devuelve el id de la partícula o null si no se pudo agregar.
  * @param {string} tipo 'proton', 'neutron' o 'electron'.
+ * @param {{x: number, y: number, z: number}} [posicion] Dónde soltarla; sin ella va al modelo.
  */
-export function agregarParticula(tipo) {
+export function agregarParticula(tipo, posicion) {
     if (!Object.hasOwn(NOMBRES_PARTICULA, tipo)) {
         enviarMensaje('aviso', 'Esa partícula no existe. Solo hay protones, neutrones y electrones.');
         return null;
@@ -1333,40 +1536,41 @@ export function agregarParticula(tipo) {
         return null;
     }
 
+    // Suelta en la escena: sobre el modelo se une a él; si no, queda suelta.
+    if (posicion && !estaSobreModeloBohr(posicion)) {
+        return agregarParticulaSuelta(tipo, posicion);
+    }
+
     let capa = -1;
     if (tipo === 'electron') {
         const porCapa = [0, 0, 0];
-        for (const electron of particulas.electron) porCapa[electron.capa] += 1;
+        for (const electron of particulas.electron) {
+            if (!electron.libre) porCapa[electron.capa] += 1;
+        }
         capa = capaConLugarLibre(porCapa);
         if (capa === -1) {
-            enviarMensaje('aviso', 'Las tres capas ya están llenas. Quita un electrón para agregar otro.');
-            return null;
+            // Sin posición (voz): no hay dónde dejarlo, se avisa.
+            // Con posición cerca del centro: queda suelto ahí.
+            if (!posicion) {
+                enviarMensaje('aviso', 'Las tres capas ya están llenas. Quita un electrón para agregar otro.');
+                return null;
+            }
+            const id = agregarParticulaSuelta(tipo, posicion);
+            enviarMensaje('aviso', 'Las tres capas ya están llenas: lo dejé suelto en la escena.');
+            return id;
         }
     }
 
-    contadoresParticula[tipo] += 1;
-    const id = `${NOMBRES_PARTICULA[tipo].prefijo}${contadoresParticula[tipo]}`;
     const grupo = crearParticulaVisual(tipo);
-    grupo.userData.id = id;
-    grupo.userData.tipo = 'particula';
-    grupo.userData.particula = tipo;
     if (tipo === 'electron') {
         grupoElectrones.add(grupo);
     } else {
         grupoNucleo.add(grupo);
     }
-    const particula = { id, tipo, capa, grupo };
-    particulas[tipo].push(particula);
+    const particula = registrarParticula(tipo, grupo, capa, false);
     if (tipo === 'electron') reorganizarElectrones();
     else reorganizarNucleo();
-
-    const nuevoConteo = obtenerConteoParticulas();
-    emit('escena:particula-agregada', { id, tipo, capa });
-    emitirConteoParticulas();
-    const datos = NOMBRES_PARTICULA[tipo];
-    enviarMensaje('aviso', `Agregaste un ${datos.nombre}. Ahora tienes ${nuevoConteo.protones} protones, ${nuevoConteo.neutrones} neutrones y ${nuevoConteo.electrones} electrones.`);
-    setUltimaAccion(`Agregaste un ${datos.nombre} (${id})`);
-    return id;
+    return particula.id;
 }
 
 /**
@@ -1390,6 +1594,8 @@ export function quitarParticula(tipo) {
     const particula = lista.pop();
     particula.grupo.parent?.remove(particula.grupo);
     liberarGrupo(particula.grupo);
+    // Si era la que se estaba arrastrando, el arrastre se cancela.
+    if (arrastre?.id === particula.id) arrastre = null;
     if (tipo === 'electron') reorganizarElectrones();
     else reorganizarNucleo();
 
@@ -1404,6 +1610,14 @@ export function quitarParticula(tipo) {
 
 /** Quita todas las partículas del modelo de Bohr y deja el conteo en cero. */
 export function limpiarParticulas() {
+    soltarEnMano();
+    vaciarParticulas();
+    emitirConteoParticulas();
+    setUltimaAccion('Quitaste todas las partículas');
+}
+
+/** Quita todas las partículas sin avisar (lo usa la restauración de una foto). */
+function vaciarParticulas() {
     for (const tipo of Object.keys(particulas)) {
         for (const particula of particulas[tipo]) {
             particula.grupo.parent?.remove(particula.grupo);
@@ -1415,8 +1629,216 @@ export function limpiarParticulas() {
     if (grupoOrbitas) {
         grupoOrbitas.children.forEach((orbita) => { orbita.visible = false; });
     }
+}
+
+/** Color de una partícula según su tipo. */
+function colorParticula(tipo) {
+    return tipo === 'proton' ? COLOR_PROTON : tipo === 'neutron' ? COLOR_NEUTRON : COLOR_ELECTRON;
+}
+
+/** Radio de la esfera de una partícula. */
+function radioParticula(particula) {
+    return particula.tipo === 'electron' ? RADIO_ELECTRON : RADIO_PARTICULA_NUCLEO;
+}
+
+/** Busca una partícula por su id entre los tres tipos. */
+function buscarParticula(id) {
+    for (const tipo of Object.keys(particulas)) {
+        const encontrada = particulas[tipo].find((p) => p.id === id);
+        if (encontrada) return encontrada;
+    }
+    return null;
+}
+
+/**
+ * Pinta la esfera de una partícula de amarillo mientras se está
+ * arrastrando, o la devuelve a su color cuando se suelta, igual
+ * que los átomos.
+ */
+function marcarParticulaActiva(particula, activa) {
+    const esfera = particula.grupo.children.find((hijo) => hijo.isMesh);
+    if (!esfera?.material) return;
+    if (activa) {
+        esfera.material.color.setHex(COLOR_RESALTADO);
+        esfera.material.emissive.setHex(COLOR_RESALTADO);
+        esfera.material.emissiveIntensity = 0.4;
+    } else {
+        esfera.material.color.setHex(colorParticula(particula.tipo));
+        esfera.material.emissive.setHex(0x000000);
+    }
+}
+
+/**
+ * Partícula bajo el puntero: la misma idea que con los átomos
+ * (distancia del rayo al centro, con tolerancia de 1.5 veces el
+ * radio), para poder agarrar esferas tan pequeñas con el dedo.
+ * Devuelve la partícula o null.
+ */
+function particulaBajoPuntero(x, y) {
+    if (!obtenerCamara()) return null;
+    prepararRayo(x, y);
+    const origen = rayo.ray.origin;
+    const direccion = rayo.ray.direction;
+    const centro = new THREE.Vector3();
+    let mejor = null;
+    let mejorDistancia = Infinity;
+    for (const tipo of Object.keys(particulas)) {
+        for (const particula of particulas[tipo]) {
+            particula.grupo.getWorldPosition(centro);
+            if (centro.clone().sub(origen).dot(direccion) <= 0) continue;
+            const distancia = rayo.ray.distanceToPoint(centro);
+            const tolerancia = radioParticula(particula) * FACTOR_TOLERANCIA_PELLIZCO;
+            if (distancia <= tolerancia && distancia < mejorDistancia) {
+                mejorDistancia = distancia;
+                mejor = particula;
+            }
+        }
+    }
+    return mejor;
+}
+
+/**
+ * Saca una partícula del modelo de Bohr y la deja suelta en la
+ * escena, en el mismo sitio: es lo que pasa al agarrar con el
+ * puntero una partícula del núcleo o de una órbita.
+ */
+function sacarParticulaDelModelo(particula) {
+    if (particula.libre) return;
+    const posicion = new THREE.Vector3();
+    particula.grupo.getWorldPosition(posicion);
+    particula.grupo.parent?.remove(particula.grupo);
+    particula.grupo.position.copy(posicion);
+    obtenerContenedorAtomos().add(particula.grupo);
+    particula.libre = true;
+    particula.capa = -1;
+    if (particula.tipo === 'electron') reorganizarElectrones();
+    else reorganizarNucleo();
+}
+
+/**
+ * Une una partícula suelta al modelo de Bohr si se soltó cerca
+ * del centro. Los electrones van a la primera capa con lugar
+ * libre; si las tres están llenas, se queda suelta.
+ * Devuelve true si se unió y false si se quedó suelta.
+ */
+function unirParticulaAlModelo(particula) {
+    if (!particula.libre) return true;
+    if (!estaSobreModeloBohr(particula.grupo.position)) return false;
+    if (particula.tipo === 'electron') {
+        const porCapa = [0, 0, 0];
+        for (const electron of particulas.electron) {
+            if (!electron.libre) porCapa[electron.capa] += 1;
+        }
+        const capa = capaConLugarLibre(porCapa);
+        if (capa === -1) return false;
+        particula.capa = capa;
+    }
+    particula.grupo.parent?.remove(particula.grupo);
+    if (particula.tipo === 'electron') grupoElectrones.add(particula.grupo);
+    else grupoNucleo.add(particula.grupo);
+    particula.libre = false;
+    if (particula.tipo === 'electron') reorganizarElectrones();
+    else reorganizarNucleo();
+    // El conteo no cambia, pero el modelo ganó una partícula: se
+    // avisa para que el panel se abra solo, como al agregarla.
     emitirConteoParticulas();
-    setUltimaAccion('Quitaste todas las partículas');
+    return true;
+}
+
+/** Partículas sueltas con su posición, para agruparlas y verificarlas. */
+function obtenerParticulasLibres() {
+    const libres = [];
+    for (const tipo of Object.keys(particulas)) {
+        for (const particula of particulas[tipo]) {
+            if (!particula.libre) continue;
+            const p = particula.grupo.position;
+            libres.push({ id: particula.id, tipo, posicion: { x: p.x, y: p.y, z: p.z } });
+        }
+    }
+    return libres;
+}
+
+/** Partículas del modelo de Bohr (las que no están sueltas). */
+function obtenerParticulasModelo() {
+    const modelo = [];
+    for (const tipo of Object.keys(particulas)) {
+        for (const particula of particulas[tipo]) {
+            if (particula.libre) continue;
+            modelo.push({ id: particula.id, tipo });
+        }
+    }
+    return modelo;
+}
+
+/**
+ * Quita una partícula por su id, sin avisar: lo usan formar el
+ * átomo y la restauración de una foto, que ya avisan por su cuenta.
+ * Devuelve la partícula o null si no existía.
+ */
+function quitarParticulaPorId(id) {
+    for (const tipo of Object.keys(particulas)) {
+        const indice = particulas[tipo].findIndex((p) => p.id === id);
+        if (indice === -1) continue;
+        const [particula] = particulas[tipo].splice(indice, 1);
+        particula.grupo.parent?.remove(particula.grupo);
+        liberarGrupo(particula.grupo);
+        if (!particula.libre) {
+            if (tipo === 'electron') reorganizarElectrones();
+            else reorganizarNucleo();
+        }
+        return particula;
+    }
+    return null;
+}
+
+/** Foto de las partículas para el deshacer: tipo, si está suelta, su capa y su posición. */
+function obtenerFotoParticulas() {
+    const foto = [];
+    for (const tipo of Object.keys(particulas)) {
+        for (const particula of particulas[tipo]) {
+            const p = particula.grupo.position;
+            foto.push({
+                id: particula.id,
+                tipo,
+                libre: particula.libre,
+                capa: particula.capa,
+                posicion: { x: p.x, y: p.y, z: p.z },
+            });
+        }
+    }
+    return foto;
+}
+
+/**
+ * Reconstruye las partículas de una foto, sin avisar una por una:
+ * las del modelo van a su grupo y se reorganizan, las sueltas a
+ * su posición. Al final se actualiza el conteo una sola vez.
+ */
+function restaurarParticulas(foto) {
+    if (!bohrIniciado && !iniciarModeloBohr()) return;
+    for (const dato of foto) {
+        const grupo = crearParticulaVisual(dato.tipo);
+        grupo.userData.id = dato.id;
+        grupo.userData.tipo = 'particula';
+        grupo.userData.particula = dato.tipo;
+        const numero = Number.parseInt(dato.id.slice(NOMBRES_PARTICULA[dato.tipo].prefijo.length), 10);
+        if (Number.isSafeInteger(numero) && numero > contadoresParticula[dato.tipo]) {
+            contadoresParticula[dato.tipo] = numero;
+        }
+        const particula = { id: dato.id, tipo: dato.tipo, capa: dato.capa, grupo, libre: dato.libre };
+        particulas[dato.tipo].push(particula);
+        if (dato.libre) {
+            grupo.position.set(dato.posicion.x, dato.posicion.y, dato.posicion.z);
+            obtenerContenedorAtomos().add(grupo);
+        } else if (dato.tipo === 'electron') {
+            grupoElectrones.add(grupo);
+        } else {
+            grupoNucleo.add(grupo);
+        }
+    }
+    reorganizarNucleo();
+    reorganizarElectrones();
+    emitirConteoParticulas();
 }
 
 /**
@@ -1877,14 +2299,15 @@ function resaltarPorDelante(atomo, activo) {
 }
 
 /**
- * Crea la restricción de movimiento de un átomo: un plano (base o altura
- * según el modo activo) que contiene su centro actual. `ref` guarda el
- * punto de referencia del primer movimiento.
+ * Crea la restricción de movimiento de un átomo o una partícula:
+ * un plano (base o altura según el modo activo) que contiene su
+ * centro actual. `ref` guarda el punto de referencia del primer
+ * movimiento.
  */
-function crearRestriccion(atomo) {
+function crearRestriccion(objetivo) {
     return {
         tipo: 'plano',
-        punto: atomo.grupo.position.clone(),
+        punto: objetivo.grupo.position.clone(),
         normal: restriccionActiva().normal,
         ref: null,
     };
@@ -1909,22 +2332,34 @@ function pasoEnPlano(normal, dx, dy) {
 }
 
 /**
- * Si cambia el plano durante un arrastre, el átomo se queda donde está
- * y empieza a moverse sobre el plano nuevo.
+ * Si cambia el plano durante un arrastre, el átomo o la partícula
+ * se queda donde está y empieza a moverse sobre el plano nuevo.
  */
 function reanclarArrastre() {
     if (!arrastre?.restriccion) return;
-    const atomo = atomos.get(arrastre.id);
-    if (!atomo) return;
-    arrastre.restriccion = crearRestriccion(atomo);
+    const objetivo = arrastre.kind === 'particula'
+        ? buscarParticula(arrastre.id)
+        : atomos.get(arrastre.id);
+    if (!objetivo) return;
+    arrastre.restriccion = crearRestriccion(objetivo);
 }
 
 function iniciarArrastre(x, y, restringir = false) {
     const camaraActual = obtenerCamara();
     if (!camaraActual) return false;
 
-    const id = atomoBajoPuntero(x, y);
-    if (!id) return false;
+    // Primero un átomo y si no, una partícula: las dos cosas se
+    // agarran igual, con el puntero, el dedo o la mano.
+    let kind = 'atomo';
+    let id = atomoBajoPuntero(x, y);
+    let objetivo = id ? atomos.get(id) : null;
+    if (!objetivo) {
+        const particula = particulaBajoPuntero(x, y);
+        if (!particula) return false;
+        kind = 'particula';
+        id = particula.id;
+        objetivo = particula;
+    }
 
     // Cambio libre entre teclado y mouse (o mano): si un átomo está
     // agarrado con el teclado, el mouse o la mano pueden tomarlo sin
@@ -1932,10 +2367,12 @@ function iniciarArrastre(x, y, restringir = false) {
     // teclado a mouse y sigue desde donde quedó, con el mismo origen
     // (para el deshacer y para volver si se rechaza el enlace) y sin
     // guardar otra foto (ya hay una del arrastre con teclado). Si es
-    // otro átomo, el del teclado se suelta donde quedó.
+    // otro átomo, el del teclado se suelta donde quedó. El teclado
+    // solo agarra átomos: al agarrar una partícula se suelta el
+    // átomo del teclado.
     let origenPrevio = null;
     if (arrastre?.teclado) {
-        if (id !== arrastre.id) {
+        if (kind !== 'atomo' || id !== arrastre.id) {
             terminarArrastre(arrastre.id);
         } else {
             origenPrevio = arrastre.origen;
@@ -1944,8 +2381,11 @@ function iniciarArrastre(x, y, restringir = false) {
         return false;
     }
 
-    const atomo = atomos.get(id);
-    const centro = atomo.grupo.position.clone();
+    // Al agarrar una partícula del modelo, primero se saca de él:
+    // a partir de aquí es una partícula suelta y se mueve como un átomo.
+    if (kind === 'particula' && !objetivo.libre) sacarParticulaDelModelo(objetivo);
+
+    const centro = objetivo.grupo.position.clone();
     const normal = camaraActual.getWorldDirection(new THREE.Vector3());
     const plano = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, centro);
 
@@ -1954,9 +2394,10 @@ function iniciarArrastre(x, y, restringir = false) {
     if (!impacto) return false;
 
     // Con el mouse el átomo solo se mueve sobre el plano activo. El pellizco de la mano no tiene esta restricción.
-    const restriccion = restringir ? crearRestriccion(atomo) : null;
+    const restriccion = restringir ? crearRestriccion(objetivo) : null;
 
     arrastre = {
+        kind,
         id,
         plano,
         desfase: new THREE.Vector3().subVectors(centro, impacto),
@@ -1970,17 +2411,23 @@ function iniciarArrastre(x, y, restringir = false) {
     if (!origenPrevio) {
         fotoArrastrePendiente = guardarFoto(`mover ${id}`);
     }
-    seleccionarAtomo(id);
-    resaltarPorDelante(atomo, true);
-    actualizarVistaPrevia(id);
+    if (kind === 'atomo') {
+        seleccionarAtomo(id);
+        resaltarPorDelante(objetivo, true);
+        actualizarVistaPrevia(id);
+    } else {
+        marcarParticulaActiva(objetivo, true);
+    }
     return true;
 }
 
 function moverArrastre(x, y) {
     if (!arrastre || arrastre.teclado) return;
 
-    const atomo = atomos.get(arrastre.id);
-    if (!atomo || !obtenerCamara()) {
+    const objetivo = arrastre.kind === 'particula'
+        ? buscarParticula(arrastre.id)
+        : atomos.get(arrastre.id);
+    if (!objetivo || !obtenerCamara()) {
         arrastre = null;
         return;
     }
@@ -1995,13 +2442,15 @@ function moverArrastre(x, y) {
             restriccion.ref = impacto;
             return;
         }
-        atomo.grupo.position.copy(restriccion.punto).add(impacto.clone().sub(restriccion.ref));
+        objetivo.grupo.position.copy(restriccion.punto).add(impacto.clone().sub(restriccion.ref));
     } else {
         const impacto = rayo.ray.intersectPlane(arrastre.plano, new THREE.Vector3());
         if (!impacto) return;
-        atomo.grupo.position.copy(impacto.add(arrastre.desfase));
+        objetivo.grupo.position.copy(impacto.add(arrastre.desfase));
     }
-    for (const otroId of atomo.enlaces) {
+    // Las partículas no tienen enlaces ni vista previa de unión.
+    if (arrastre.kind !== 'atomo') return;
+    for (const otroId of objetivo.enlaces) {
         actualizarEnlace(arrastre.id, otroId);
     }
     emitirDesplazamiento(arrastre.id);
@@ -2011,6 +2460,31 @@ function moverArrastre(x, y) {
 function terminarArrastre(id) {
     const arrastreActual = arrastre;
     arrastre = null;
+    const kind = arrastreActual?.kind ?? 'atomo';
+
+    // Una partícula suelta: vuelve a su color, y si se soltó cerca
+    // del centro se une al modelo de Bohr.
+    if (kind === 'particula') {
+        const particula = buscarParticula(id);
+        if (!particula) return;
+        // Al soltarla deja de estar tocada: vuelve a su color normal.
+        marcarParticulaActiva(particula, false);
+        const p = particula.grupo.position.clone();
+        // Si al final no se movió, la foto del arrastre no sirve:
+        // deshacerla no cambiaría nada. Si sí se movió, se queda.
+        if (arrastreActual?.origen && p.distanceTo(arrastreActual.origen) < 0.001) {
+            descartarFotoArrastre();
+        } else {
+            fotoArrastrePendiente = null;
+        }
+        if (unirParticulaAlModelo(particula)) {
+            const datos = NOMBRES_PARTICULA[particula.tipo];
+            enviarMensaje('aviso', `El ${datos.nombre} se unió al modelo de Bohr.`);
+            setUltimaAccion(`Uniste un ${datos.nombre} al modelo`);
+        }
+        return;
+    }
+
     const atomo = atomos.get(id);
     if (!atomo) return;
 
@@ -2086,6 +2560,26 @@ function posicionBajoCursor(x, y) {
     return rayo.ray.intersectPlane(plano, new THREE.Vector3());
 }
 
+/**
+ * Punto donde el rayo del puntero toca el suelo (plano y = 0).
+ * Las partículas sueltas se apoyan en el suelo, como los átomos:
+ * así, al arrastrarlas en el plano base, llegan al origen y se
+ * unen al modelo; si quedaran a otra altura, el arrastre las
+ * alejaría en profundidad y nunca alcanzarían el núcleo.
+ * Devuelve null si el rayo no baja al suelo (parte alta de la
+ * pantalla), para que se use el plano de la cámara en su lugar.
+ * @param {number} x
+ * @param {number} y
+ * @returns {THREE.Vector3|null}
+ */
+function posicionEnSuelo(x, y) {
+    prepararRayo(x, y);
+    const direccion = rayo.ray.direction;
+    if (direccion.y >= 0) return null;
+    const t = -rayo.ray.origin.y / direccion.y;
+    return rayo.ray.origin.clone().addScaledVector(direccion, t);
+}
+
 /** Toma un elemento de la paleta con la mano cerrada. */
 function tomarElemento(simbolo) {
     soltarEnMano();
@@ -2102,8 +2596,8 @@ function soltarEnMano() {
     emit('cursor:elemento', { simbolo: null, color: null });
 }
 
-/** Toma una partícula de los botones + del modelo de Bohr. */
-function tomarParticula(tipo) {
+/** Toma una partícula de los botones + del modelo de Bohr: queda en la mano y se suelta tocando la escena. */
+export function tomarParticula(tipo) {
     if (!Object.hasOwn(SIMBOLO_PARTICULA, tipo)) return;
     soltarEnMano();
     particulaEnMano = tipo;
@@ -2127,12 +2621,29 @@ function colocarElementoEnMano(x, y) {
     enviarMensaje('aviso', `Coloqué ${nombre}.`);
 }
 
-/** Agrega al modelo de Bohr la partícula que se lleva en la mano. */
-function colocarParticulaEnMano() {
-    const nombre = NOMBRES_PARTICULA[particulaEnMano].nombre;
-    if (!agregarParticula(particulaEnMano)) return;
+/**
+ * Suelta la partícula que se lleva en la mano: en el punto tocado
+ * de la escena (mouse, toque o mano), o en el modelo de Bohr si no
+ * se dio un punto.
+ * @param {number} [x] Posición de la ventana (0 a 1).
+ * @param {number} [y] Posición de la ventana (0 a 1).
+ */
+function colocarParticulaEnMano(x, y) {
+    let id = null;
+    if (typeof x === 'number' && typeof y === 'number') {
+        const punto = aCoordenadasCanvas(x, y);
+        // En el suelo si el rayo baja hasta él; si no (parte alta
+        // de la pantalla), en el plano de la cámara.
+        const posicion = posicionEnSuelo(punto.x, punto.y) ?? posicionBajoCursor(punto.x, punto.y);
+        if (!posicion) return;
+        id = agregarParticula(particulaEnMano, { x: posicion.x, y: posicion.y, z: posicion.z });
+    } else {
+        id = agregarParticula(particulaEnMano);
+    }
+    if (!id) return;
+    // agregarParticula ya avisó con el conteo nuevo (y, si las
+    // capas estaban llenas, con que quedó suelta): no se repite.
     soltarEnMano();
-    enviarMensaje('aviso', `Agregué un ${nombre}.`);
 }
 
 /**
@@ -2512,7 +3023,7 @@ export function iniciarArrastreDeAtomos() {
             return;
         }
         if (elementoEnMano) colocarElementoEnMano(x, y);
-        else colocarParticulaEnMano();
+        else colocarParticulaEnMano(x, y);
     });
 
     lienzo.tabIndex = 0;
@@ -2530,6 +3041,9 @@ export function iniciarArrastreDeAtomos() {
         punteroAbajoY = evento.clientY;
         punteroMovido = false;
         ocultarTarjetaAtomo();
+        // Con una partícula en la mano no se agarra nada: el clic
+        // que sigue la suelta donde se tocó.
+        if (particulaEnMano) return;
         if (evento.button !== 0) return;
 
         const punto = coordenadasDePuntero(evento, lienzo);
@@ -2575,6 +3089,11 @@ export function iniciarArrastreDeAtomos() {
     // la apaga, se cierra tocando fuera o tocándola a ella.
     lienzo.addEventListener('click', (evento) => {
         if (punteroMovido) return;
+        // Con una partícula en la mano, el toque la suelta aquí.
+        if (particulaEnMano) {
+            colocarParticulaEnMano(evento.clientX / window.innerWidth, evento.clientY / window.innerHeight);
+            return;
+        }
         const punto = coordenadasDePuntero(evento, lienzo);
         const id = punto ? atomoBajoPuntero(punto.x, punto.y) : null;
         if (!id) {
@@ -2588,7 +3107,12 @@ export function iniciarArrastreDeAtomos() {
     const tarjeta = document.getElementById('tarjeta-atomo');
     if (tarjeta) tarjeta.addEventListener('click', ocultarTarjetaAtomo);
     lienzo.addEventListener('keydown', (evento) => {
-        if (evento.key === 'Escape') ocultarTarjetaAtomo();
+        if (evento.key !== 'Escape') return;
+        ocultarTarjetaAtomo();
+        if (particulaEnMano) {
+            soltarEnMano();
+            enviarMensaje('aviso', 'Soltaste la partícula sin colocarla.');
+        }
     });
 
     const finalizar = (evento) => {
