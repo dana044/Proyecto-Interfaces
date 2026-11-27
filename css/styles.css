@@ -13,6 +13,9 @@
   --accion: #6D28D9;
   --accion-hover: #5B21B6;
   --accion-presionado: #4C1D95;
+  /* Fase 2: el morado para TEXTO. En claro es el mismo #6D28D9;
+     en oscuro es #A78BFA (ver el bloque oscuro). */
+  --accion-texto: #6D28D9;
   --accion-suave: #F3EEFD;
 
   /* Tarjeta de ayuda al pasar el cursor (globo de los botones) */
@@ -31,7 +34,13 @@
   /* Estados: verde éxito, ámbar aviso, rojo error */
   --ok: #15803D;
   --aviso: #B45309;
+  /* Fase 3: el fondo ámbar de los avisos se repetía; el texto
+     ámbar (#92400E) y el borde (#FFC93C) solo se usan una vez
+     y quedan como están. */
+  --aviso-fondo: #FEF3C7;
   --error: #B91C1C;
+  /* Fase 3: el gris del micrófono en aviso, igual en claro y oscuro. */
+  --microfono-aviso: #9CA3AF;
 
   /* Átomos */
   --atomo-h: #FFFFFF;
@@ -66,6 +75,7 @@ body {
   grid-template-rows: auto minmax(0, 1fr);
   gap: 16px 20px;
   height: 100vh;
+  height: 100dvh;
   padding: 16px 20px 16px 16px;
   background: var(--fondo);
   color: var(--texto);
@@ -166,27 +176,30 @@ p {
   color: var(--estado);
 }
 
-/* Botón de menú (abre y cierra los paneles) */
-
+/* Botón de menú (abre y cierra los paneles): píldora con tinte
+   suave y el ícono en color.
+   Fase 3: antes había dos reglas (aquí y en Rediseño 3); quedan
+   en una sola con el estilo que ganaba (el de Rediseño 3). */
 .boton-menu {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   min-height: 44px;
-  padding: 8px 16px;
+  padding: 8px 16px 8px 14px;
   font-family: var(--fuente-texto);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  color: var(--texto);
-  background: var(--superficie);
-  border: 1px solid var(--borde-fuerte);
-  border-radius: var(--radio-boton);
+  color: var(--accion);
+  background: var(--accion-suave);
+  border: none;
+  border-radius: 12px;
   cursor: pointer;
 }
 
 .boton-menu:hover {
-  border-color: var(--accion);
-  color: var(--accion);
+  background: #E9E0FB;
+  color: var(--accion-hover);
+  border: none;
 }
 
 /* Menú abierto: su etiqueta se rellena con el acento */
@@ -194,7 +207,7 @@ p {
 #menu-info:checked~.encabezado label[for="menu-info"] {
   color: #FFFFFF;
   background: var(--accion);
-  border-color: var(--accion);
+  border: none;
 }
 
 /* Foco de teclado sobre el interruptor oculto, mostrado en la etiqueta */
@@ -202,34 +215,6 @@ p {
 #menu-info:focus-visible~.encabezado label[for="menu-info"] {
   outline: 3px solid var(--accion);
   outline-offset: 3px;
-}
-
-.hamburguesa {
-  position: relative;
-  display: block;
-  width: 18px;
-  height: 2px;
-  background: currentColor;
-  border-radius: 2px;
-}
-
-.hamburguesa::before,
-.hamburguesa::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  width: 18px;
-  height: 2px;
-  background: currentColor;
-  border-radius: 2px;
-}
-
-.hamburguesa::before {
-  top: -6px;
-}
-
-.hamburguesa::after {
-  top: 6px;
 }
 
 /* Colores de estado: pastillas del encabezado y punto del micrófono */
@@ -274,8 +259,8 @@ p {
 
 .cerrar-mensaje {
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   font-size: 20px;
   line-height: 1;
   color: var(--texto-secundario);
@@ -303,11 +288,14 @@ p {
   border-radius: 50%;
 }
 
+/* Aviso: sin línea de color; la tarjeta ya tiene su propio borde.
+   Fase 3: antes había dos reglas (aquí y en Rediseño 3); quedan
+   en una sola: sin relleno, sin borde izquierdo, 17 px. */
 .mensaje {
   --estado: var(--aviso);
-  padding: 12px 16px;
-  font-size: 16px;
-  border-left: 4px solid var(--estado);
+  padding: 0;
+  font-size: 17px;
+  border-left: none;
 }
 
 .mensaje-correcto {
@@ -390,7 +378,7 @@ p {
 
 .lista-elementos .boton-atomo:hover {
   border-color: var(--accion);
-  color: var(--accion);
+  color: var(--accion-texto);
 }
 
 /* El nombre se puede partir en dos líneas: no se recorta.
@@ -458,8 +446,8 @@ p {
 }
 
 .fila-particula .boton-particula {
-  min-width: 40px;
-  min-height: 40px;
+  min-width: 44px;
+  min-height: 44px;
   padding: 4px 10px;
   justify-content: center;
   font-size: 18px;
@@ -486,7 +474,7 @@ p {
 .numero-contador {
   font-size: 24px;
   font-weight: 700;
-  color: var(--accion);
+  color: var(--accion-texto);
 }
 
 .etiqueta-contador {
@@ -511,7 +499,7 @@ p {
   padding: 12px 14px;
   font-size: 15px;
   color: var(--texto-secundario);
-  background: #FEF3C7;
+  background: var(--aviso-fondo);
   border: 1px solid #FFC93C;
   border-radius: 12px;
 }
@@ -525,9 +513,13 @@ p {
   letter-spacing: 0.04em;
 }
 
-/* Símbolos claros (H, He, Li, Be, B, F, Ne): texto oscuro sobre fondo claro */
-.simbolo-claro {
-  color: var(--texto);
+/* Insignia con fondo claro (berilio): texto oscuro FIJO, no
+   var(--texto), porque en modo oscuro esa variable es clara y el
+   texto volvería a perderse sobre el ámbar. El selector lleva
+   .simbolo delante porque la regla .simbolo (más abajo, con el
+   mismo peso) pone el texto en blanco y si no ganaría ella. */
+.simbolo.simbolo-claro {
+  color: #1F2430;
   border: 2px solid var(--atomo-c);
 }
 
@@ -569,23 +561,27 @@ p {
   border-radius: 12px;
 }
 
-/* Lo que le falta a la molécula: ámbar */
+/* Lo que le falta a la molécula: ámbar.
+   Fase 3: antes había dos reglas (aquí y en Rediseño 2); quedan
+   en una sola: sin línea de color, fondo suave, esquinas de 12 px. */
 .aviso-molecula {
   margin: 0 0 14px;
-  padding: 12px 14px;
-  background: #FEF3C7;
-  border-left: 4px solid #B45309;
-  border-radius: 8px;
+  padding: 10px 14px;
+  background: var(--aviso-fondo);
+  border: none;
+  border-radius: 12px;
   color: #92400E;
   font-size: 15px;
   font-weight: 600;
 }
 
-/* Subtítulo en vivo de lo que entendió el micrófono */
+/* Subtítulo en vivo de lo que entendió el micrófono.
+   Fase 3: sube a 72 px para no tapar la pista de gestos
+   (antes había dos reglas: esta y otra que solo cambiaba bottom). */
 .subtitulo-voz {
   position: fixed;
   left: 50%;
-  bottom: 24px;
+  bottom: 72px;
   transform: translateX(-50%);
   z-index: 30;
   margin: 0;
@@ -645,7 +641,9 @@ p {
 .tarjeta-atomo {
   position: absolute;
   z-index: 30;
-  max-width: 260px;
+  /* Fase 2: 260 px es el 72% de un teléfono de 360 px; con el
+     mínimo nunca se sale de la pantalla. */
+  max-width: min(260px, calc(100vw - 32px));
   padding: 12px 16px;
   font-size: 15px;
   background: var(--superficie);
@@ -653,6 +651,13 @@ p {
   border-radius: 12px;
   box-shadow: var(--sombra-flotante);
   pointer-events: none;
+}
+
+/* Fase 2: tarjeta fijada con un toque (ver js/atoms.js): sí recibe
+   toques, para cerrarla tocándola a ella o fuera de la escena. */
+.tarjeta-atomo.tarjeta-fija {
+  pointer-events: auto;
+  cursor: pointer;
 }
 
 .tarjeta-atomo[hidden] {
@@ -852,8 +857,16 @@ p {
 
 .reto-progreso [data-campo-reto="estrellas"] {
   font-size: 20px;
-  color: #D97706;
+  /* Fase 2: #D97706 sobre #F3EEFD daba 2.80:1 (mínimo 3:1 para
+     texto grande); #B45309, que ya existe como --aviso, da 4.41:1. */
+  color: var(--aviso);
   letter-spacing: 2px;
+}
+
+/* En oscuro el ámbar original sí pasa (4.74:1 sobre #2A2140) y el
+   oscuro #B45309 quedaría al límite (3.01:1), así que ahí se queda. */
+:root[data-tema="oscuro"] .reto-progreso [data-campo-reto="estrellas"] {
+  color: #D97706;
 }
 
 .reto-botones {
@@ -1022,7 +1035,7 @@ p {
 }
 
 .respaldo [data-accion="microfono"].estado-aviso {
-  --estado: #9CA3AF;
+  --estado: var(--microfono-aviso);
   color: #6B7280;
 }
 
@@ -1089,20 +1102,29 @@ p {
   color: #B8BFCC;
 }
 
+/* Fase 2: en táctil no hay hover; el globo también se muestra
+   mientras se mantiene presionado el botón (:active). Un toque
+   normal no se roba para el globo: el botón sigue haciendo su
+   acción, por eso no se usa un primer toque que solo muestre
+   el globo. */
 .respaldo .tip:hover .globo,
-.respaldo .tip:focus-visible .globo {
+.respaldo .tip:focus-visible .globo,
+.respaldo .tip:active .globo {
   opacity: 1;
   visibility: visible;
 }
 
-/* Pantallas de 1024 px o menos: la barra baja a la parte inferior */
-
-@media (max-width: 1023px) {
+/* Pantallas de 1280 px o menos: la barra baja a la parte inferior.
+   Fase 3: el corte estaba en 1024 px, pero a 1024 px con los dos
+   paneles abiertos el lienzo quedaba en 192 px de ancho; a partir
+   de 1280 px el layout de tres columnas ya tiene sitio (448 px). */
+@media (max-width: 1279px) {
   body {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto;
     height: auto;
     min-height: 100vh;
+    min-height: 100dvh;
   }
 
   .encabezado,
@@ -1166,8 +1188,8 @@ p {
   content: "";
   display: block;
   flex-shrink: 0;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   background: currentColor;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%222%22/%3E%3Cellipse cx=%2212%22 cy=%2212%22 rx=%229%22 ry=%224%22/%3E%3Cellipse cx=%2212%22 cy=%2212%22 rx=%229%22 ry=%224%22 transform=%22rotate%2860 12 12%29%22/%3E%3Cellipse cx=%2212%22 cy=%2212%22 rx=%229%22 ry=%224%22 transform=%22rotate%28-60 12 12%29%22/%3E%3C/svg%3E") center / contain no-repeat;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%222%22/%3E%3Cellipse cx=%2212%22 cy=%2212%22 rx=%229%22 ry=%224%22/%3E%3Cellipse cx=%2212%22 cy=%2212%22 rx=%229%22 ry=%224%22 transform=%22rotate%2860 12 12%29%22/%3E%3Cellipse cx=%2212%22 cy=%2212%22 rx=%229%22 ry=%224%22 transform=%22rotate%28-60 12 12%29%22/%3E%3C/svg%3E") center / contain no-repeat;
@@ -1240,36 +1262,60 @@ label[for="menu-info"].boton-menu::before {
 
 /* ================= Rediseño 2: propuestas Avogadro ================= */
 
-/* Cámara y mano junto al micrófono, dentro de la barra */
+/* Cámara y mano junto al micrófono, dentro de la barra.
+   Fase 3: antes había tres reglas (Rediseño 2, 3 y 4) con
+   distribuciones distintas; queda una sola con la que ganaba
+   (Rediseño 4: ícono arriba, texto abajo). */
 .estado-equipo {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-top: 2px;
+  gap: 0;
+  margin-top: 0;
+  width: 100%;
 }
 
 .estado-equipo .chip-estado {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
   width: 100%;
-  justify-content: flex-start;
-  padding: 3px 8px;
-  font-size: 11px;
+  min-height: 60px;
+  padding: 8px 4px;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--boton-texto);
   background: transparent;
-  border: 1px solid var(--borde);
+  border: 1px solid transparent;
+  border-radius: var(--radio-boton);
   box-shadow: none;
+  text-align: center;
+  white-space: normal;
+  overflow: visible;
 }
 
 .estado-equipo .chip-estado::before {
-  width: 14px;
-  height: 14px;
+  width: 22px;
+  height: 22px;
+  background: var(--estado, var(--texto-secundario));
 }
 
-/* Aviso de lo que le falta a la molécula: sin línea de color, fondo suave */
-.aviso-molecula {
-  padding: 10px 14px;
-  background: #FEF3C7;
-  border: none;
-  border-radius: 12px;
-  color: #92400E;
+.estado-equipo .chip-estado strong {
+  flex-shrink: 0;
+  font-weight: 400;
+  color: inherit;
+}
+
+.estado-equipo .chip-estado .valor {
+  min-width: 0;
+  font-weight: 600;
+  color: var(--estado);
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 /* Pista de gestos en la parte inferior de la escena */
@@ -1340,7 +1386,15 @@ label[for="menu-info"].boton-menu::before {
   --accion: #8B5CF6;
   --accion-hover: #A78BFA;
   --accion-presionado: #7C3AED;
+  /* Fase 2: texto de botón en oscuro. El morado #8B5CF6 sobre el
+     fondo #1B1F29 da 3.89:1; este violeta claro da 6.05:1. */
+  --accion-texto: #A78BFA;
   --accion-suave: #2A2140;
+  /* Fase 3: el fondo y el texto ámbar de los avisos en oscuro,
+     y el violeta claro del texto sobre las píldoras oscuras. */
+  --aviso-fondo-oscuro: #3A2E12;
+  --aviso-texto-oscuro: #FCD34D;
+  --texto-sobre-violeta: #C4B5FD;
   --globo-fondo: #232836;
   --texto: #E7E9EF;
   --texto-secundario: #9AA3B2;
@@ -1353,19 +1407,19 @@ label[for="menu-info"].boton-menu::before {
 }
 
 :root[data-tema="oscuro"] .aviso-molecula {
-  background: #3A2E12;
-  color: #FCD34D;
+  background: var(--aviso-fondo-oscuro);
+  color: var(--aviso-texto-oscuro);
 }
 
 :root[data-tema="oscuro"] .aviso-modelo {
-  background: #3A2E12;
+  background: var(--aviso-fondo-oscuro);
   border-color: #92400E;
-  color: #FCD34D;
+  color: var(--aviso-texto-oscuro);
 }
 
 :root[data-tema="oscuro"] .explicacion-enlace {
   background: var(--accion-suave);
-  color: #C4B5FD;
+  color: var(--texto-sobre-violeta);
 }
 
 /* El título del reto usa el morado claro en modo oscuro,
@@ -1374,55 +1428,87 @@ label[for="menu-info"].boton-menu::before {
   color: #A78BFA;
 }
 
-/* El subtítulo de voz sube para no tapar la pista de gestos */
-.subtitulo-voz {
-  bottom: 72px;
+/* Fase 2 — accesibilidad en modo oscuro (contrastes medidos con la
+   fórmula WCAG; mínimo 4.5:1 para texto normal):
+   - .boton: #8B5CF6 sobre #1B1F29 daba 3.89:1; con --accion-texto
+     (#A78BFA) da 6.05:1. El :active usaba #7C3AED (2.89:1), por eso
+     también va con el token claro.
+   - .boton-principal: blanco sobre #8B5CF6 daba 4.23:1; con
+     #7C3AED da 5.70:1. El :hover usaba #A78BFA (blanco 2.72:1):
+     en oscuro baja a #6D28D9 (7.10:1) y el :active a #5B21B6
+     (8.98:1), para que al presionar se oscurezca, no se aclare.
+   - Micrófono en aviso: #6B7280 sobre #1B1F29 daba 3.41:1; con
+     #9CA3AF da 6.49:1. */
+:root[data-tema="oscuro"] .boton {
+  color: var(--accion-texto);
+}
+
+:root[data-tema="oscuro"] .boton:active {
+  color: var(--accion-texto);
+}
+
+:root[data-tema="oscuro"] .boton-principal {
+  background: var(--accion-presionado);
+  border-color: var(--accion-presionado);
+}
+
+:root[data-tema="oscuro"] .boton-principal:hover {
+  background: #6D28D9;
+  border-color: #6D28D9;
+}
+
+:root[data-tema="oscuro"] .boton-principal:active {
+  background: #5B21B6;
+  border-color: #5B21B6;
+}
+
+:root[data-tema="oscuro"] .respaldo [data-accion="microfono"].estado-aviso {
+  color: var(--microfono-aviso);
+}
+
+/* Fase 2 (misma familia: blanco o morado sobre morado en oscuro):
+   - Menú activo: blanco sobre #8B5CF6 daba 4.23:1; con #7C3AED
+     da 5.70:1. Es el "menús activos" de la tabla del informe.
+   - Vista presionada: blanco sobre #8B5CF6 daba 4.23:1 y su hover
+     sobre #A78BFA 2.72:1; en oscuro queda #7C3AED (5.70:1) y el
+     hover baja a #6D28D9 (7.10:1).
+   - RA encendida: #8B5CF6 sobre #2A2140 daba 3.57:1; con el token
+     claro #A78BFA da 5.55:1.
+   - Contador de partículas: #8B5CF6 sobre #161A23 daba 4.11:1;
+     como texto grande (24 px en negrita) ya pasaba el mínimo de
+     3:1, pero con #A78BFA queda en 6.40:1. */
+:root[data-tema="oscuro"] #menu-atomos:checked~.encabezado label[for="menu-atomos"],
+:root[data-tema="oscuro"] #menu-info:checked~.encabezado label[for="menu-info"] {
+  background: var(--accion-presionado);
+  border-color: var(--accion-presionado);
+}
+
+:root[data-tema="oscuro"] .boton-vista[aria-pressed="true"] {
+  background: var(--accion-presionado);
+}
+
+:root[data-tema="oscuro"] .boton-vista[aria-pressed="true"]:hover {
+  background: #6D28D9;
+}
+
+:root[data-tema="oscuro"] .respaldo [data-accion="ra"][aria-pressed="true"] {
+  color: var(--accion-texto);
+}
+
+:root[data-tema="oscuro"] .numero-contador {
+  color: var(--accion-texto);
+}
+
+/* Fase 2 (completado): la barra lateral va en gris por diseño
+   (--boton-texto, 10.04:1); el arreglo genérico de .boton la teñía
+   de morado. Los menús activos y la vista activa ya están arriba,
+   en el bloque Fase 2 (eran la misma regla dos veces). */
+:root[data-tema="oscuro"] .respaldo .boton {
+  color: var(--boton-texto);
 }
 
 
 /* ================= Rediseño 3 ================= */
-
-/* Aviso: sin línea de color; la tarjeta ya tiene su propio borde */
-.mensaje {
-  padding: 0;
-  border-left: none;
-  font-size: 17px;
-}
-
-/* Cámara y mano: del mismo ancho que los botones, texto que sí cabe */
-.estado-equipo {
-  width: 100%;
-}
-
-.estado-equipo .chip-estado {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 6px;
-  min-width: 0;
-  width: 100%;
-  min-height: 34px;
-  padding: 6px 10px;
-  font-size: 12px;
-  line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  border-radius: 10px;
-}
-
-.estado-equipo .chip-estado strong {
-  flex-shrink: 0;
-  font-weight: 500;
-  color: var(--texto-secundario);
-}
-
-.estado-equipo .chip-estado .valor {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-}
 
 /* Marca: ícono en un cuadro morado y nombre más firme */
 .marca {
@@ -1441,39 +1527,9 @@ label[for="menu-info"].boton-menu::before {
   border-radius: 10px;
 }
 
-/* Átomos e Información: píldoras con tinte suave y el ícono en color */
-.boton-menu {
-  min-height: 44px;
-  padding: 8px 16px 8px 14px;
-  border: none;
-  background: var(--accion-suave);
-  color: var(--accion);
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.boton-menu:hover {
-  background: #E9E0FB;
-  color: var(--accion-hover);
-  border: none;
-}
-
-.boton-menu::before {
-  width: 18px;
-  height: 18px;
-}
-
-#menu-atomos:checked~.encabezado label[for="menu-atomos"],
-#menu-info:checked~.encabezado label[for="menu-info"] {
-  background: var(--accion);
-  color: #FFFFFF;
-  border: none;
-}
-
 :root[data-tema="oscuro"] .boton-menu {
-  background: #2A2140;
-  color: #C4B5FD;
+  background: var(--accion-suave);
+  color: var(--texto-sobre-violeta);
 }
 
 :root[data-tema="oscuro"] .boton-menu:hover {
@@ -1483,92 +1539,17 @@ label[for="menu-info"].boton-menu::before {
 
 /* ================= Rediseño 4 ================= */
 
-/* Cámara y mano: mismo estilo que el micrófono (ícono arriba, texto abajo) */
-.estado-equipo {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  margin-top: 0;
-}
-
-.estado-equipo .chip-estado {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  width: 100%;
-  min-height: 60px;
-  padding: 8px 4px;
-  font-size: 13px;
-  font-weight: 400;
-  line-height: 1.2;
-  color: var(--boton-texto);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radio-boton);
-  box-shadow: none;
-  text-align: center;
-  white-space: normal;
-  overflow: visible;
-}
-
-.estado-equipo .chip-estado::before {
-  width: 22px;
-  height: 22px;
-  background: var(--estado, var(--texto-secundario));
-}
-
-.estado-equipo .chip-estado strong {
-  font-weight: 400;
-  color: inherit;
-}
-
-.estado-equipo .chip-estado .valor {
-  font-weight: 600;
-  color: var(--estado);
-  white-space: normal;
-  overflow: visible;
-  text-overflow: clip;
-}
-
-/* Verificar molécula: suave por defecto; morado fuerte al usarlo (clic, voz o gesto) */
-.respaldo [data-accion="verificar"] {
-  color: var(--accion);
-  background: var(--accion-suave);
-  font-weight: 500;
-  box-shadow: none;
-  transition: background 0.2s ease, color 0.2s ease;
-}
-
-.respaldo [data-accion="verificar"]:hover {
-  color: var(--accion-hover);
-  background: #E9E0FB;
-}
-
-.respaldo [data-accion="verificar"].destello {
-  color: #FFFFFF;
-  background: var(--accion);
-}
-
-:root[data-tema="oscuro"] .respaldo [data-accion="verificar"] {
-  background: #2A2140;
-  color: #C4B5FD;
-}
-
-:root[data-tema="oscuro"] .respaldo [data-accion="verificar"].destello {
-  background: var(--accion);
-  color: #FFFFFF;
-}
-
-
-/* ================= Rediseño 5: Verificar en gris, morado fuerte al usarlo ================= */
+/* Verificar molécula: gris suave por defecto; morado fuerte al usarlo
+   (clic, voz o gesto).
+   Fase 3: antes había dos bloques (Rediseño 4 y Rediseño 5); quedan
+   en uno solo con el estilo que ganaba (Rediseño 5). */
 .respaldo [data-accion="verificar"] {
   color: var(--boton-texto);
   background: transparent;
   border-color: transparent;
   font-weight: 400;
   box-shadow: none;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 .respaldo [data-accion="verificar"]::before {
@@ -1597,7 +1578,8 @@ label[for="menu-info"].boton-menu::before {
 :root[data-tema="oscuro"] .respaldo [data-accion="verificar"].destello,
 :root[data-tema="oscuro"] .respaldo [data-accion="verificar"].destello:hover {
   color: #FFFFFF;
-  background: var(--accion);
+  /* Fase 2: blanco sobre #8B5CF6 daba 4.23:1; con #7C3AED da 5.70:1. */
+  background: var(--accion-presionado);
 }
 
 
@@ -1639,6 +1621,7 @@ label[for="menu-info"].boton-menu::before {
   flex-direction: column;
   gap: 8px;
   max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
   overflow-y: auto;
   padding: 12px 14px;
   pointer-events: auto;
@@ -1700,7 +1683,7 @@ label[for="menu-info"].boton-menu::before {
   font-family: var(--fuente-titulo);
   font-size: 15px;
   font-weight: 700;
-  color: var(--accion);
+  color: var(--accion-texto);
 }
 
 .tutorial-paso-texto-actual {
@@ -1754,7 +1737,7 @@ label[for="menu-info"].boton-menu::before {
   font-family: var(--fuente-texto);
   font-size: 13px;
   font-weight: 600;
-  color: var(--accion);
+  color: var(--accion-texto);
   background: transparent;
   border: none;
   border-radius: 8px;
@@ -1862,93 +1845,238 @@ label[for="menu-info"].boton-menu::before {
 }
 
 @keyframes mg-select {
-  0%, 100% { transform: translateY(12px); }
-  50% { transform: translateY(-14px); }
+
+  0%,
+  100% {
+    transform: translateY(12px);
+  }
+
+  50% {
+    transform: translateY(-14px);
+  }
 }
 
 @keyframes mg-move {
-  0%, 100% { transform: translateX(-36px); }
-  50% { transform: translateX(36px); }
+
+  0%,
+  100% {
+    transform: translateX(-36px);
+  }
+
+  50% {
+    transform: translateX(36px);
+  }
 }
 
 @keyframes mg-turn {
-  0%, 100% { transform: translateX(-12px) rotate(-15deg); }
-  25% { transform: translateY(-10px); }
-  50% { transform: translateX(12px) rotate(15deg); }
-  75% { transform: translateY(10px); }
+
+  0%,
+  100% {
+    transform: translateX(-12px) rotate(-15deg);
+  }
+
+  25% {
+    transform: translateY(-10px);
+  }
+
+  50% {
+    transform: translateX(12px) rotate(15deg);
+  }
+
+  75% {
+    transform: translateY(10px);
+  }
 }
 
 @keyframes mg-left {
-  0%, 15% { transform: translateX(7px) scaleX(-1); }
-  65%, 100% { transform: translateX(-14px) scaleX(-1); }
+
+  0%,
+  15% {
+    transform: translateX(7px) scaleX(-1);
+  }
+
+  65%,
+  100% {
+    transform: translateX(-14px) scaleX(-1);
+  }
 }
 
 @keyframes mg-right {
-  0%, 15% { transform: translateX(-7px); }
-  65%, 100% { transform: translateX(14px); }
+
+  0%,
+  15% {
+    transform: translateX(-7px);
+  }
+
+  65%,
+  100% {
+    transform: translateX(14px);
+  }
 }
 
 @keyframes mg-palette {
-  0%, 100% { transform: rotate(-90deg); }
-  50% { transform: rotate(-90deg) translateY(-7px); }
+
+  0%,
+  100% {
+    transform: rotate(-90deg);
+  }
+
+  50% {
+    transform: rotate(-90deg) translateY(-7px);
+  }
 }
 
 @keyframes mg-undo {
-  0%, 100% { transform: rotate(-90deg) translateX(0); }
-  25% { transform: rotate(-90deg) translateX(-12px); }
-  75% { transform: rotate(-90deg) translateX(12px); }
+
+  0%,
+  100% {
+    transform: rotate(-90deg) translateX(0);
+  }
+
+  25% {
+    transform: rotate(-90deg) translateX(-12px);
+  }
+
+  75% {
+    transform: rotate(-90deg) translateX(12px);
+  }
 }
 
 @keyframes mg-redo {
-  0%, 100% { transform: scaleX(-1) rotate(-90deg) translateX(0); }
-  25% { transform: scaleX(-1) rotate(-90deg) translateX(-12px); }
-  75% { transform: scaleX(-1) rotate(-90deg) translateX(12px); }
+
+  0%,
+  100% {
+    transform: scaleX(-1) rotate(-90deg) translateX(0);
+  }
+
+  25% {
+    transform: scaleX(-1) rotate(-90deg) translateX(-12px);
+  }
+
+  75% {
+    transform: scaleX(-1) rotate(-90deg) translateX(12px);
+  }
 }
 
 @keyframes mg-subir {
-  0%, 100% { transform: translateY(12px); }
-  50% { transform: translateY(-16px); }
+
+  0%,
+  100% {
+    transform: translateY(12px);
+  }
+
+  50% {
+    transform: translateY(-16px);
+  }
 }
 
 @keyframes mg-mecer {
-  0%, 100% { transform: rotate(-12deg); }
-  50% { transform: rotate(12deg); }
+
+  0%,
+  100% {
+    transform: rotate(-12deg);
+  }
+
+  50% {
+    transform: rotate(12deg);
+  }
 }
 
 @keyframes mg-barrer {
-  0%, 100% { transform: translateX(-30px); }
-  50% { transform: translateX(30px); }
+
+  0%,
+  100% {
+    transform: translateX(-30px);
+  }
+
+  50% {
+    transform: translateX(30px);
+  }
 }
 
 @keyframes mg-bajar {
-  0%, 100% { transform: translateY(-10px); }
-  50% { transform: translateY(16px); }
+
+  0%,
+  100% {
+    transform: translateY(-10px);
+  }
+
+  50% {
+    transform: translateY(16px);
+  }
 }
 
 /* Cada emoji dura 1.5 s (de 4.5 s en total): 🖐️ sube, ☝️ se mueve a la izquierda, 🖐️ baja a la derecha */
 @keyframes mg-phase1 {
-  0% { opacity: 1; transform: translateY(0); }
-  30% { opacity: 1; transform: translateY(-14px); }
-  33.3%, 100% { opacity: 0; transform: translateY(-14px); }
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  30% {
+    opacity: 1;
+    transform: translateY(-14px);
+  }
+
+  33.3%,
+  100% {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
 }
 
 @keyframes mg-phase2 {
-  0%, 33.3% { opacity: 0; transform: translateX(-30px); }
-  33.4% { opacity: 1; transform: translateX(-30px); }
-  63% { opacity: 1; transform: translateX(-30px); }
-  66.6%, 100% { opacity: 0; transform: translateX(-30px); }
+
+  0%,
+  33.3% {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+
+  33.4% {
+    opacity: 1;
+    transform: translateX(-30px);
+  }
+
+  63% {
+    opacity: 1;
+    transform: translateX(-30px);
+  }
+
+  66.6%,
+  100% {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
 }
 
 @keyframes mg-phase3 {
-  0%, 66.5% { opacity: 0; transform: translateY(14px); }
-  66.6% { opacity: 1; transform: translateY(14px); }
-  96% { opacity: 1; transform: translateY(0); }
-  100% { opacity: 1; transform: translateY(0); }
+
+  0%,
+  66.5% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  66.6% {
+    opacity: 1;
+    transform: translateY(14px);
+  }
+
+  96% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-/* Móvil: la tarjeta va abajo, a todo el ancho */
+/* Pantallas apiladas: la tarjeta va abajo, a todo el ancho */
 
-@media (max-width: 1023px) {
+@media (max-width: 1279px) {
   .tutorial {
     top: auto;
     right: 12px;
@@ -2062,7 +2190,7 @@ body.modo-ra .camara-flotante {
   border: 1px solid var(--borde-fuerte);
   border-radius: 12px;
   background: var(--superficie);
-  color: var(--accion);
+  color: var(--accion-texto);
   font: 600 16px/1.2 Inter, system-ui, sans-serif;
   white-space: nowrap;
   cursor: pointer;
@@ -2091,7 +2219,7 @@ body.modo-ra .camara-flotante {
 .respaldo [data-accion="ra"][aria-pressed="true"] {
   background: var(--accion-suave);
   border-color: var(--accion);
-  color: var(--accion);
+  color: var(--accion-texto);
 }
 
 /* Selector de la molécula dentro del área de RA. */
@@ -2112,7 +2240,7 @@ body.modo-ra .camara-flotante {
 }
 
 .selector-ra select {
-  min-height: 40px;
+  min-height: 44px;
   max-width: 220px;
   padding: 0 8px;
   border: 1px solid var(--borde-fuerte);
@@ -2123,7 +2251,7 @@ body.modo-ra .camara-flotante {
 }
 
 .boton-centrar {
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 14px;
   border: 1px solid var(--borde-fuerte);
   border-radius: 8px;
@@ -2184,6 +2312,7 @@ body.modo-ra .camara-flotante {
   margin: 8px auto;
   border-radius: 12px;
 }
+
 /* Indicadores de voz, cámara y manos trasladados al encabezado */
 .encabezado .indicadores-superiores {
   display: flex;
@@ -2191,16 +2320,18 @@ body.modo-ra .camara-flotante {
   flex-wrap: wrap;
   gap: 8px;
 }
+
 .encabezado .indicadores-superiores [data-accion="microfono"] {
   display: inline-flex;
   flex-direction: row;
   align-items: center;
   gap: 6px;
-  min-height: 40px;
+  min-height: 44px;
   padding: 6px 10px;
   font-size: 12px;
   white-space: nowrap;
 }
+
 .encabezado .indicadores-superiores [data-accion="microfono"]::before {
   content: "";
   display: inline-block;
@@ -2211,6 +2342,7 @@ body.modo-ra .camara-flotante {
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'%3E%3Crect x='9' y='3' width='6' height='11' rx='3'/%3E%3Cpath d='M5 11a7 7 0 0 0 14 0M12 18v3'/%3E%3C/svg%3E") center / contain no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'%3E%3Crect x='9' y='3' width='6' height='11' rx='3'/%3E%3Cpath d='M5 11a7 7 0 0 0 14 0M12 18v3'/%3E%3C/svg%3E") center / contain no-repeat;
 }
+
 .encabezado .indicadores-superiores .estado-equipo {
   display: flex;
   flex-direction: row;
@@ -2218,38 +2350,47 @@ body.modo-ra .camara-flotante {
   width: auto;
   gap: 8px;
 }
+
 .encabezado .indicadores-superiores .estado-equipo .chip-estado {
   display: inline-flex;
   flex-direction: row;
   align-items: center;
   gap: 5px;
   width: auto;
-  min-height: 40px;
+  min-height: 44px;
   padding: 6px 10px;
   font-size: 12px;
   white-space: nowrap;
 }
+
 .encabezado .indicadores-superiores .estado-equipo .chip-estado::before {
   flex-shrink: 0;
   width: 18px;
   height: 18px;
 }
+
 .encabezado .indicadores-superiores .estado-equipo .chip-estado .valor {
   white-space: nowrap;
 }
+
 @media (max-width: 1200px) {
-  .encabezado { flex-wrap: wrap; }
-  .encabezado-der { flex: 1; }
+  .encabezado {
+    flex-wrap: wrap;
+  }
+
+  .encabezado-der {
+    flex: 1;
+  }
 
 
-/* Micrófono compacto en el encabezado */
-.encabezado [data-accion="microfono"] {
+  /* Micrófono compacto en el encabezado */
+  .encabezado [data-accion="microfono"] {
     display: inline-flex;
     flex-direction: row;
     align-items: center;
     justify-content: center;
     gap: 7px;
-    min-height: 40px;
+    min-height: 44px;
     padding: 6px 10px;
     font-size: 14px;
     font-weight: 400;
@@ -2257,20 +2398,34 @@ body.modo-ra .camara-flotante {
     background: transparent;
     border: none;
     box-shadow: none;
-}
+  }
 
-.encabezado [data-accion="microfono"]::before {
+  .encabezado [data-accion="microfono"]::before {
     content: none;
-}
+  }
 
-.encabezado [data-accion="microfono"] .estado-boton {
+  .encabezado [data-accion="microfono"] .estado-boton {
     font-weight: 600;
     color: var(--estado);
-}
+  }
 
-.encabezado [data-accion="microfono"] .punto-estado {
+  .encabezado [data-accion="microfono"] .punto-estado {
     width: 8px;
     height: 8px;
+  }
+
 }
 
+/* Fase 2 — movimiento reducido: la app tiene transiciones de 0.15 s
+   y el punto del micrófono pulsa sin parar; si el sistema pide
+   menos movimiento, todo queda quieto. */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

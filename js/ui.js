@@ -67,6 +67,23 @@ function actualizarIndicador(indicador, datos) {
   if (valor) valor.textContent = datos.texto;
 }
 
+/**
+ * Dice si un color de fondo (número 0xRRGGBB) es claro.
+ * El texto oscuro pasa 4.5:1 cuando la luminancia supera 0.18
+ * (ahí el blanco ya no llega); por debajo, el blanco es el que
+ * se lee. Es el caso del berilio: ámbar con texto blanco 3.19:1.
+ * @param {number} color - Color como número 0xRRGGBB.
+ * @returns {boolean} true si el fondo es claro.
+ */
+function colorDeFondoClaro(color) {
+  const rojo = ((color >> 16) & 255) / 255;
+  const verde = ((color >> 8) & 255) / 255;
+  const azul = (color & 255) / 255;
+  const linealizar = (v) => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  const luminancia = 0.2126 * linealizar(rojo) + 0.7152 * linealizar(verde) + 0.0722 * linealizar(azul);
+  return luminancia > 0.18;
+}
+
 function iniciarPanelAtomos() {
   const lista = document.querySelector('#lista-elementos');
   if (!lista) return;
@@ -84,11 +101,14 @@ function iniciarPanelAtomos() {
     insignia.setAttribute('aria-hidden', 'true');
     insignia.style.backgroundColor =
       '#' + datos.color.toString(16).padStart(6, '0');
+    // Fondo claro (berilio): el símbolo va en oscuro para que se
+    // lea; el resto queda en blanco, que sí pasa el contraste.
+    if (colorDeFondoClaro(datos.color)) insignia.classList.add('simbolo-claro');
 
     // Por el momento el panel solo muestra el nombre. La información
     // completa queda en el título, en la etiqueta para lectores de
     // pantalla y en la tarjeta que aparece al pasar el cursor sobre
-    // un átomo en la escena.
+    // un átomo en la escena o al tocarlo.
     const info = `${datos.nombre} · ${datos.grupo} · Valencia ${datos.valencia}`;
     boton.setAttribute('aria-label', info);
     boton.title = info;

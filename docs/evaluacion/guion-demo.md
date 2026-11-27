@@ -47,15 +47,15 @@ el procedimiento de autorización que indique el curso.
 
 ## Tareas de evaluación
 
-| ID | Preparación | Instrucción exacta que leerá la moderadora | Criterio de éxito | Tiempo máximo |
-|---|---|---|---|---:|
-| T1 | Escena vacía. | «Agrega un átomo de oxígeno usando el panel de átomos». | Aparece una esfera identificada con el símbolo O. | 30 s |
-| T2 | Preparar una molécula con un enlace visible. | «Mueve uno de los átomos y gira la vista para observar la molécula desde otro ángulo». | Cambia la posición de un átomo, el enlace sigue unido y la vista gira. | 40 s |
-| T3 | Preparar dos hidrógenos separados en la escena. | «Une estos dos átomos de hidrógeno». | Aparece un enlace simple entre ambos. | 40 s |
-| T4 | Micrófono disponible. | «Pregúntale por voz a MolecuLab qué es un protón». | El sistema muestra y lee en voz alta la definición de protón. | 30 s |
-| T5 | Escena vacía. | «Construye una molécula de agua con dos hidrógenos y un oxígeno». | Hay un oxígeno unido mediante un enlace simple a cada hidrógeno. | 70 s |
-| T6 | Usar el resultado de T5 si es correcto. | «Usa el sistema para verificar que la molécula sea agua». | El sistema identifica la molécula como agua y muestra H₂O. | 25 s |
-| T7 | Modo Bohr disponible y contador de partículas en cero. | «Construye un átomo neutro de helio-4 con dos protones, dos neutrones y dos electrones». | El sistema identifica helio, He, Z = 2. Los contadores muestran 2 protones, 2 neutrones y 2 electrones. | 60 s |
+| ID  | Preparación                                            | Instrucción exacta que leerá la moderadora                                               | Criterio de éxito                                                                                       | Tiempo máximo |
+| --- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------: |
+| T1  | Escena vacía.                                          | «Agrega un átomo de oxígeno usando el panel de átomos».                                  | Aparece una esfera identificada con el símbolo O.                                                       |          30 s |
+| T2  | Preparar una molécula con un enlace visible.           | «Mueve uno de los átomos y gira la vista para observar la molécula desde otro ángulo».   | Cambia la posición de un átomo, el enlace sigue unido y la vista gira.                                  |          40 s |
+| T3  | Preparar dos hidrógenos separados en la escena.        | «Une estos dos átomos de hidrógeno».                                                     | Aparece un enlace simple entre ambos.                                                                   |          40 s |
+| T4  | Micrófono disponible.                                  | «Pregúntale por voz a MolecuLab qué es un protón».                                       | El sistema muestra y lee en voz alta la definición de protón.                                           |          30 s |
+| T5  | Escena vacía.                                          | «Construye una molécula de agua con dos hidrógenos y un oxígeno».                        | Hay un oxígeno unido mediante un enlace simple a cada hidrógeno.                                        |          70 s |
+| T6  | Usar el resultado de T5 si es correcto.                | «Usa el sistema para verificar que la molécula sea agua».                                | El sistema identifica la molécula como agua y muestra H₂O.                                              |          25 s |
+| T7  | Modo Bohr disponible y contador de partículas en cero. | «Construye un átomo neutro de helio-4 con dos protones, dos neutrones y dos electrones». | El sistema identifica helio, He, Z = 2. Los contadores muestran 2 protones, 2 neutrones y 2 electrones. |          60 s |
 
 Si T5 no se completa, preparar una molécula de agua antes de T6 y registrar
 esa preparación. T6 evalúa el uso de la función de verificación. Si el
@@ -105,12 +105,12 @@ https://humanfactors.jmir.org/2020/4/e21161/
 
 ## Guion de la moderadora de 10 minutos
 
-| Minuto | Acción y guion |
-|---|---|
-| 0:00–1:00 | Leer el consentimiento. «Durante la prueba puedes decir en voz alta qué estás intentando hacer. Si algo te confunde, también nos sirve saberlo». |
-| 1:00–7:00 | Leer cada tarea y cronometrarla. Si la persona se detiene, preguntar «¿Qué intentarías ahora?». Al llegar al máximo, decir «Gracias, vamos a pasar a la siguiente actividad». |
-| 7:00–9:00 | «Marca qué tanto estás de acuerdo con cada afirmación según tu experiencia de hoy». Aplicar el SUS. |
-| 9:00–10:00 | Hacer las tres preguntas abiertas. «Gracias por participar. Tus comentarios nos ayudarán a mejorar MolecuLab 3D». |
+| Minuto     | Acción y guion                                                                                                                                                                |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0:00–1:00  | Leer el consentimiento. «Durante la prueba puedes decir en voz alta qué estás intentando hacer. Si algo te confunde, también nos sirve saberlo».                              |
+| 1:00–7:00  | Leer cada tarea y cronometrarla. Si la persona se detiene, preguntar «¿Qué intentarías ahora?». Al llegar al máximo, decir «Gracias, vamos a pasar a la siguiente actividad». |
+| 7:00–9:00  | «Marca qué tanto estás de acuerdo con cada afirmación según tu experiencia de hoy». Aplicar el SUS.                                                                           |
+| 9:00–10:00 | Hacer las tres preguntas abiertas. «Gracias por participar. Tus comentarios nos ayudarán a mejorar MolecuLab 3D».                                                             |
 
 ## Sesión piloto
 

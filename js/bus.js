@@ -30,7 +30,7 @@ export function emit(nombre, datos = {}) {
  * Inicio del bus (cada módulo exporta una iniciar...()).
  * El bus no necesita inicialización: solo deja constancia de que existe.
  */
-export function iniciarBus() {}
+export function iniciarBus() { }
 
 export function on(nombre, funcion) {
   if (!oyentes[nombre]) oyentes[nombre] = [];

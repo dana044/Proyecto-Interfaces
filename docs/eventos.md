@@ -12,6 +12,7 @@ el tablero el índice selecciona átomos; sobre la interfaz, pulsa o toma un
 elemento de la paleta.
 
 Gestos:
+
 - Seleccionar: índice arriba (con los demás dedos plegados). Emite
   `gesto:seleccionar-inicio`, `gesto:seleccionar-mover` y
   `gesto:seleccionar-fin`. Con la pinza o la palma abierta no arranca.
@@ -39,7 +40,6 @@ Gestos:
 - Micrófono: meñique arriba 0.8 s emite `gesto:microfono`.
 - Listo: puño con pulgar arriba (👍) un segundo emite `gesto:listo`.
 - Realidad aumentada: pulgar abajo (👎) medio segundo emite `gesto:ra`.
-
 
 Los gestos con espera muestran un círculo de progreso que se oculta en
 cuanto la pose se rompe.

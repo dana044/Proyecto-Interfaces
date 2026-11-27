@@ -2365,13 +2365,21 @@ function manejarTeclado(evento) {
 }
 
 /* Tarjeta de información del átomo: aparece solo al dejar el
-   cursor quieto sobre un átomo en la escena. */
+   cursor quieto sobre un átomo en la escena, o al tocarlo
+   (Fase 2: en táctil no hay cursor). */
 const ESPERA_TARJETA_MS = 500;
 let tarjetaPendiente = null;
 let tarjetaVisibleId = null;
 let temporizadorTarjeta = null;
 let tarjetaX = 0;
 let tarjetaY = 0;
+/* Fase 2: tarjeta fijada con un toque. Un toque no es un arrastre:
+   se distingue porque el puntero no se movió más de 10 px entre
+   bajarlo y soltarlo (ver el clic en iniciarArrastreDeAtomos). */
+let tarjetaFija = false;
+let punteroAbajoX = 0;
+let punteroAbajoY = 0;
+let punteroMovido = false;
 
 /** Oculta la tarjeta y cancela la espera, si había una en curso. */
 function ocultarTarjetaAtomo() {
@@ -2381,15 +2389,22 @@ function ocultarTarjetaAtomo() {
     }
     tarjetaPendiente = null;
     tarjetaVisibleId = null;
+    tarjetaFija = false;
     const tarjeta = document.getElementById('tarjeta-atomo');
-    if (tarjeta) tarjeta.hidden = true;
+    if (tarjeta) {
+        tarjeta.hidden = true;
+        tarjeta.classList.remove('tarjeta-fija');
+    }
 }
 
 /**
  * Muestra la tarjeta con la información de un átomo, junto al cursor.
  * @param {string} id Id del átomo.
+ * @param {boolean} [fija=false] Si es true, la tarjeta queda fijada
+ *   (se cierra tocándola o tocando fuera de la escena); si es false,
+ *   es la del cursor y se esconde al moverlo.
  */
-function mostrarTarjetaAtomo(id) {
+function mostrarTarjetaAtomo(id, fija = false) {
     const atomo = atomos.get(id);
     const tarjeta = document.getElementById('tarjeta-atomo');
     if (!atomo || !tarjeta) return;
@@ -2410,6 +2425,7 @@ function mostrarTarjetaAtomo(id) {
     tarjeta.append(titulo, grupo, valencia);
 
     tarjeta.hidden = false;
+    tarjeta.classList.toggle('tarjeta-fija', fija);
     if (rect) {
         const izquierda = Math.min(
             Math.max(tarjetaX - rect.left + 16, 8),
@@ -2425,6 +2441,7 @@ function mostrarTarjetaAtomo(id) {
     tarjetaVisibleId = id;
     tarjetaPendiente = null;
     temporizadorTarjeta = null;
+    tarjetaFija = fija;
 }
 
 /**
@@ -2507,6 +2524,11 @@ export function iniciarArrastreDeAtomos() {
 
     // El átomo recibe el arrastre antes que OrbitControls.
     lienzo.addEventListener('pointerdown', (evento) => {
+        // Fase 2: punto de partida del toque, para distinguir un
+        // toque (mostrar la tarjeta) de un arrastre o de girar.
+        punteroAbajoX = evento.clientX;
+        punteroAbajoY = evento.clientY;
+        punteroMovido = false;
         ocultarTarjetaAtomo();
         if (evento.button !== 0) return;
 
@@ -2517,8 +2539,12 @@ export function iniciarArrastreDeAtomos() {
         evento.stopImmediatePropagation();
         // El preventDefault impide que el clic enfoque el lienzo:
         // sin esto, las flechas o WASD no funcionarían justo
-        // después de agarrar un átomo con el mouse.
-        lienzo.focus();
+        // después de agarrar un átomo con el mouse. Sin
+        // preventScroll, enfocar desplaza la página en el teléfono
+        // y el clic del mismo toque cae con el lienzo ya movido:
+        // el rayo ya no pasa por el átomo y la tarjeta no aparece
+        // en el primer toque (Fase 2).
+        lienzo.focus({ preventScroll: true });
         lienzo.setPointerCapture(evento.pointerId);
     }, { capture: true });
 
@@ -2529,9 +2555,41 @@ export function iniciarArrastreDeAtomos() {
         if (punto) moverArrastre(punto.x, punto.y);
     });
 
+    // Fase 2: si el puntero se alejó del punto donde bajó, fue un
+    // arrastre o girar la vista, no un toque.
+    lienzo.addEventListener('pointermove', (evento) => {
+        if (Math.hypot(evento.clientX - punteroAbajoX, evento.clientY - punteroAbajoY) > 10) {
+            punteroMovido = true;
+        }
+    });
+
     // Tarjeta de información: solo al dejar el cursor sobre un átomo.
     lienzo.addEventListener('pointermove', manejarHover);
     lienzo.addEventListener('pointerleave', ocultarTarjetaAtomo);
+
+    // Fase 2: en táctil no hay cursor, así que un toque sobre un
+    // átomo fija su tarjeta (nombre, grupo y valencia). Un toque en
+    // el vacío la cierra; tocar la tarjeta también la cierra.
+    // El pointerdown ya la ocultó, así que el clic la vuelve a
+    // mostrar fijada; por eso tocar dos veces el mismo átomo no
+    // la apaga, se cierra tocando fuera o tocándola a ella.
+    lienzo.addEventListener('click', (evento) => {
+        if (punteroMovido) return;
+        const punto = coordenadasDePuntero(evento, lienzo);
+        const id = punto ? atomoBajoPuntero(punto.x, punto.y) : null;
+        if (!id) {
+            ocultarTarjetaAtomo();
+            return;
+        }
+        tarjetaX = evento.clientX;
+        tarjetaY = evento.clientY;
+        mostrarTarjetaAtomo(id, true);
+    });
+    const tarjeta = document.getElementById('tarjeta-atomo');
+    if (tarjeta) tarjeta.addEventListener('click', ocultarTarjetaAtomo);
+    lienzo.addEventListener('keydown', (evento) => {
+        if (evento.key === 'Escape') ocultarTarjetaAtomo();
+    });
 
     const finalizar = (evento) => {
         if (!arrastre || arrastre.teclado) return;

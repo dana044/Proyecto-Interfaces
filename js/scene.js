@@ -21,6 +21,7 @@ let controles = null;
 let grupoAtomos = null;
 let observadorTamano = null;
 let iniciado = false;
+let idAnimacion = null;
 
 /**
  * Crea la escena 3D dentro de #lienzo-3d.
@@ -76,7 +77,7 @@ export async function iniciarEscena() {
     observadorTamano.observe(contenedor);
 
     iniciado = true;
-    animar();
+    if (!document.hidden) animar();
     return true;
 }
 
@@ -93,10 +94,36 @@ function ajustarTamano() {
 }
 
 function animar() {
-    requestAnimationFrame(animar);
+    idAnimacion = requestAnimationFrame(animar);
     controles.update();
     renderer.render(escena, camara);
 }
+
+/**
+ * Pausa el renderizado cuando la pestaña está oculta (Fase 3):
+ * el bucle pedía un fotograma tras otro aunque nadie mirara,
+ * y en el teléfono eso gasta batería. Al volver se reanuda.
+ */
+function pausarAnimacion() {
+    if (idAnimacion !== null) {
+        cancelAnimationFrame(idAnimacion);
+        idAnimacion = null;
+    }
+}
+
+function reanudarAnimacion() {
+    if (idAnimacion === null && iniciado) {
+        animar();
+    }
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        pausarAnimacion();
+    } else {
+        reanudarAnimacion();
+    }
+});
 
 /**
  * Gira la vista alrededor de la molécula.

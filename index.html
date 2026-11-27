@@ -4,7 +4,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#F3F5F9" id="meta-tema">
   <title>MolecuLab</title>
+  <script>
+    /* Fase 3: el tema se guarda y no se pierde al recargar. Se aplica
+       aquí, antes de pintar, para que no parpadee el tema claro. La
+       primera vez se respeta el tema del sistema. */
+    (function () {
+      var guardado = null;
+      try { guardado = localStorage.getItem("moleculab-tema"); } catch (e) { }
+      var tema = (guardado === "oscuro" || guardado === "claro") ? guardado :
+        (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "oscuro" : "claro");
+      document.documentElement.dataset.tema = tema;
+      var meta = document.getElementById("meta-tema");
+      if (meta) meta.setAttribute("content", tema === "oscuro" ? "#12151C" : "#F3F5F9");
+    })();
+  </script>
   <link rel="icon" href="data:,">
 
   <!-- Tipografía de la guía visual: Nunito Sans (títulos) e Inter (texto) -->
@@ -146,8 +161,9 @@
       <!-- Escena 3D: Three.js crea aquí su propio canvas -->
       <section id="lienzo-3d" class="lienzo" aria-label="Escena 3D de la molécula">
 
-        <!-- Tarjeta con la información de un átomo: solo aparece al
-           dejar el cursor sobre él en la escena. -->
+        <!-- Tarjeta con la información de un átomo: aparece al dejar
+           el cursor sobre él en la escena, o al tocarlo (en táctil
+           queda fijada; se cierra tocándola o tocando fuera). -->
         <div id="tarjeta-atomo" class="tarjeta-atomo" hidden></div>
 
         <!-- Pista de gestos y atajos: solo lectura. -->
@@ -265,17 +281,17 @@
     <button class="boton tip" data-accion="deshacer">
       Deshacer
       <span class="globo" aria-hidden="true"><b>Deshace la última acción</b><small>Atajo: Ctrl+Z</small></span>
-      <span class="solo-lector">Voz o clic</span>
+      <span class="solo-lector">Deshace la última acción. Atajo: Ctrl+Z</span>
     </button>
     <button class="boton tip" data-accion="rehacer">
       Rehacer
       <span class="globo" aria-hidden="true"><b>Rehace la acción deshecha</b><small>Atajo: Ctrl+Y</small></span>
-      <span class="solo-lector">Voz o clic</span>
+      <span class="solo-lector">Rehace la acción deshecha. Atajo: Ctrl+Y</span>
     </button>
     <button class="boton tip" data-accion="limpiar">
       Limpiar
       <span class="globo" aria-hidden="true"><b>Borra la escena, con confirmación</b><small>Voz o clic</small></span>
-      <span class="solo-lector">Voz o clic</span>
+      <span class="solo-lector">Borra la escena, con confirmación. Voz o clic</span>
     </button>
 
     <hr class="separador-barra" aria-hidden="true">
@@ -284,25 +300,25 @@
       Pizarra
       <span class="globo" aria-hidden="true"><b>Escribe una fórmula o una estructura y agrega la molécula</b><small>Voz
           o clic</small></span>
-      <span class="solo-lector">Voz o clic</span>
+      <span class="solo-lector">Escribe una fórmula o una estructura y agrega la molécula. Voz o clic</span>
     </button>
     <button class="boton tip" type="button" data-accion="ra" aria-pressed="false">
       Realidad aumentada
       <span class="globo" aria-hidden="true"><b>Muestra la molécula sobre la tarjeta de MolecuLab con la
           cámara</b><small>Clic o voz</small></span>
-      <span class="solo-lector">Clic</span>
+      <span class="solo-lector">Muestra la molécula sobre la tarjeta de MolecuLab con la cámara. Clic o voz</span>
     </button>
     <button class="boton tip" data-accion="reto">
       Modo reto
       <span class="globo" aria-hidden="true"><b>Entra al modo reto «construye una molécula»</b><small>Voz o
           clic</small></span>
-      <span class="solo-lector">Voz o clic</span>
+      <span class="solo-lector">Entra al modo reto «construye una molécula». Voz o clic</span>
     </button>
     <button class="boton boton-principal tip" data-accion="verificar">
       Verificar molécula
       <span class="globo" aria-hidden="true"><b>Verifica la molécula</b><small>Pulgar arriba (1 s), voz o
           clic</small></span>
-      <span class="solo-lector">Pulgar arriba, voz o clic</span>
+      <span class="solo-lector">Verifica la molécula. Pulgar arriba durante 1 segundo, voz o clic</span>
     </button>
 
     <hr class="separador-barra" aria-hidden="true">
@@ -311,26 +327,35 @@
       Exportar
       <span class="globo" aria-hidden="true"><b>Guarda la molécula con sus posiciones en un archivo .json</b><small>Voz
           o clic</small></span>
-      <span class="solo-lector">Voz o clic</span>
+      <span class="solo-lector">Guarda la molécula con sus posiciones en un archivo .json. Voz o clic</span>
     </button>
     <button class="boton tip" type="button" data-accion="importar">
       Importar
       <span class="globo" aria-hidden="true"><b>Abre una molécula guardada en un archivo .json</b><small>Voz o
           clic</small></span>
-      <span class="solo-lector">Voz o clic</span>
+      <span class="solo-lector">Abre una molécula guardada en un archivo .json. Voz o clic</span>
     </button>
     <input type="file" id="entrada-molecula" accept=".json,application/json" hidden>
   </footer>
 
   <script>
     // Tema claro/oscuro: solo cambia un atributo en <html>.
+    // Fase 3: el cambio se guarda y el color de la barra del
+    // navegador (theme-color) va con el tema.
     (function () {
       const boton = document.getElementById("boton-tema");
       if (!boton) return;
-      boton.addEventListener("click", function () {
-        const oscuro = document.documentElement.dataset.tema !== "oscuro";
+      const meta = document.getElementById("meta-tema");
+      function aplicar(oscuro) {
         document.documentElement.dataset.tema = oscuro ? "oscuro" : "claro";
         boton.setAttribute("aria-label", oscuro ? "Cambiar a tema claro" : "Cambiar a tema oscuro");
+        if (meta) meta.setAttribute("content", oscuro ? "#12151C" : "#F3F5F9");
+        try { localStorage.setItem("moleculab-tema", oscuro ? "oscuro" : "claro"); } catch (e) { }
+      }
+      // Sincroniza el botón con el tema que aplicó el script del <head>.
+      aplicar(document.documentElement.dataset.tema === "oscuro");
+      boton.addEventListener("click", function () {
+        aplicar(document.documentElement.dataset.tema !== "oscuro");
       });
     })();
   </script>

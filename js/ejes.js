@@ -57,6 +57,7 @@ let botones = [];
 let botonesPlano = {};
 let leyenda = null;
 let textoLeyenda = '';
+let idAnimacionEjes = null;
 
 /** Plano horizontal (base): normal Y. */
 function planoBase() {
@@ -330,7 +331,7 @@ export function iniciarEjes() {
     lienzo.appendChild(contenedor);
 
     document.addEventListener('keydown', manejarTeclas);
-    requestAnimationFrame(actualizarEjes);
+    if (!document.hidden) idAnimacionEjes = requestAnimationFrame(actualizarEjes);
     return true;
 }
 
@@ -361,9 +362,15 @@ function manejarTeclas(evento) {
     }
 }
 
-/** Redibuja flechas, botones y leyenda según la orientación de la cámara. */
+/** Redibuja flechas, botones y leyenda según la orientación de la cámara.
+ * Fase 3: con la pestaña oculta no se reprograma (el visibilitychange
+ * de abajo lo reanuda); así no gasta batería redibujando lo que nadie ve. */
 function actualizarEjes() {
-    requestAnimationFrame(actualizarEjes);
+    if (document.hidden) {
+        idAnimacionEjes = null;
+        return;
+    }
+    idAnimacionEjes = requestAnimationFrame(actualizarEjes);
 
     const camara = obtenerCamara();
     if (!camara) return;
@@ -417,3 +424,10 @@ function actualizarEjes() {
         leyenda.textContent = texto;
     }
 }
+/* Fase 3: con la pestaña oculta el indicador deja de redibujarse
+   (actualizarEjes no se reprograma) y se reanuda al volver. */
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && idAnimacionEjes === null && document.getElementById('indicador-ejes')) {
+        idAnimacionEjes = requestAnimationFrame(actualizarEjes);
+    }
+});

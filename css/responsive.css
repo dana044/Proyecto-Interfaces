@@ -6,8 +6,10 @@
  * @author Citlaly Morales Viveros
  */
 
-/* Tabletas y pantallas apiladas (1023 px o menos). */
-@media (max-width: 1023px) {
+/* Tabletas y pantallas apiladas (1279 px o menos).
+   Fase 3: el corte estaba en 1023 px, pero a 1024 px con los dos
+   paneles abiertos el lienzo quedaba en 192 px de ancho. */
+@media (max-width: 1279px) {
 
   /* La escena necesita altura propia en modo apilado; sin ella el lienzo
      3D queda chico. */
@@ -73,10 +75,18 @@
 }
 
 /* Los globos de ayuda aparecen al pasar el cursor. En pantallas táctiles no
-   se pueden ver, así que se ocultan para que no tapen los botones. */
+   se pueden ver, así que se ocultan para que no tapen los botones. La única
+   excepción es mantener el botón presionado (:active): ahí el globo sí
+   aparece, porque es el usuario quien lo pide a propósito (Fase 2). Sin
+   esta regla, el display: none de arriba anularía el :active de
+   styles.css y el globo nunca se vería en el teléfono. */
 @media (hover: none) and (max-width: 1023px) {
   .respaldo .globo {
     display: none;
+  }
+
+  .respaldo .tip:active .globo {
+    display: flex;
   }
 }
 
@@ -246,6 +256,13 @@
     grid-auto-columns: 128px;
     gap: 6px;
     max-height: none;
+    /* Sin esto el panel (flex, max-height 25vh) aplasta la lista a 8 px:
+       la regla base le pone flex: 1 con min-height: 0 y el contenido no cabe
+       en 211 px. Con flex: none la lista conserva sus 2 filas (2 x 40 px +
+       6 px de separación + 4 px de relleno = 90 px) y el modelo de Bohr
+       queda debajo, al que se llega bajando dentro del panel. */
+    flex: none;
+    min-height: 90px;
     overflow-x: auto;
     overflow-y: hidden;
     padding-bottom: 4px;
