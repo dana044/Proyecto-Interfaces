@@ -21,14 +21,25 @@ export const ALTURA_ENLACE_DOBLE = 0.16;
 export const EJE_UP = new THREE.Vector3(0, 1, 0);
 
 /**
+ * Indica si la letra del símbolo lleva contorno. Por defecto sí; el
+ * elemento puede desactivarlo con `contornoLetra: false` en elementos.js.
+ * @param {string} simbolo Símbolo del elemento.
+ * @returns {boolean} true si la letra se dibuja con contorno.
+ */
+export function tieneContorno(simbolo) {
+    return ELEMENTOS[simbolo]?.contornoLetra !== false;
+}
+
+/**
  * Crea la etiqueta con el símbolo del elemento. La letra es oscura
  * solo si el color de la esfera es claro; con los colores de grupo
  * actuales, todos son oscuros y la letra es blanca.
  * @param {string} simbolo Símbolo del elemento.
  * @param {number} color Color de la esfera, en hexadecimal.
  * @param {number} [escala=0.5] Tamaño de la etiqueta en la escena.
+ * @param {boolean} [contorno=true] Si la letra lleva contorno.
  */
-export function crearEtiqueta(simbolo, color, escala = 0.5) {
+export function crearEtiqueta(simbolo, color, escala = 0.5, contorno = true) {
     const lienzo = document.createElement('canvas');
     lienzo.width = 128;
     lienzo.height = 128;
@@ -46,7 +57,7 @@ export function crearEtiqueta(simbolo, color, escala = 0.5) {
     ctx.fillStyle = claro ? '#202331' : '#ffffff';
     ctx.strokeStyle = claro ? '#202331' : '#000000';
     ctx.lineWidth = 6;
-    ctx.strokeText(simbolo, 64, 64);
+    if (contorno) ctx.strokeText(simbolo, 64, 64);
     ctx.fillText(simbolo, 64, 64);
 
     const material = new THREE.SpriteMaterial({
@@ -73,9 +84,10 @@ const FUENTE_ESFERA = 320;
  * @param {number} color Color de la esfera, en hexadecimal.
  * @param {number} lado Lado del lienzo, en píxeles.
  * @param {number} fuente Tamaño de la letra, en píxeles.
+ * @param {boolean} [contorno=true] Si la letra lleva contorno.
  * @returns {THREE.CanvasTexture}
  */
-function texturaSimbolo(simbolo, color, lado, fuente) {
+function texturaSimbolo(simbolo, color, lado, fuente, contorno = true) {
     const lienzo = document.createElement('canvas');
     lienzo.width = lado;
     lienzo.height = lado;
@@ -93,7 +105,7 @@ function texturaSimbolo(simbolo, color, lado, fuente) {
     ctx.fillStyle = claro ? '#202331' : '#ffffff';
     ctx.strokeStyle = claro ? '#202331' : '#000000';
     ctx.lineWidth = lado * (6 / 128);
-    ctx.strokeText(simbolo, lado / 2, lado / 2);
+    if (contorno) ctx.strokeText(simbolo, lado / 2, lado / 2);
     ctx.fillText(simbolo, lado / 2, lado / 2);
 
     return new THREE.CanvasTexture(lienzo);
@@ -112,7 +124,7 @@ function texturaSimbolo(simbolo, color, lado, fuente) {
 export function crearEtiquetaCruzada(simbolo, color) {
     const grupo = new THREE.Group();
     grupo.name = 'etiqueta-cruzada';
-    const textura = texturaSimbolo(simbolo, color, 128, 84);
+    const textura = texturaSimbolo(simbolo, color, 128, 84, tieneContorno(simbolo));
     const s = Math.SQRT1_2;
     const orientaciones = [
         { derecha: new THREE.Vector3(s, -s, 0), normal: new THREE.Vector3(s, s, 0) },
@@ -152,7 +164,7 @@ export function crearEtiquetaCruzada(simbolo, color) {
  * @returns {THREE.Mesh} Capa con el símbolo, centrada en el átomo.
  */
 export function crearEtiquetaEsfera(simbolo, color, radio) {
-    const textura = texturaSimbolo(simbolo, color, LADO_LIENZO_ESFERA, FUENTE_ESFERA);
+    const textura = texturaSimbolo(simbolo, color, LADO_LIENZO_ESFERA, FUENTE_ESFERA, tieneContorno(simbolo));
     textura.offset.set(0.25, 0);
     const capa = new THREE.Mesh(
         new THREE.SphereGeometry(radio * 1.03, 64, 48),
@@ -207,7 +219,7 @@ export function crearAtomoVisual(elemento) {
         grupo.add(contorno);
     }
 
-    const etiqueta = crearEtiqueta(elemento, config.color);
+    const etiqueta = crearEtiqueta(elemento, config.color, 0.5, tieneContorno(elemento));
     etiqueta.position.set(0, config.radio + 0.25, 0);
     grupo.add(etiqueta);
 

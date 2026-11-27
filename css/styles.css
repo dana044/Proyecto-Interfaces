@@ -527,8 +527,7 @@ p {
    .simbolo delante porque la regla .simbolo (más abajo, con el
    mismo peso) pone el texto en blanco y si no ganaría ella. */
 .simbolo.simbolo-claro {
-  color: #1F2430;
-  border: 2px solid var(--atomo-c);
+  color: #ffffff;
 }
 
 #menu-atomos:checked~.escena .panel-atomos {
