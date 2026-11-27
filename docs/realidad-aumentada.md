@@ -1,6 +1,15 @@
 # Cómo funciona la realidad aumentada de MolecuLab
 
-Referencia técnica del módulo de realidad aumentada (RA) y de la página móvil. Describe qué hace cada archivo, en qué orden ocurren las cosas y cómo reproducir cada parte. Para la historia del proyecto y las decisiones, ver `realidad-aumentada.md`.
+Referencia técnica del módulo de realidad aumentada (RA) y de la página móvil. Describe qué hace cada archivo, en qué orden ocurren las cosas y cómo reproducir cada parte. Para la historia del proyecto y las decisiones, ver `docs/evaluacion/realidad-aumentada.md`.
+
+> ⚠️ **Discrepancia pendiente (revisada el 27 de noviembre de 2026):**
+> este documento dice que el marcador definitivo es
+> `ar/marcador-moleculab.mind`, pero el código todavía carga
+> `ar/card.mind` (`RUTA_MARCADOR` en `js/ra.js`, con el comentario
+> «Es el prototipo; se reemplazará por el definitivo de 8 × 8 cm»).
+> En las pruebas con el teléfono, además, solo el marcador `card` se
+> reconocía. Antes de una demo, probar con ambas tarjetas impresas a
+> 8 × 8 cm y anotar cuál reconoce la versión publicada.
 
 ---
 
@@ -21,15 +30,16 @@ La RA del editor usa la cámara del navegador y un marcador impreso. La página 
 
 ### 2.1. Archivos
 
-| Archivo                      | Responsabilidad                                                                                                         |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `js/ra.js`                   | Módulo principal de la RA: cámara, MindAR, escena de Three.js, selección de estructuras y sincronización con el editor. |
-| `js/modelos.js`              | Geometría compartida de átomos y enlaces (la usan el editor y la RA). Incluye las etiquetas de los átomos.              |
-| `js/chemistry.js`            | Valencias y anillos de valencia. Lo usan el editor y la RA.                                                             |
-| `js/atoms.js`                | Editor: crea, mueve y enlaza átomos. La RA no lo modifica; solo lee su estado.                                          |
-| `js/bus.js`                  | Bus de eventos: los módulos se avisan de los cambios sin importarse entre sí.                                           |
-| `ar/marcador-moleculab.mind` | Marcador compilado que MindAR busca en la imagen de la cámara.                                                          |
-| `ar/marcador-moleculab.png`  | Imagen del marcador para imprimir a 8 × 8 cm.                                                                           |
+| Archivo                        | Responsabilidad                                                                                                                             |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `js/ra.js`                     | Módulo principal de la RA: cámara, MindAR, escena de Three.js, selección de estructuras y sincronización con el editor.                     |
+| `js/modelos.js`                | Geometría compartida de átomos y enlaces (la usan el editor y la RA). Incluye las etiquetas de los átomos.                                  |
+| `js/chemistry.js`              | Valencias y anillos de valencia. Lo usan el editor y la RA.                                                                                 |
+| `js/atoms.js`                  | Editor: crea, mueve y enlaza átomos. La RA no lo modifica; solo lee su estado.                                                              |
+| `js/bus.js`                    | Bus de eventos: los módulos se avisan de los cambios sin importarse entre sí.                                                               |
+| `ar/marcador-moleculab.mind`   | Marcador compilado que MindAR busca en la imagen de la cámara (definitivo según la documentación; ver la nota al inicio de este documento). |
+| `ar/marcador-moleculab.png`    | Imagen del marcador para imprimir a 8 × 8 cm.                                                                                               |
+| `ar/card.mind` / `ar/card.png` | Marcador que carga el código hoy (`RUTA_MARCADOR` en `js/ra.js`); es el que sí se reconocía con la cámara del teléfono.                     |
 
 ### 2.2. Flujo al activar la RA
 
@@ -173,14 +183,15 @@ node compilar.mjs ../ar/marcador-moleculab.png ../ar/marcador-moleculab.mind
 
 ## 6. Solución de problemas
 
-| Síntoma                                             | Causa probable                                                           | Qué revisar                                                         |
-| --------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------- |
-| La RA no reconoce el marcador                       | Impresión con tamaño distinto, luz, o diseño con pocos contornos gruesos | Mide la hoja (8 × 8 cm), prueba con buena luz, y compara con `card` |
-| El marcador se ve azul y no morado                  | La cámara cambia los tonos                                               | Usa la paleta de `card.png` (ver 4.2)                               |
-| La RA se apaga al encender                          | Cámara denegada o sin cámara                                             | Permisos del navegador; el aviso indica la alternativa              |
-| En Android no abre Scene Viewer                     | Versión de `model-viewer`, o URL sin HTTPS                               | Usa 4.4.0 y revisa que la página esté en HTTPS                      |
-| En iPhone no aparece Quick Look                     | Falta el USDZ, o el tipo de archivo no es el esperado                    | Revisa `ios-src` en el visor y el tipo del `.usdz` con `curl`       |
-| El selector dice «No se pudo cargar el catálogo»    | `catalogo.json` o `glb/` no están publicados                             | Revisa que la carpeta `ar-moleculas/` esté completa en GitHub       |
-| No aparecen etiquetas ni subtítulo en la página     | El `catalogo.json` es anterior al generador actualizado                  | Regenera el zip y descomprímelo otra vez                            |
-| El QR abre una página que no existe                 | La carpeta cambió de nombre                                              | Genera de nuevo el QR con la dirección correcta                     |
-| Las letras de la RA se ven comprimidas desde arriba | Modo `cruzados`                                                          | Usa `sprite` (ver 2.6)                                              |
+| Síntoma                                             | Causa probable                                                                               | Qué revisar                                                                                                                  |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| La RA no reconoce el marcador                       | Impresión con tamaño distinto, luz, o diseño con pocos contornos gruesos                     | Mide la hoja (8 × 8 cm), prueba con buena luz, y compara con `card`                                                          |
+| La RA reconoce `card` pero no `marcador-moleculab`  | El código carga `ar/card.mind` (`js/ra.js`); el marcador definitivo está pendiente de prueba | Imprime ambas tarjetas a 8 × 8 cm, prueba cuál reconoce la versión publicada y anota el resultado antes de cambiar el código |
+| El marcador se ve azul y no morado                  | La cámara cambia los tonos                                                                   | Usa la paleta de `card.png` (ver 4.2)                                                                                        |
+| La RA se apaga al encender                          | Cámara denegada o sin cámara                                                                 | Permisos del navegador; el aviso indica la alternativa                                                                       |
+| En Android no abre Scene Viewer                     | Versión de `model-viewer`, o URL sin HTTPS                                                   | Usa 4.4.0 y revisa que la página esté en HTTPS                                                                               |
+| En iPhone no aparece Quick Look                     | Falta el USDZ, o el tipo de archivo no es el esperado                                        | Revisa `ios-src` en el visor y el tipo del `.usdz` con `curl`                                                                |
+| El selector dice «No se pudo cargar el catálogo»    | `catalogo.json` o `glb/` no están publicados                                                 | Revisa que la carpeta `ar-moleculas/` esté completa en GitHub                                                                |
+| No aparecen etiquetas ni subtítulo en la página     | El `catalogo.json` es anterior al generador actualizado                                      | Regenera el zip y descomprímelo otra vez                                                                                     |
+| El QR abre una página que no existe                 | La carpeta cambió de nombre                                                                  | Genera de nuevo el QR con la dirección correcta                                                                              |
+| Las letras de la RA se ven comprimidas desde arriba | Modo `cruzados`                                                                              | Usa `sprite` (ver 2.6)                                                                                                       |

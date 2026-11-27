@@ -2,7 +2,11 @@
 
 Documento de seguimiento del módulo de realidad aumentada (RA). Resume la propuesta acordada, las decisiones tomadas, los cambios de cada etapa y lo que queda pendiente. Para el funcionamiento técnico, ver `como-funciona-ra.md`.
 
-Última actualización: 22 de noviembre de 2026.
+Última actualización: 22 de noviembre de 2026. Revisión de
+documentación el 27 de noviembre de 2026: se corrigieron las rutas de
+las capturas (estaban como `docs/ra/`, cuando los archivos están en
+`docs/evaluacion/ra/`) y se dejó constancia de la discrepancia del
+marcador (ver la nota en la sección 2).
 
 ---
 
@@ -41,6 +45,12 @@ Las etapas previstas fueron:
 
 - **Marcador universal de 8 × 8 cm**, único para todas las moléculas (catálogo y construcciones del estudiante).
 - **Marcador definitivo: `ar/marcador-moleculab.mind`**, compilado con MindAR 1.2.5 a partir de `ar/marcador-moleculab.png`. Se imprime a 8 × 8 cm exactos.
+- ⚠️ **Discrepancia pendiente (27 de noviembre de 2026):** el código
+  todavía carga `ar/card.mind` (`RUTA_MARCADOR` en `js/ra.js`, con el
+  comentario «Es el prototipo; se reemplazará por el definitivo de
+  8 × 8 cm»). Hasta que eso cambie, la versión publicada usa `card`,
+  no el marcador definitivo, y hay que probar con ambas tarjetas
+  impresas antes de una demo.
 - **Paleta del marcador: azul `#0094C6`, amarillo `#F8E85E` y negro `#1A1919`**, los colores de `card.png`, que es el marcador que sí se reconoce con la cámara del teléfono. La paleta morada del proyecto se usa en la interfaz web, pero no en el marcador: en la cámara del teléfono el morado se veía azul y el reconocimiento empeoraba.
 - **Historial de diseños del marcador:** tres versiones. La primera tenía trazos finos y puntos diminutos, y no se reconocía. La segunda tenía alto contraste en morado, amarillo y negro, y tampoco se reconoció. La tercera usa la paleta de `card.png`.
 - **Escala fija:** 1 unidad = ancho de la tarjeta; la estructura usa una escala de 0.3.
@@ -169,14 +179,15 @@ Se compararon tres formas de etiqueta en la RA, con la misma molécula (H₂O) y
 - **Esfera queda como alternativa.** Se lee bien desde arriba, pero al inclinar la tarjeta la letra se distorsiona.
 - Las opciones `cruzados` y `esfera` se conservan en el código, detrás de `MODO_ETIQUETA`, para futuras comparaciones.
 
-**Capturas de la comparación** (H₂O, panel de RA; ver `docs/ra/`):
+**Capturas de la comparación** (H₂O, panel de RA; los archivos están
+en `ra/`, junto a este documento):
 
-| Vista        | sprite                                                     | cruzados                                                     | esfera                                                     |
-| ------------ | ---------------------------------------------------------- | ------------------------------------------------------------ | ---------------------------------------------------------- |
-| Desde arriba | <img src="docs/ra/vista-arriba-sprite.png" width="240">    | <img src="docs/ra/vista-arriba-cruzados.png" width="240">    | <img src="docs/ra/vista-arriba-esfera.png" width="240">    |
-| Inclinada    | <img src="docs/ra/vista-inclinada-sprite.png" width="240"> | <img src="docs/ra/vista-inclinada-cruzados.png" width="240"> | <img src="docs/ra/vista-inclinada-esfera.png" width="240"> |
+| Vista        | sprite                                                | cruzados                                                | esfera                                                |
+| ------------ | ----------------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------- |
+| Desde arriba | <img src="ra/vista-arriba-sprite.png" width="240">    | <img src="ra/vista-arriba-cruzados.png" width="240">    | <img src="ra/vista-arriba-esfera.png" width="240">    |
+| Inclinada    | <img src="ra/vista-inclinada-sprite.png" width="240"> | <img src="ra/vista-inclinada-cruzados.png" width="240"> | <img src="ra/vista-inclinada-esfera.png" width="240"> |
 
-Las capturas de etanol (vista desde arriba e inclinada) se tomaron con sprite y sirven como referencia de una molécula más compleja. No se incluyó metano en la comparación.
+Las capturas de etanol (vista desde arriba e inclinada) se tomaron con sprite y sirven como referencia de una molécula más compleja. No se incluyó metano en la comparación. **Nota:** esas capturas de etanol no están en `ra/` (solo están las seis de H₂O de la tabla); si se quieren conservar, hay que subirlas a esta carpeta.
 
 ### Etapa 6 — Página móvil (Android y iPhone) · **Cerrada**
 
@@ -239,7 +250,7 @@ Además, la geometría real de `molecules.js` se verificó sobre las 22 molécul
 
 ## 6. Pendientes y próximos pasos
 
-1. **Probar el marcador de MolecuLab** (tercera versión) con la cámara del teléfono. Si no se reconoce, usar `card` para la demostración y revisar el diseño.
+1. **Probar el marcador de MolecuLab** (tercera versión) con la cámara del teléfono. Si no se reconoce, usar `card` para la demostración y revisar el diseño. Y si se reconoce, cambiar `RUTA_MARCADOR` en `js/ra.js` de `ar/card.mind` a `ar/marcador-moleculab.mind` y volver a probar el flujo completo, porque hoy el código sigue cargando `card`.
 2. **Confirmar la escala** con el marcador impreso a 8 × 8 cm.
 3. **Probar la página móvil en iPhone**, con Quick Look. Revisar también el tipo de archivo `.usdz` en GitHub Pages.
 4. **Probar el código QR** del panel de información, escaneándolo con un celular.

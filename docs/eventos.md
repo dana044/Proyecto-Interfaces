@@ -45,7 +45,10 @@ Los gestos con espera muestran un círculo de progreso que se oculta en
 cuanto la pose se rompe.
 
 El tutorial (`js/tutorial.js`) guía los gestos en orden y pide un átomo de
-ejemplo; emite `tutorial:atomo-ejemplo` {mostrar} al abrirse y al cerrarse.
+ejemplo; emite `tutorial:atomo-ejemplo` {mostrar} al abrirse y al cerrarse,
+y `tutorial:terminado` {completo} al cerrarse (completo solo si se
+terminaron los 14 pasos; dura 3 minutos como máximo y no vuelve a
+aparecer en la misma sesión).
 La paleta emite `ui:paleta` {abierta}, y el elemento en la mano se muestra
 en el cursor con `cursor:elemento` {simbolo, color}.
 
@@ -71,15 +74,43 @@ en el cursor con `cursor:elemento` {simbolo, color}.
 | ui:paleta                | {abierta}         |
 | cursor:elemento          | {simbolo, color}  |
 | tutorial:atomo-ejemplo   | {mostrar}         |
+| tutorial:terminado       | {completo}        |
 
 ## Voz (js/voice.js y js/commands.js)
 
-| Evento      | Datos                   |
-| ----------- | ----------------------- |
-| voz:texto   | {texto}                 |
-| voz:comando | {intencion, parametros} |
+| Evento                 | Datos                                                   |
+| ---------------------- | ------------------------------------------------------- |
+| voz:texto              | {texto}                                                 |
+| voz:comando            | {intencion, parametros}                                 |
+| voz:consultar-molecula | — (pregunta «¿qué es esto?» / «¿qué molécula es esta?») |
+| voz:respuesta          | {texto, tipo}                                           |
+| voz:hablar             | {texto}                                                 |
 
-Intenciones acordadas: agregar-atomo, deshacer, rehacer, limpiar, rotar, acercar, alejar, verificar, ayuda, que-es-esto, definir, modo-reto, modo-libre.
+La voz solo funciona en Chrome o Edge (`AVISO_COMPATIBILIDAD` en
+`js/voice.js`). «Limpiar» por voz pide confirmación («¿Seguro? Di sí
+o no», 15 s para responder); tras 2 frases no entendidas seguidas, el
+sistema recuerda ejemplos de comandos.
+
+Intenciones que llegan como `voz:comando` (según `js/commands.js`):
+
+- Átomos y partículas: `agregar-atomo`, `quitar-atomo`,
+  `agregar-particula`, `quitar-particula` (protón, neutrón, electrón).
+- Construir: `unir-atomo` («unir dos hidrógenos», «unir oxígeno con
+  hidrógeno», con orden doble si se dice), `crear-molecula` (las 22
+  del catálogo, por nombre: «crea agua», «crea dimetiléter»…).
+- Edición: `deshacer`, `rehacer`, `limpiar`, `verificar`.
+- Vista: `rotar` (izquierda/derecha), `acercar`, `alejar`,
+  `vista-inicial`.
+- Modos y paneles: `modo-reto`, `modo-libre`, `ayuda`,
+  `panel-atomos` {abrir}, `panel-info` {abrir}, `microfono` {encender}.
+- Archivo y pizarra: `exportar`, `importar`, `abrir-pizarra`.
+- Otros: `silenciar-tonos`, `modo-oscuro`, `modo-claro`.
+
+Las preguntas al glosario **no** llegan como `voz:comando`: «¿qué es
+un protón?» / «define valencia» se responden directamente en
+`commands.js` desde `js/glosario.js` (16 términos), y «¿por qué se
+unen los átomos?» tiene respuesta fija. `ayuda` en modo reto es la
+pista del reto; fuera del reto, dice ejemplos de comandos.
 
 ## Escena (js/atoms.js, js/chemistry.js, js/molecules.js)
 
