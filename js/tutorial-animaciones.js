@@ -35,4 +35,6 @@ export const DEMOS = {
   limpiar: mano(manoEspecial([1, 1, 1, 1]), 'mg-barrer'),
   listo: mano('👍', 'mg-subir'),
   ra: mano('👎', 'mg-bajar'),
+  detectar: mano('🖐️', 'mg-juntar-izq') + mano('🖐️', 'mg-juntar-der'),
+  puno: mano('✊', 'mg-subir'),
 };

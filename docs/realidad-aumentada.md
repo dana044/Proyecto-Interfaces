@@ -43,8 +43,8 @@ La RA del editor usa la cámara del navegador y un marcador impreso. La página 
 
 ### 2.2. Flujo al activar la RA
 
-1. **Se pausa la detección de manos** (`gestures.js`). MindAR y MediaPipe no pueden usar la cámara a la vez.
-2. **Se pide la cámara** trasera, con la resolución real del video (`videoWidth` y `videoHeight`). MindAR necesita que la entrada tenga la misma proporción que el video real, o no reconoce el marcador.
+1. **Se usa la cámara de los gestos** (`gestures.js`). La cámara se abre al arrancar la página y no se apaga; la RA no abre otra, para que MindAR y MediaPipe no compitan por ella.
+2. **Se toma el flujo de esa cámara** (la trasera tiene prioridad) y se usa la resolución real del video (`videoWidth` y `videoHeight`); mientras la RA está encendida no se baja la resolución. MindAR necesita que la entrada tenga la misma proporción que el video real, o no reconoce el marcador.
 3. **Se importa MindAR** (solo al encender la RA, no al cargar la página) y se registra el marcador `ar/marcador-moleculab.mind`.
 4. **Se crea la escena de Three.js:** un renderizador encima del video, una luz y un grupo ancla que MindAR mueve cuando reconoce el marcador.
 5. **Cada cuadro,** MindAR informa la posición del marcador. El ancla se coloca sobre la tarjeta, y la estructura se dibuja en su interior.

@@ -15,7 +15,7 @@ import { iniciarEstado } from './state.js';
 import { iniciarEscena } from './scene.js';
 import { iniciarEjes } from './ejes.js';
 import { iniciarGestos, detenerGestos } from './gestures.js';
-import { iniciarTutorial } from './tutorial.js';
+import { iniciarTutorial, pintarDemosDeAyuda } from './tutorial.js';
 import { iniciarVoz } from './voice.js';
 import { iniciarInterfaz } from './ui.js';
 import { iniciarComandos } from './commands.js';
@@ -45,6 +45,15 @@ async function iniciarModulo(nombre, fn) {
 }
 
 /**
+ * Botón «Tutorial» del encabezado: vuelve a abrir el tutorial desde el
+ * primer paso, aunque ya se haya visto en esta sesión.
+ */
+function conectarBotonTutorial() {
+  const boton = document.getElementById('boton-tutorial');
+  boton?.addEventListener('click', () => iniciarTutorial({ forzar: true }));
+}
+
+/**
  * Inicia la aplicación en orden. La interfaz va primero: antes, si la
  * escena o los gestos fallaban al arrancar, su mensaje de error
  * (ui:mensaje) no tenía receptor todavía y el usuario no veía nada.
@@ -66,6 +75,8 @@ async function iniciarApp() {
   await iniciarModulo('realidad aumentada', iniciarRA);
   await iniciarModulo('comandos de átomos', iniciarComandosDeAtomos);
   await iniciarModulo('tutorial', iniciarTutorial);
+  await iniciarModulo('botón del tutorial', conectarBotonTutorial);
+  await iniciarModulo('animaciones de la ayuda', pintarDemosDeAyuda);
   await iniciarModulo('exportar e importar', iniciarIO);
   await iniciarModulo('pizarra de fórmulas', iniciarPizarra);
   await iniciarModulo('reto', iniciarReto);

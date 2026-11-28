@@ -4,15 +4,15 @@
  * cámara, reconoce la tarjeta con MindAR y dibuja sobre ella una de las
  * estructuras construidas en el editor, actualizada en vivo. Cada grupo de
  * átomos unidos por enlaces es una estructura: el estudiante elige cuál ver.
- * Mientras la RA está activa, la detección de manos se pausa, porque MindAR y
- * MediaPipe no pueden usar la cámara a la vez. Al salir se libera la cámara y
- * se reanudan las manos.
+ * La RA usa la misma cámara que los gestos: no abre otra. Así, la detección de
+ * manos sigue activa dentro de la RA y el pulgar abajo sirve para salir. Al
+ * salir solo se quita el video de la RA; la cámara sigue encendida.
  * @author Citlaly Morales Viveros
  */
 
 import * as THREE from 'three';
 import { emit, on } from './bus.js';
-import { detenerGestos, iniciarGestos } from './gestures.js';
+import { bloquearCambioDeResolucion, obtenerEstadoCamara, obtenerFlujoCamara } from './gestures.js';
 import { actualizarMallaEnlace, crearAtomoVisual, crearEtiquetaCruzada, crearEtiquetaEsfera, crearMallaEnlace, liberarGrupo } from './modelos.js';
 import { ELEMENTOS } from './elementos.js';
 import { obtenerListaAtomos, obtenerListaEnlaces } from './atoms.js';
@@ -92,7 +92,7 @@ let reconstruirTodo = false;
 /**
  * Conecta el botón de RA, el selector de estructura, el botón de centrar y
  * los eventos de la escena. Debe llamarse después de iniciarGestos, porque la
- * RA pausa y reanuda esa detección.
+ * RA usa la cámara que abre esa función.
  * @returns {boolean} true si quedó lista.
  * @throws {Error} Si falta alguno de los elementos de la RA en la página.
  */
@@ -175,9 +175,8 @@ async function activarRA() {
     mostrarRA(true);
     cambiarEstado('Abriendo la cámara…');
 
-    // MindAR necesita la cámara: se libera la de las manos antes de abrirla.
-    detenerGestos();
-    emit('estado:manos', { cantidad: 0 });
+    // Mientras la RA usa la cámara, no se cambia su resolución.
+    bloquearCambioDeResolucion(true);
 
     try {
         video = document.createElement('video');
@@ -236,8 +235,9 @@ function desactivarRA() {
     renderer?.setAnimationLoop(null);
     controlador?.stopProcessVideo?.();
 
-    flujo?.getTracks().forEach((pista) => pista.stop());
+    // El flujo es el de los gestos: no se detienen sus pistas, solo se suelta.
     flujo = null;
+    bloquearCambioDeResolucion(false);
 
     if (video) {
         video.srcObject = null;
@@ -268,7 +268,6 @@ function desactivarRA() {
 
     mostrarRA(false);
     cambiarEstado('');
-    iniciarGestos();
 
     if (estabaActiva) setUltimaAccion('Realidad aumentada apagada');
 }
@@ -314,17 +313,15 @@ function cambiarVista(nueva) {
  * @throws {DOMException|Error} Si el navegador no tiene cámara o se niega el permiso.
  */
 async function abrirCamara() {
-    if (!navigator.mediaDevices?.getUserMedia) {
-        throw new DOMException('El navegador no ofrece acceso a la cámara.', 'NotSupportedError');
+    // La cámara la abren los gestos al arrancar; aquí solo se toma ese flujo.
+    flujo = obtenerFlujoCamara();
+    if (!flujo) {
+        const denegada = obtenerEstadoCamara() === 'denegada';
+        throw new DOMException(
+            denegada ? 'La cámara no tiene permiso.' : 'No hay cámara disponible.',
+            denegada ? 'NotAllowedError' : 'NotFoundError',
+        );
     }
-    flujo = await navigator.mediaDevices.getUserMedia({
-        video: {
-            facingMode: 'environment',
-            width: { ideal: ANCHO_ENTRADA },
-            height: { ideal: ALTO_ENTRADA },
-        },
-        audio: false,
-    });
     video.srcObject = flujo;
     await video.play();
     video.setAttribute('width', video.videoWidth);
