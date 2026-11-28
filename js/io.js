@@ -10,7 +10,6 @@
 
 import { emit } from './bus.js';
 import {
-    CAPACIDADES_CAPAS,
     MAX_PARTICULAS,
     importarFoto,
     obtenerConteoParticulas,
@@ -18,6 +17,7 @@ import {
     obtenerListaAtomos,
 } from './atoms.js';
 import { ELEMENTOS, MAX_ATOMOS } from './elementos.js';
+import { CAPACIDADES_CAPAS, asignarCapasElectrones, obtenerCapasElectronicas } from './configuracionElectronica.js';
 
 const FORMATO = 'moleculab-escena';
 const VERSION = 2;
@@ -42,11 +42,13 @@ function tienePosicionValida(posicion) {
 }
 
 /**
- * Valida las partículas de un archivo versión 2. Revisa tipo, id único,
- * que las libres no sean protones, que las del modelo tengan al menos un
- * protón y que cada capa no supere su capacidad.
+ * Valida las partículas de un archivo versión 2. Revisa tipo, id único, que
+ * las libres no sean protones y que el modelo tenga protones si tiene
+ * partículas. Las capas guardadas se comparan con la distribución del estado:
+ * si no coinciden, se recalculan. Si la distribución no está disponible, el
+ * archivo no se importa.
  * @param {*} lista Campo `particulas` del archivo.
- * @returns {{ ok: true, particulas: Array } | { ok: false, error: string }}
+ * @returns {{ ok: true, particulas: Array, aproximada: boolean } | { ok: false, error: string }}
  */
 function validarParticulas(lista) {
     const fallo = (error) => ({ ok: false, error });
@@ -57,9 +59,8 @@ function validarParticulas(lista) {
 
     const ids = new Set();
     const particulas = [];
-    const porCapa = CAPACIDADES_CAPAS.map(() => 0);
-    let protonesEnModelo = 0;
-    let particulasEnModelo = 0;
+    let protonesModelo = 0;
+    let particulasModelo = 0;
 
     for (const dato of lista) {
         const { id, tipo, libre, capa, posicion } = dato ?? {};
@@ -76,33 +77,39 @@ function validarParticulas(lista) {
         if (libre) {
             if (tipo === 'proton') return fallo(`El protón ${id} no puede estar suelto: se une al núcleo`);
         } else {
-            particulasEnModelo += 1;
-            if (tipo === 'proton') protonesEnModelo += 1;
-            if (tipo === 'electron') {
-                if (!Number.isInteger(capa) || capa < 0 || capa >= CAPACIDADES_CAPAS.length) {
-                    return fallo(`El electrón ${id} tiene una capa no válida`);
-                }
-                porCapa[capa] += 1;
-            }
+            particulasModelo += 1;
+            if (tipo === 'proton') protonesModelo += 1;
         }
         particulas.push({
             id,
             tipo,
             libre,
-            capa: !libre && tipo === 'electron' ? capa : -1,
+            capa: !libre && tipo === 'electron' && Number.isInteger(capa) ? capa : -1,
             posicion: { x: posicion.x, y: posicion.y, z: posicion.z },
         });
     }
 
-    if (particulasEnModelo > 0 && protonesEnModelo === 0) {
+    if (particulasModelo > 0 && protonesModelo === 0) {
         return fallo('Hay partículas en el modelo de Bohr sin protones: el modelo necesita al menos un protón');
     }
-    for (let capa = 0; capa < porCapa.length; capa++) {
-        if (porCapa[capa] > CAPACIDADES_CAPAS[capa]) {
-            return fallo(`La capa ${capa + 1} tiene más electrones que su capacidad (${CAPACIDADES_CAPAS[capa]})`);
-        }
+
+    const electrones = particulas.filter((p) => !p.libre && p.tipo === 'electron');
+    const distribucion = obtenerCapasElectronicas(protonesModelo, electrones.length);
+    if (!distribucion.disponible) {
+        return fallo('No hay una distribución electrónica disponible para este estado');
     }
-    return { ok: true, particulas };
+
+    const guardadas = CAPACIDADES_CAPAS.map(() => 0);
+    let fueraDeRango = false;
+    for (const electron of electrones) {
+        if (electron.capa >= 0 && electron.capa < guardadas.length) guardadas[electron.capa] += 1;
+        else fueraDeRango = true;
+    }
+    const esperadas = CAPACIDADES_CAPAS.map((_, capa) => distribucion.capas[capa] ?? 0);
+    const coincide = !fueraDeRango && guardadas.every((cantidad, capa) => cantidad === esperadas[capa]);
+    if (!coincide) asignarCapasElectrones(electrones, distribucion.capas);
+
+    return { ok: true, particulas, aproximada: distribucion.aproximada };
 }
 
 /**
@@ -189,10 +196,12 @@ function validarFoto(datos) {
 
     const particulas = [];
     let modeloBohr = null;
+    let aproximada = false;
     if (datos.version === 2) {
         const resultadoParticulas = validarParticulas(datos.particulas);
         if (!resultadoParticulas.ok) return fallo(resultadoParticulas.error);
         particulas.push(...resultadoParticulas.particulas);
+        aproximada = resultadoParticulas.aproximada;
 
         if (datos.modeloBohr != null) {
             if (!tienePosicionValida(datos.modeloBohr)) {
@@ -202,7 +211,7 @@ function validarFoto(datos) {
         }
     }
 
-    return { ok: true, foto: { atomos, enlaces, particulas, modeloBohr } };
+    return { ok: true, foto: { atomos, enlaces, particulas, modeloBohr }, aproximada };
 }
 
 /**
@@ -286,6 +295,9 @@ async function importarArchivo(archivo) {
         return;
     }
     importarFoto(resultado.foto);
+    if (resultado.aproximada) {
+        emit('ui:mensaje', { tipo: 'aviso', texto: 'Distribución electrónica aproximada. No se dispone de una configuración de referencia para este estado.' });
+    }
 }
 
 /**

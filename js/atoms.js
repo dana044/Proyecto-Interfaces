@@ -12,6 +12,7 @@ import { emit, on } from './bus.js';
 import { alternarMicrofono } from './voice.js';
 import { AVISO_ELEMENTO_DESCONOCIDO, ELEMENTOS, MAX_ATOMOS } from './elementos.js';
 import { setUltimaAccion } from './state.js';
+import { CAPACIDADES_CAPAS, asignarCapasElectrones, obtenerCapasElectronicas } from './configuracionElectronica.js';
 import {
     actualizarAnilloValencia,
     agruparParticulas,
@@ -1308,12 +1309,9 @@ export async function verificarMolecula() {
    en órbitas circulares. Las órbitas son un modelo sencillo para
    aprender, no la forma real de los átomos. */
 export const MAX_PARTICULAS = 30;
-/* Capacidad de cada nivel de energía: 2n² (nivel 1: 2, nivel 2: 8,
-   nivel 3: 18). El helio ya completa el primer nivel con 2; el
-   neón llega a 8 en el segundo; el tercero solo se ocupa
-   parcialmente en los elementos que conoce el prototipo. */
-export const CAPACIDADES_CAPAS = [2, 8, 18];
-const RADIOS_ORBITAS = [0.9, 1.3, 1.7];
+/* Un anillo por capa, de la 1 a la 7. Las capacidades están en
+   configuracionElectronica.js. */
+const RADIOS_ORBITAS = [0.9, 1.3, 1.7, 2.1, 2.5, 2.9, 3.3];
 /* El modelo se une al soltar sobre él: cerca del núcleo (0.5) o
    sobre alguna órbita (0.25 del círculo). No es un radio desde el
    centro: con 1.9 el modelo se comía casi toda la escena y no
@@ -1389,20 +1387,6 @@ let bohrIniciado = false;
 const particulas = { proton: [], neutron: [], electron: [] };
 const contadoresParticula = { proton: 0, neutron: 0, electron: 0 };
 
-/**
- * Primera capa con lugar libre para un electrón nuevo, o -1 si las
- * tres capas están llenas. Es lógica pura, sin escena, para poder
- * probarla sin WebGL.
- * @param {number[]} porCapa Electrones que ya hay en cada capa.
- * @returns {number} Índice de la capa (0, 1 o 2) o -1.
- */
-function capaConLugarLibre(porCapa) {
-    for (let capa = 0; capa < CAPACIDADES_CAPAS.length; capa++) {
-        if ((porCapa[capa] || 0) < CAPACIDADES_CAPAS[capa]) return capa;
-    }
-    return -1;
-}
-
 /** Número de partículas de cada tipo, en total y en el modelo. */
 export function obtenerConteoParticulas() {
     const protones = particulas.proton.length;
@@ -1439,9 +1423,9 @@ function reorganizarNucleo() {
 
 /** Reparte los electrones en sus órbitas, en su capa. Solo los del modelo: los sueltos se quedan donde están. */
 function reorganizarElectrones() {
-    const porCapa = [0, 0, 0];
+    const porCapa = CAPACIDADES_CAPAS.map(() => 0);
     for (const electron of particulas.electron) {
-        if (electron.libre) continue;
+        if (electron.libre || electron.capa < 0) continue;
         const capa = electron.capa;
         const enCapa = particulas.electron.filter((otro) => otro.capa === capa);
         const indice = enCapa.indexOf(electron);
@@ -1584,28 +1568,48 @@ function lugarLibrePorDefecto() {
 }
 
 /**
- * Agrega una partícula al modelo de Bohr activo: el protón y el neutrón
- * al núcleo, el electrón a la primera capa con lugar libre.
+ * Agrega un protón, neutrón o electrón al modelo de Bohr activo. Un electrón
+ * entra sin capa: reajustarCapasElectronicas le asigna la que le toca.
  * @param {string} tipo 'proton', 'neutron' o 'electron'.
- * @returns {string | null} El id de la partícula, o null si no cabe.
+ * @returns {string} El id de la partícula.
  */
 function agregarAlModelo(tipo) {
-    let capa = -1;
-    if (tipo === 'electron') {
-        const porCapa = [0, 0, 0];
-        for (const electron of particulas.electron) {
-            if (!electron.libre) porCapa[electron.capa] += 1;
-        }
-        capa = capaConLugarLibre(porCapa);
-        if (capa === -1) return null;
-    }
     const grupo = crearParticulaVisual(tipo);
     if (tipo === 'electron') grupoElectrones.add(grupo);
     else grupoNucleo.add(grupo);
-    const particula = registrarParticula(tipo, grupo, capa, false);
-    if (tipo === 'electron') reorganizarElectrones();
-    else reorganizarNucleo();
+    const particula = registrarParticula(tipo, grupo, -1, false);
+    if (tipo === 'neutron') reorganizarNucleo();
+    else reajustarCapasElectronicas();
     return particula.id;
+}
+
+/**
+ * Recalcula la distribución electrónica del modelo a partir de sus protones y
+ * electrones, asigna a cada electrón su capa y reorganiza el modelo. Los
+ * neutrones no alteran las capas. Si la distribución no está disponible, las
+ * capas no cambian y se avisa. Si es aproximada, se indica en la interfaz.
+ * @returns {{ capas: number[], disponible: boolean, aproximada: boolean }}
+ */
+function reajustarCapasElectronicas() {
+    const protones = particulas.proton.filter((p) => !p.libre).length;
+    const electrones = particulas.electron.filter((e) => !e.libre);
+    const distribucion = obtenerCapasElectronicas(protones, electrones.length);
+    if (!distribucion.disponible) {
+        for (const electron of electrones) {
+            if (electron.capa < 0) electron.capa = 0;
+        }
+        enviarMensaje('aviso', 'No hay una distribución electrónica disponible para este estado. Las capas no cambiaron.');
+        reorganizarNucleo();
+        reorganizarElectrones();
+        return distribucion;
+    }
+    asignarCapasElectrones(electrones, distribucion.capas);
+    reorganizarNucleo();
+    reorganizarElectrones();
+    if (distribucion.aproximada) {
+        enviarMensaje('aviso', 'Distribución electrónica aproximada. No se dispone de una configuración de referencia para este estado.');
+    }
+    return distribucion;
 }
 
 /**
@@ -1717,20 +1721,13 @@ function agregarParticulaInterna(tipo, posicion) {
         return agregarAlModelo(tipo);
     }
 
-    // Neutrón o electrón sin protón: quedan libres para moverlos a mano.
-    if (!hayNucleoActivo()) {
+    // Neutrón o electrón sin protón, o soltado lejos del modelo con la mano:
+    // queda libre para moverlo a mano. Los botones + no dan posición y entran al modelo.
+    if (!hayNucleoActivo() || (posicion && !estaSobreModeloBohr(posicion))) {
         return agregarParticulaSuelta(tipo, posicion ?? lugarLibrePorDefecto());
     }
 
-    const id = agregarAlModelo(tipo);
-    if (id !== null) return id;
-    if (!posicion) {
-        enviarMensaje('aviso', 'Las tres capas ya están llenas. Quita un electrón para agregar otro.');
-        return null;
-    }
-    const idSuelto = agregarParticulaSuelta(tipo, posicion);
-    enviarMensaje('aviso', 'Las tres capas ya están llenas: lo dejé suelto en la escena.');
-    return idSuelto;
+    return agregarAlModelo(tipo);
 }
 
 /**
@@ -1765,6 +1762,7 @@ function quitarParticulaInterna(tipo) {
     else reorganizarNucleo();
 
     const liberadas = tipo === 'proton' && !hayNucleoActivo() ? liberarModeloSinNucleo() : 0;
+    if (tipo !== 'neutron') reajustarCapasElectronicas();
 
     const conteo = obtenerConteoParticulas();
     const datos = NOMBRES_PARTICULA[tipo];
@@ -1889,6 +1887,7 @@ function sacarParticulaDelModelo(particula) {
     else reorganizarNucleo();
     // Sin protones en el núcleo no hay modelo: lo que quedaba en él se suelta.
     if (particula.tipo === 'proton' && !hayNucleoActivo()) liberarModeloSinNucleo();
+    if (particula.tipo !== 'neutron') reajustarCapasElectronicas();
 }
 
 /**
@@ -1908,21 +1907,13 @@ function unirParticulaAlModelo(particula) {
         if (!hayNucleoActivo()) return false;
         if (!estaSobreModeloBohr(particula.grupo.position)) return false;
     }
-    if (particula.tipo === 'electron') {
-        const porCapa = [0, 0, 0];
-        for (const electron of particulas.electron) {
-            if (!electron.libre) porCapa[electron.capa] += 1;
-        }
-        const capa = capaConLugarLibre(porCapa);
-        if (capa === -1) return false;
-        particula.capa = capa;
-    }
     particula.grupo.parent?.remove(particula.grupo);
     if (particula.tipo === 'electron') grupoElectrones.add(particula.grupo);
     else grupoNucleo.add(particula.grupo);
     particula.libre = false;
-    if (particula.tipo === 'electron') reorganizarElectrones();
-    else reorganizarNucleo();
+    particula.capa = -1;
+    if (particula.tipo === 'neutron') reorganizarNucleo();
+    else reajustarCapasElectronicas();
     // El conteo no cambia, pero el modelo ganó una partícula: se
     // avisa para que el panel se abra solo, como al agregarla.
     emitirConteoParticulas();
@@ -1967,8 +1958,8 @@ function quitarParticulaPorId(id) {
         particula.grupo.parent?.remove(particula.grupo);
         liberarGrupo(particula.grupo);
         if (!particula.libre) {
-            if (tipo === 'electron') reorganizarElectrones();
-            else reorganizarNucleo();
+            if (tipo === 'neutron') reorganizarNucleo();
+            else reajustarCapasElectronicas();
         }
         return particula;
     }
