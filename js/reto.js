@@ -12,11 +12,23 @@
  */
 
 import { emit, on } from './bus.js';
-import { estado, setModo } from './state.js';
+import { estado, setModo, setUltimaAccion } from './state.js';
 import { hablar } from './voice.js';
 import { ELEMENTOS } from './elementos.js';
 import { identificarMolecula, descripcionEnlace } from './molecules.js';
-import { limpiarEscena, obtenerListaAtomos, obtenerListaEnlaces } from './atoms.js';
+import {
+    limpiarEscena,
+    obtenerListaAtomos,
+    obtenerListaEnlaces,
+    restaurarEscena,
+    suspenderEscena,
+    vaciarHistorial,
+} from './atoms.js';
+
+/** Escena e historial del editor libre, guardados mientras se juega un reto. */
+let escenaLibre = null;
+/** Escena e historial del reto, guardados mientras se está en el editor libre. */
+let escenaReto = null;
 
 /** Retos en orden de dificultad: las 6 primeras del catálogo. */
 export const RETOS_IDS = ['h2', 'o2', 'h2o', 'co2', 'ch4', 'nh3'];
@@ -279,6 +291,7 @@ function pausarTemporizador() {
 
 /** Vuelve a empezar la lista de retos desde el primero. */
 function reiniciarProgreso() {
+    escenaReto = null;
     estado.reto.indice = 0;
     estado.reto.estrellas = 0;
     estado.reto.resultados = [];
@@ -340,7 +353,15 @@ export async function entrarModoReto() {
     if (estado.reto.indice >= retos.length) reiniciarProgreso();
     registroActual();
     estado.reto.inicioMs = Date.now();
+    // La escena y el historial del editor libre se guardan aparte: el reto
+    // empieza vacío y su deshacer no llega a estados anteriores a entrar.
+    escenaLibre = suspenderEscena();
+    if (escenaReto) {
+        restaurarEscena(escenaReto);
+        escenaReto = null;
+    }
     setModo('reto');
+    setUltimaAccion('Entraste al modo reto');
     iniciarTemporizador();
     const reto = retoActual();
     publicarActualizacion();
@@ -361,7 +382,15 @@ export function salirModoReto() {
     if (estado.modo !== 'reto') return false;
     detenerTemporizador();
     pausarTemporizador();
+    // La escena del reto se guarda con su historial para retomarla al volver.
+    escenaReto = suspenderEscena();
     setModo('libre');
+    // Lo construido en el reto no se mezcla con la escena del editor libre.
+    if (escenaLibre) {
+        restaurarEscena(escenaLibre);
+        escenaLibre = null;
+    }
+    setUltimaAccion('Volviste al modo libre');
     publicarActualizacion();
     emit('ui:mensaje', { tipo: 'aviso', texto: 'Saliste al modo libre. Lo que construiste se queda como está.' });
     return true;
@@ -417,6 +446,8 @@ function alVerificar({ nombre, formula, completa }) {
                 // ya quedó guardada y al volver se sigue por el
                 // siguiente reto, sin tocar la escena libre.
                 estado.reto.indice = Math.min(estado.reto.indice + 1, retos.length);
+                // La escena guardada era del reto anterior: el siguiente empieza vacío.
+                escenaReto = null;
                 estado.reto.tiempoAcumuladoMs = 0;
                 estado.reto.inicioMs = null;
                 return;
@@ -429,6 +460,8 @@ function alVerificar({ nombre, formula, completa }) {
                 // La escena se limpia para el reto nuevo; el
                 // deshacer lo puede recuperar si hace falta.
                 limpiarEscena({ confirmar: false });
+                // Deshacer no puede traer átomos, enlaces ni partículas del reto anterior.
+                vaciarHistorial();
                 publicarActualizacion();
                 const siguiente = retoActual();
                 emit('ui:mensaje', {

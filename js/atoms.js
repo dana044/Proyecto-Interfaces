@@ -12,6 +12,7 @@ import { emit, on } from './bus.js';
 import { alternarMicrofono } from './voice.js';
 import { AVISO_ELEMENTO_DESCONOCIDO, ELEMENTOS, MAX_ATOMOS } from './elementos.js';
 import { setUltimaAccion } from './state.js';
+import { CAPACIDADES_CAPAS, asignarCapasElectrones, obtenerCapasElectronicas } from './configuracionElectronica.js';
 import {
     actualizarAnilloValencia,
     agruparParticulas,
@@ -655,6 +656,8 @@ export function limpiarEscena({ confirmar = true } = {}) {
         contadores[elemento] = 0;
     }
 
+    vaciarParticulas();
+    emitirConteoParticulas();
     emit('escena:escena-limpia');
     setUltimaAccion('Limpiaste la escena');
     return true;
@@ -1305,13 +1308,10 @@ export async function verificarMolecula() {
 /* Modelo de Bohr: protones y neutrones en el núcleo, electrones
    en órbitas circulares. Las órbitas son un modelo sencillo para
    aprender, no la forma real de los átomos. */
-const MAX_PARTICULAS = 30;
-/* Capacidad de cada nivel de energía: 2n² (nivel 1: 2, nivel 2: 8,
-   nivel 3: 18). El helio ya completa el primer nivel con 2; el
-   neón llega a 8 en el segundo; el tercero solo se ocupa
-   parcialmente en los elementos que conoce el prototipo. */
-const CAPACIDADES_CAPAS = [2, 8, 18];
-const RADIOS_ORBITAS = [0.9, 1.3, 1.7];
+export const MAX_PARTICULAS = 30;
+/* Un anillo por capa, de la 1 a la 7. Las capacidades están en
+   configuracionElectronica.js. */
+const RADIOS_ORBITAS = [0.9, 1.3, 1.7, 2.1, 2.5, 2.9, 3.3];
 /* El modelo se une al soltar sobre él: cerca del núcleo (0.5) o
    sobre alguna órbita (0.25 del círculo). No es un radio desde el
    centro: con 1.9 el modelo se comía casi toda la escena y no
@@ -1387,20 +1387,6 @@ let bohrIniciado = false;
 const particulas = { proton: [], neutron: [], electron: [] };
 const contadoresParticula = { proton: 0, neutron: 0, electron: 0 };
 
-/**
- * Primera capa con lugar libre para un electrón nuevo, o -1 si las
- * tres capas están llenas. Es lógica pura, sin escena, para poder
- * probarla sin WebGL.
- * @param {number[]} porCapa Electrones que ya hay en cada capa.
- * @returns {number} Índice de la capa (0, 1 o 2) o -1.
- */
-function capaConLugarLibre(porCapa) {
-    for (let capa = 0; capa < CAPACIDADES_CAPAS.length; capa++) {
-        if ((porCapa[capa] || 0) < CAPACIDADES_CAPAS[capa]) return capa;
-    }
-    return -1;
-}
-
 /** Número de partículas de cada tipo, en total y en el modelo. */
 export function obtenerConteoParticulas() {
     const protones = particulas.proton.length;
@@ -1437,9 +1423,9 @@ function reorganizarNucleo() {
 
 /** Reparte los electrones en sus órbitas, en su capa. Solo los del modelo: los sueltos se quedan donde están. */
 function reorganizarElectrones() {
-    const porCapa = [0, 0, 0];
+    const porCapa = CAPACIDADES_CAPAS.map(() => 0);
     for (const electron of particulas.electron) {
-        if (electron.libre) continue;
+        if (electron.libre || electron.capa < 0) continue;
         const capa = electron.capa;
         const enCapa = particulas.electron.filter((otro) => otro.capa === capa);
         const indice = enCapa.indexOf(electron);
@@ -1558,19 +1544,161 @@ function agregarParticulaSuelta(tipo, posicion) {
     return registrarParticula(tipo, grupo, -1, true).id;
 }
 
+/** Hay núcleo activo cuando al menos un protón está unido al modelo de Bohr. */
+function hayNucleoActivo() {
+    return particulas.proton.some((p) => !p.libre);
+}
+
 /**
- * Agrega una partícula. Sin posición va al modelo de Bohr: los
- * protones y neutrones al núcleo y cada electrón nuevo a la
- * primera capa con lugar libre. Con posición, si cae cerca del
- * modelo se une a él y si no queda suelta en la escena. Pero si
- * el modelo está vacío y lo que se suelta es un protón, el modelo
- * nace donde cae ese protón: el modelo sigue al protón y ya no
- * hace falta ponerlo en el centro para construirlo.
+ * Lugar libre para una partícula agregada sin posición: alrededor de la
+ * escena, sin encimarse con las partículas sueltas que ya hay.
+ * @returns {{x: number, y: number, z: number}} Posición libre.
+ */
+function lugarLibrePorDefecto() {
+    const libres = obtenerParticulasLibres();
+    for (let k = 0; k < 64; k++) {
+        const angulo = k * 2.39996;
+        const radio = 2.2 + Math.floor(k / 8) * 0.5;
+        const punto = { x: Math.cos(angulo) * radio, y: 0, z: Math.sin(angulo) * radio };
+        const ocupado = libres.some((q) =>
+            Math.hypot(q.posicion.x - punto.x, q.posicion.z - punto.z) < 0.5);
+        if (!ocupado) return punto;
+    }
+    return { x: 2.2, y: 0, z: 0 };
+}
+
+/**
+ * Agrega un protón, neutrón o electrón al modelo de Bohr activo. Un electrón
+ * entra sin capa: reajustarCapasElectronicas le asigna la que le toca.
+ * @param {string} tipo 'proton', 'neutron' o 'electron'.
+ * @returns {string} El id de la partícula.
+ */
+function agregarAlModelo(tipo) {
+    const grupo = crearParticulaVisual(tipo);
+    if (tipo === 'electron') grupoElectrones.add(grupo);
+    else grupoNucleo.add(grupo);
+    const particula = registrarParticula(tipo, grupo, -1, false);
+    if (tipo === 'neutron') reorganizarNucleo();
+    else reajustarCapasElectronicas();
+    return particula.id;
+}
+
+/**
+ * Recalcula la distribución electrónica del modelo a partir de sus protones y
+ * electrones, asigna a cada electrón su capa y reorganiza el modelo. Los
+ * neutrones no alteran las capas. Si la distribución no está disponible, las
+ * capas no cambian y se avisa. Si es aproximada, se indica en la interfaz.
+ * @returns {{ capas: number[], disponible: boolean, aproximada: boolean }}
+ */
+function reajustarCapasElectronicas() {
+    const protones = particulas.proton.filter((p) => !p.libre).length;
+    const electrones = particulas.electron.filter((e) => !e.libre);
+    const distribucion = obtenerCapasElectronicas(protones, electrones.length);
+    if (!distribucion.disponible) {
+        for (const electron of electrones) {
+            if (electron.capa < 0) electron.capa = 0;
+        }
+        enviarMensaje('aviso', 'No hay una distribución electrónica disponible para este estado. Las capas no cambiaron.');
+        reorganizarNucleo();
+        reorganizarElectrones();
+        return distribucion;
+    }
+    asignarCapasElectrones(electrones, distribucion.capas);
+    reorganizarNucleo();
+    reorganizarElectrones();
+    if (distribucion.aproximada) {
+        enviarMensaje('aviso', 'Distribución electrónica aproximada. No se dispone de una configuración de referencia para este estado.');
+    }
+    return distribucion;
+}
+
+/**
+ * Pasa a partículas sueltas los neutrones y electrones del modelo cuando
+ * ya no queda ningún protón en el núcleo. Quedan donde están en la escena.
+ * @returns {number} Cuántas partículas se liberaron.
+ */
+function liberarModeloSinNucleo() {
+    let liberadas = 0;
+    for (const tipo of ['neutron', 'electron']) {
+        for (const particula of particulas[tipo]) {
+            if (particula.libre) continue;
+            sacarParticulaDelModelo(particula);
+            liberadas += 1;
+        }
+    }
+    reorganizarElectrones();
+    return liberadas;
+}
+
+/**
+ * Foto de la escena reducida a datos planos, para comparar dos fotos sin
+ * depender de los objetos de Three.js.
+ * @param {{ atomos: Array, enlaces: Array, particulas: Array, modeloBohr: Object | null }} foto
+ * @returns {string} Versión en texto de la foto.
+ */
+function serializarFoto(foto) {
+    return JSON.stringify({
+        atomos: foto.atomos.map(({ id, elemento, posicion }) => ({ id, elemento, posicion })),
+        enlaces: foto.enlaces,
+        particulas: foto.particulas,
+        modeloBohr: foto.modeloBohr,
+    });
+}
+
+/**
+ * Guarda en el historial la foto de antes de una acción, solo si la escena
+ * cambió. Una acción rechazada o sin efecto no crea entrada.
+ * @param {string} descripcion Texto del deshacer.
+ * @param {Object | null} fotoAntes Foto tomada antes de la acción.
+ * @returns {boolean} true si se guardó una entrada.
+ */
+function registrarCambioHistorial(descripcion, fotoAntes) {
+    if (!fotoAntes) return false;
+    if (serializarFoto(fotoAntes) === serializarFoto(obtenerFotoEscena())) return false;
+    historial.push({ foto: fotoAntes, descripcion });
+    if (historial.length > 30) historial.shift();
+    pilaRehacer.length = 0;
+    return true;
+}
+
+/**
+ * Ejecuta una acción del usuario como una sola entrada del historial. Los
+ * pasos internos (reorganizar, liberar, unir) no generan entradas propias.
+ * @param {string} descripcion Texto del deshacer.
+ * @param {Function} mutacion Cambia la escena y devuelve el resultado.
+ * @returns {*} Lo que devuelve la mutación.
+ */
+function ejecutarConHistorial(descripcion, mutacion) {
+    if (restaurando) return mutacion();
+    const fotoAntes = obtenerFotoEscena();
+    restaurando = true;
+    let resultado;
+    try {
+        resultado = mutacion();
+    } finally {
+        restaurando = false;
+    }
+    registrarCambioHistorial(descripcion, fotoAntes);
+    return resultado;
+}
+
+/**
+ * Agrega una partícula y la registra como una sola acción del historial.
+ * Con núcleo activo, un protón o neutrón se incorpora al núcleo y un
+ * electrón a su capa, aunque se agregue sin posición. Sin protón, neutrones
+ * y electrones quedan como partículas libres. Un protón soltado en la escena
+ * se une al núcleo aunque esté lejos; si no hay núcleo, nace el modelo donde cae.
  * Devuelve el id de la partícula o null si no se pudo agregar.
  * @param {string} tipo 'proton', 'neutron' o 'electron'.
- * @param {{x: number, y: number, z: number}} [posicion] Dónde soltarla; sin ella va al modelo.
+ * @param {{x: number, y: number, z: number}} [posicion] Dónde soltarla.
+ * @returns {string | null} El id de la partícula.
  */
 export function agregarParticula(tipo, posicion) {
+    const nombre = NOMBRES_PARTICULA[tipo]?.nombre ?? 'partícula';
+    return ejecutarConHistorial(`agregar ${nombre}`, () => agregarParticulaInterna(tipo, posicion));
+}
+
+function agregarParticulaInterna(tipo, posicion) {
     if (!Object.hasOwn(NOMBRES_PARTICULA, tipo)) {
         enviarMensaje('aviso', 'Esa partícula no existe. Solo hay protones, neutrones y electrones.');
         return null;
@@ -1583,73 +1711,49 @@ export function agregarParticula(tipo, posicion) {
         return null;
     }
 
-    // Si el modelo está vacío, vuelve al centro antes de decidir
-    // dónde cae la partícula: su posición anterior era de un
-    // modelo que ya no existe.
-    centrarModeloSiVacio();
-
-    // Suelta en la escena: sobre el modelo se une a él; si no, queda suelta.
-    // Pero si el modelo está vacío y lo que se suelta es un protón, el
-    // modelo nace donde cae ese protón y el protón se une a él ahí.
-    if (posicion && !estaSobreModeloBohr(posicion)) {
-        if (tipo === 'proton' && obtenerParticulasModelo().length === 0) {
-            moverModeloBohr(posicion);
-        } else {
-            return agregarParticulaSuelta(tipo, posicion);
+    if (tipo === 'proton') {
+        // Sin núcleo activo, el protón nace el modelo donde se soltó
+        // (o en el centro si no hay posición). Con núcleo, se une a él.
+        if (!hayNucleoActivo()) {
+            centrarModeloSiVacio();
+            if (posicion) moverModeloBohr(posicion);
         }
+        return agregarAlModelo(tipo);
     }
 
-    let capa = -1;
-    if (tipo === 'electron') {
-        const porCapa = [0, 0, 0];
-        for (const electron of particulas.electron) {
-            if (!electron.libre) porCapa[electron.capa] += 1;
-        }
-        capa = capaConLugarLibre(porCapa);
-        if (capa === -1) {
-            // Sin posición (voz): no hay dónde dejarlo, se avisa.
-            // Con posición cerca del centro: queda suelto ahí.
-            if (!posicion) {
-                enviarMensaje('aviso', 'Las tres capas ya están llenas. Quita un electrón para agregar otro.');
-                return null;
-            }
-            const id = agregarParticulaSuelta(tipo, posicion);
-            enviarMensaje('aviso', 'Las tres capas ya están llenas: lo dejé suelto en la escena.');
-            return id;
-        }
+    // Neutrón o electrón sin protón, o soltado lejos del modelo con la mano:
+    // queda libre para moverlo a mano. Los botones + no dan posición y entran al modelo.
+    if (!hayNucleoActivo() || (posicion && !estaSobreModeloBohr(posicion))) {
+        return agregarParticulaSuelta(tipo, posicion ?? lugarLibrePorDefecto());
     }
 
-    const grupo = crearParticulaVisual(tipo);
-    if (tipo === 'electron') {
-        grupoElectrones.add(grupo);
-    } else {
-        grupoNucleo.add(grupo);
-    }
-    const particula = registrarParticula(tipo, grupo, capa, false);
-    if (tipo === 'electron') reorganizarElectrones();
-    else reorganizarNucleo();
-    return particula.id;
+    return agregarAlModelo(tipo);
 }
 
 /**
- * Quita la última partícula agregada de ese tipo. Para los electrones
- * quita la de la capa más alta que tenga electrones.
+ * Quita la última partícula agregada de ese tipo. Para los electrones quita
+ * la de la capa más alta que tenga electrones. Si se quita el último protón
+ * del núcleo, los neutrones y electrones del modelo quedan sueltos. Cada
+ * quitada es una sola entrada del historial.
  * Devuelve true si quitó una y false si no había ninguna.
  * @param {string} tipo 'proton', 'neutron' o 'electron'.
+ * @returns {boolean} true si se quitó una partícula.
  */
 export function quitarParticula(tipo) {
     if (!Object.hasOwn(NOMBRES_PARTICULA, tipo)) {
         enviarMensaje('aviso', 'Esa partícula no existe. Solo hay protones, neutrones y electrones.');
         return false;
     }
-    const lista = particulas[tipo];
-    if (lista.length === 0) {
+    if (particulas[tipo].length === 0) {
         const datos = NOMBRES_PARTICULA[tipo];
         enviarMensaje('aviso', `No hay ${datos.plural} para quitar.`);
         return false;
     }
+    return ejecutarConHistorial(`quitar ${NOMBRES_PARTICULA[tipo].nombre}`, () => quitarParticulaInterna(tipo));
+}
 
-    const particula = lista.pop();
+function quitarParticulaInterna(tipo) {
+    const particula = particulas[tipo].pop();
     particula.grupo.parent?.remove(particula.grupo);
     liberarGrupo(particula.grupo);
     // Si era la que se estaba arrastrando, el arrastre se cancela.
@@ -1657,19 +1761,29 @@ export function quitarParticula(tipo) {
     if (tipo === 'electron') reorganizarElectrones();
     else reorganizarNucleo();
 
+    const liberadas = tipo === 'proton' && !hayNucleoActivo() ? liberarModeloSinNucleo() : 0;
+    if (tipo !== 'neutron') reajustarCapasElectronicas();
+
     const conteo = obtenerConteoParticulas();
     const datos = NOMBRES_PARTICULA[tipo];
     emit('escena:particula-quitada', { id: particula.id, tipo });
     emitirConteoParticulas();
-    enviarMensaje('aviso', `Quitaste un ${datos.nombre}. Ahora tienes ${conteo.protones} protones, ${conteo.neutrones} neutrones y ${conteo.electrones} electrones.`);
+    const aviso = liberadas === 0
+        ? ''
+        : ` Como no queda ningún protón en el núcleo, ${liberadas === 1 ? 'una partícula del modelo quedó suelta' : `${liberadas} partículas del modelo quedaron sueltas`}.`;
+    enviarMensaje('aviso', `Quitaste un ${datos.nombre}. Ahora tienes ${conteo.protones} protones, ${conteo.neutrones} neutrones y ${conteo.electrones} electrones.${aviso}`);
     setUltimaAccion(`Quitaste un ${datos.nombre} (${particula.id})`);
     return true;
 }
 
 /** Quita todas las partículas del modelo de Bohr y deja el conteo en cero. */
 export function limpiarParticulas() {
+    if (obtenerConteoParticulas().total === 0) return;
     soltarEnMano();
-    vaciarParticulas();
+    ejecutarConHistorial('quitar todas las partículas', () => {
+        vaciarParticulas();
+        return true;
+    });
     emitirConteoParticulas();
     setUltimaAccion('Quitaste todas las partículas');
 }
@@ -1771,6 +1885,9 @@ function sacarParticulaDelModelo(particula) {
     particula.capa = -1;
     if (particula.tipo === 'electron') reorganizarElectrones();
     else reorganizarNucleo();
+    // Sin protones en el núcleo no hay modelo: lo que quedaba en él se suelta.
+    if (particula.tipo === 'proton' && !hayNucleoActivo()) liberarModeloSinNucleo();
+    if (particula.tipo !== 'neutron') reajustarCapasElectronicas();
 }
 
 /**
@@ -1781,25 +1898,22 @@ function sacarParticulaDelModelo(particula) {
  */
 function unirParticulaAlModelo(particula) {
     if (!particula.libre) return true;
-    // Si el modelo está vacío, vuelve al centro antes de decidir
-    // si la partícula cae sobre él.
-    centrarModeloSiVacio();
-    if (!estaSobreModeloBohr(particula.grupo.position)) return false;
-    if (particula.tipo === 'electron') {
-        const porCapa = [0, 0, 0];
-        for (const electron of particulas.electron) {
-            if (!electron.libre) porCapa[electron.capa] += 1;
-        }
-        const capa = capaConLugarLibre(porCapa);
-        if (capa === -1) return false;
-        particula.capa = capa;
+    if (particula.tipo === 'proton') {
+        // Con núcleo activo, un protón se une aunque se haya soltado lejos.
+        // Sin núcleo, nace el modelo donde cae.
+        if (!hayNucleoActivo()) moverModeloBohr(particula.grupo.position);
+    } else {
+        // Neutrones y electrones solo se unen con núcleo y sobre el modelo.
+        if (!hayNucleoActivo()) return false;
+        if (!estaSobreModeloBohr(particula.grupo.position)) return false;
     }
     particula.grupo.parent?.remove(particula.grupo);
     if (particula.tipo === 'electron') grupoElectrones.add(particula.grupo);
     else grupoNucleo.add(particula.grupo);
     particula.libre = false;
-    if (particula.tipo === 'electron') reorganizarElectrones();
-    else reorganizarNucleo();
+    particula.capa = -1;
+    if (particula.tipo === 'neutron') reorganizarNucleo();
+    else reajustarCapasElectronicas();
     // El conteo no cambia, pero el modelo ganó una partícula: se
     // avisa para que el panel se abra solo, como al agregarla.
     emitirConteoParticulas();
@@ -1844,8 +1958,8 @@ function quitarParticulaPorId(id) {
         particula.grupo.parent?.remove(particula.grupo);
         liberarGrupo(particula.grupo);
         if (!particula.libre) {
-            if (tipo === 'electron') reorganizarElectrones();
-            else reorganizarNucleo();
+            if (tipo === 'neutron') reorganizarNucleo();
+            else reajustarCapasElectronicas();
         }
         return particula;
     }
@@ -2449,6 +2563,9 @@ function iniciarArrastre(x, y, restringir = false) {
         return false;
     }
 
+    // La foto de antes se toma antes de sacar la partícula del modelo:
+    // así el deshacer la devuelve a su sitio.
+    const fotoAntesParticula = kind === 'particula' ? obtenerFotoEscena() : null;
     // Al agarrar una partícula del modelo, primero se saca de él:
     // a partir de aquí es una partícula suelta y se mueve como un átomo.
     if (kind === 'particula' && !objetivo.libre) sacarParticulaDelModelo(objetivo);
@@ -2459,7 +2576,10 @@ function iniciarArrastre(x, y, restringir = false) {
 
     prepararRayo(x, y);
     const impacto = rayo.ray.intersectPlane(plano, new THREE.Vector3());
-    if (!impacto) return false;
+    if (!impacto) {
+        registrarCambioHistorial(`mover ${id}`, fotoAntesParticula);
+        return false;
+    }
 
     // Con el mouse el átomo solo se mueve sobre el plano activo. El pellizco de la mano no tiene esta restricción.
     const restriccion = restringir ? crearRestriccion(objetivo) : null;
@@ -2471,12 +2591,13 @@ function iniciarArrastre(x, y, restringir = false) {
         desfase: new THREE.Vector3().subVectors(centro, impacto),
         origen: origenPrevio ?? centro.clone(),
         restriccion,
+        fotoAntes: fotoAntesParticula,
     };
     // La foto se guarda al empezar el arrastre: durante el arrastre
     // el átomo ya se mueve con cada pointermove, así que al soltarlo
     // sería tarde para guardar la posición de antes. En el cambio
     // desde teclado la foto ya existe y no se guarda otra.
-    if (!origenPrevio) {
+    if (!origenPrevio && kind === 'atomo') {
         fotoArrastrePendiente = guardarFoto(`mover ${id}`);
     }
     if (kind === 'atomo') {
@@ -2537,15 +2658,11 @@ function terminarArrastre(id) {
         if (!particula) return;
         // Al soltarla deja de estar tocada: vuelve a su color normal.
         marcarParticulaActiva(particula, false);
-        const p = particula.grupo.position.clone();
-        // Si al final no se movió, la foto del arrastre no sirve:
-        // deshacerla no cambiaría nada. Si sí se movió, se queda.
-        if (arrastreActual?.origen && p.distanceTo(arrastreActual.origen) < 0.001) {
-            descartarFotoArrastre();
-        } else {
-            fotoArrastrePendiente = null;
-        }
-        if (unirParticulaAlModelo(particula)) {
+        const unida = unirParticulaAlModelo(particula);
+        // Un movimiento completo es una sola entrada: se compara la foto
+        // de antes de agarrarla con el estado final, incluida la unión.
+        registrarCambioHistorial(`mover ${particula.id}`, arrastreActual?.fotoAntes ?? null);
+        if (unida) {
             const datos = NOMBRES_PARTICULA[particula.tipo];
             enviarMensaje('aviso', `El ${datos.nombre} se unió al modelo de Bohr.`);
             setUltimaAccion(`Uniste un ${datos.nombre} al modelo`);
@@ -3176,4 +3293,61 @@ export function iniciarArrastreDeAtomos() {
     lienzo.addEventListener('pointercancel', finalizar);
 
     return true;
+}
+
+/**
+ * Foto completa de la escena (átomos, enlaces, partículas y modelo) para el
+ * archivo de exportación. Solo lee: no cambia la escena ni el historial.
+ * @returns {{ atomos: Array, enlaces: Array, particulas: Array, modeloBohr: Object | null }}
+ */
+export function obtenerFotoParaArchivo() {
+    return obtenerFotoEscena();
+}
+
+/**
+ * Guarda la escena completa del editor libre (átomos, enlaces, partículas,
+ * modelo de Bohr e historial de deshacer y rehacer) y deja la escena vacía
+ * para el modo reto. Reutiliza obtenerFotoEscena y restaurarFoto: la foto es
+ * la misma que usa el deshacer. No genera entradas en el historial.
+ * @returns {{ foto: Object, historial: Array, pilaRehacer: Array }} Lo guardado.
+ */
+export function suspenderEscena() {
+    const guardado = {
+        foto: obtenerFotoEscena(),
+        historial: [...historial],
+        pilaRehacer: [...pilaRehacer],
+    };
+    restaurando = true;
+    try {
+        limpiarEscena({ confirmar: false });
+    } finally {
+        restaurando = false;
+    }
+    vaciarHistorial();
+    return guardado;
+}
+
+/**
+ * Devuelve la escena completa y el historial que guardó suspenderEscena().
+ * La interfaz, los contadores y la realidad aumentada se actualizan con los
+ * mismos eventos que el deshacer. No genera entradas en el historial.
+ * @param {{ foto: Object, historial: Array, pilaRehacer: Array }} guardado Lo guardado.
+ */
+export function restaurarEscena(guardado) {
+    restaurando = true;
+    try {
+        restaurarFoto(guardado.foto);
+    } finally {
+        restaurando = false;
+    }
+    historial.length = 0;
+    historial.push(...guardado.historial);
+    pilaRehacer.length = 0;
+    pilaRehacer.push(...guardado.pilaRehacer);
+}
+
+/** Borra el historial de deshacer y rehacer. */
+export function vaciarHistorial() {
+    historial.length = 0;
+    pilaRehacer.length = 0;
 }

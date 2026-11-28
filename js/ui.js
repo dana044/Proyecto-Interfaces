@@ -7,7 +7,7 @@
 
 import { emit, on } from './bus.js';
 import { alternarMicrofono, detenerLocucion, hablar } from './voice.js';
-import { agregarAtomo, crearAtomoDesdeParticulas, deshacer, limpiarEscena, limpiarParticulas, quitarParticula, rehacer, tomarParticula, verificarMolecula } from './atoms.js';
+import { agregarAtomo, agregarParticula, crearAtomoDesdeParticulas, deshacer, limpiarEscena, limpiarParticulas, quitarParticula, rehacer, verificarMolecula } from './atoms.js';
 import { darPista, entrarModoReto, formatearTiempo, salirModoReto } from './reto.js';
 import { identificarElemento } from './chemistry.js';
 import { ELEMENTOS } from './elementos.js';
@@ -172,7 +172,7 @@ export function iniciarInterfaz() {
     boton.addEventListener('click', () => {
       const tipo = boton.dataset.particula;
       if (boton.dataset.accionParticula === 'quitar') quitarParticula(tipo);
-      else tomarParticula(tipo);
+      else agregarParticula(tipo);
     });
   });
 
