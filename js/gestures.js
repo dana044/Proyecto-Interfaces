@@ -15,6 +15,7 @@
  * - puño cerrado: entra o sale del tablero (modo lienzo o interfaz).
  * - pellizco mantenido 0.6 s en la interfaz: pulsa el botón bajo el cursor.
  * - pulgar arriba un segundo: confirma (listo).
+ * - pulgares arriba en las dos manos (1 s): crea el átomo (gesto:crear-atomo).
  * - palmas juntas por el pulgar medio segundo: activa o apaga el modo de
  *   detección. Con el modo apagado la cámara sigue encendida y solo las
  *   palmas hacen algo.
@@ -60,6 +61,8 @@ const MS_MANTENER_MICROFONO = 800;
 const MS_MANTENER_ELIMINAR = 500;
 const MS_MANTENER_RA = 500;
 const MS_MANTENER_DETECCION = 500;
+/** Pulgares arriba en las dos manos: crea el átomo con las partículas armadas. */
+const MS_MANTENER_CREAR = 1000;
 /** Índice arriba sobre un botón este tiempo lo pulsa. */
 const MS_PULSAR_BOTON = 2000;
 /** Los pulgares están juntos si sus puntas quedan a menos de esta fracción del tamaño de la mano. */
@@ -694,15 +697,27 @@ const mantenedorLimpiar = crearMantenedor(MS_MANTENER_LIMPIAR);
 const mantenedorDeshacer = crearMantenedor(MS_MANTENER_DESHACER);
 const mantenedorRehacer = crearMantenedor(MS_MANTENER_DESHACER);
 const mantenedorDeteccion = crearMantenedor(MS_MANTENER_DETECCION);
+const mantenedorCrear = crearMantenedor(MS_MANTENER_CREAR);
 
 /**
- * Pulgar arriba un segundo: emite gesto:listo.
+ * Pulgares arriba en las dos manos a la vez: es el gesto de crear átomo,
+ * no el de listo.
+ * @param {Array<Array<{x: number, y: number}>>} manos
+ */
+function esPulgaresArribaDobles(manos) {
+  return manos.length >= 2 && esPulgarArriba(manos[0]) && esPulgarArriba(manos[1]);
+}
+
+/**
+ * Pulgar arriba un segundo: emite gesto:listo. Con las dos manos en
+ * pulgar arriba no emite nada: eso es crear átomo.
  * @param {Array<{x: number, y: number}>} puntos
  * @param {number} ahora
+ * @param {boolean} dobles - Las dos manos tienen el pulgar arriba.
  */
-function procesarListo(puntos, ahora) {
+function procesarListo(puntos, ahora, dobles) {
   if (mantenedorListo.actualizar(
-    esPulgarArriba(puntos),
+    esPulgarArriba(puntos) && !dobles,
     ahora,
     1 - puntos[PUNTO_PULGAR].x,
     puntos[PUNTO_PULGAR].y,
@@ -960,6 +975,9 @@ function procesarPosesNuevas(resultado, ahora) {
   if (mantenedorLimpiar.actualizar(manos.some((p) => esLimpiar(p)), ahora, x, y)) {
     emit('gesto:limpiar');
   }
+  if (mantenedorCrear.actualizar(esPulgaresArribaDobles(manos), ahora, x, y)) {
+    emit('gesto:crear-atomo');
+  }
 }
 
 /**
@@ -1095,7 +1113,7 @@ function procesarAgarre(resultado, ahora) {
   }
 
   procesarPulsarBoton(indiceArriba && !enPinza && !palmaAbierta, ahora);
-  procesarListo(puntos, ahora);
+  procesarListo(puntos, ahora, esPulgaresArribaDobles(resultado.landmarks || []));
   procesarPaleta(puntos, ahora);
   procesarMicrofono(puntos, ahora);
   procesarSoltar(puntos);
@@ -1128,7 +1146,8 @@ function esPalmasJuntas(manos) {
  */
 function botonPulsable(x, y) {
   const elemento = document.elementFromPoint(x * window.innerWidth, y * window.innerHeight);
-  const boton = elemento?.closest('button, label.boton-menu, a[href], [role="button"]');
+  // Las pestañas Voz y Gestos de la ayuda son etiquetas («pestana-ayuda»).
+  const boton = elemento?.closest('button, label.boton-menu, label.pestana-ayuda, a[href], [role="button"]');
   if (!boton || boton.disabled || boton.closest('#lienzo-3d')) return null;
   if (boton.matches('[data-accion="agregar"][data-elemento], [data-particula][data-accion-particula="agregar"]')) {
     return null;
@@ -1240,6 +1259,7 @@ function limpiarEstadoGestos() {
   limpiarElementoEnCursor();
   ocultarProgreso();
   mantenedorRA.reiniciar();
+  mantenedorCrear.reiniciar();
   reiniciarPulsar();
   poseGirarDetectada = false;
 }

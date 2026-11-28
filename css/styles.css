@@ -539,7 +539,8 @@ p {
    .simbolo (más abajo, con el mismo peso) pone el texto en blanco
    y si no ganaría ella. */
 .simbolo.simbolo-claro {
-  color: #ffffff;
+  color: #1F2430;
+  border: 2px solid var(--atomo-c);
 }
 
 #menu-atomos:checked~.escena .panel-atomos {
@@ -1000,7 +1001,7 @@ p {
    botones que alto disponible. En vez de salirse del panel, se desplaza
    por dentro; los globos de ayuda se ocultan ahí porque el desplazamiento
    los recortaría. En pantallas normales todo cabe y no hay desplazamiento. */
-@media (max-height: 570px) {
+@media (max-height: 760px) {
   .respaldo {
     overflow-y: auto;
     /* Sin deslizamiento horizontal: al poner overflow-y en auto, el
@@ -2623,4 +2624,10 @@ body.modo-ra .camara-flotante {
 
 .ayuda-demo .tutorial-demo.demo-detectar .mg-mano {
   font-size: 24px;
+}
+
+/* Botón Tutorial: ícono de libro abierto (línea fina, como los demás). */
+#boton-tutorial::before {
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22M2 5.5C4.5 4.5 7.5 4.5 11 6.5v13c-3.5-2-6.5-2-9-1z%22/%3E%3Cpath d=%22M22 5.5c-2.5-1-5.5-1-9 1v13c3.5-2 6.5-2 9-1z%22/%3E%3C/svg%3E") center / contain no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22M2 5.5C4.5 4.5 7.5 4.5 11 6.5v13c-3.5-2-6.5-2-9-1z%22/%3E%3Cpath d=%22M22 5.5c-2.5-1-5.5-1-9 1v13c3.5-2 6.5-2 9-1z%22/%3E%3C/svg%3E") center / contain no-repeat;
 }

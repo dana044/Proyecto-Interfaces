@@ -37,4 +37,5 @@ export const DEMOS = {
   ra: mano('👎', 'mg-bajar'),
   detectar: mano('🖐️', 'mg-juntar-izq') + mano('🖐️', 'mg-juntar-der'),
   puno: mano('✊', 'mg-subir'),
+  crear: mano('👍', 'mg-subir') + mano('👍', 'mg-subir'),
 };
