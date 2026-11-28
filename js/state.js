@@ -1,7 +1,8 @@
 /**
  * @file state.js
  * @fileoverview Estado compartido de la aplicación.
- * Es la única fuente de verdad para modo, átomos, enlaces y última acción.
+ * Guarda el modo, el progreso del reto y la última acción. Los átomos, los
+ * enlaces y las partículas se administran en atoms.js, no aquí.
  * @author Dana Carmona Santamaria
  * @author Citlaly Morales Viveros
  */
@@ -18,10 +19,10 @@ export const estado = {
   /** @type {Modo} Modo actual de la aplicación */
   modo: 'libre',
 
-  /** @type {Atomo[]} Lista de átomos en la escena */
+  /** @type {Atomo[]} Sin uso: los átomos los guarda atoms.js */
   atomos: [],
 
-  /** @type {Enlace[]} Lista de enlaces entre átomos */
+  /** @type {Enlace[]} Sin uso: los enlaces los guarda atoms.js */
   enlaces: [],
 
   /** @type {string} Descripción de la última acción realizada */

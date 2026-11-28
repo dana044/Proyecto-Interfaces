@@ -1,40 +1,128 @@
 /**
  * @file io.js
  * @description Exporta e importa la escena de MolecuLab en un archivo .json.
- * El archivo guarda los átomos con su id, elemento y posición, y los enlaces
- * con sus dos átomos y su orden, igual que la foto de deshacer. Al importar,
- * el archivo se valida antes de tocar la escena.
+ * Versión 2: átomos, enlaces, partículas (libres y del modelo de Bohr) y la
+ * posición del modelo. La versión 1 (solo átomos y enlaces) sigue siendo válida
+ * al importar y deja la escena sin partículas. El archivo se valida antes de
+ * tocar la escena.
  * @author Citlaly Morales Viveros
  */
 
 import { emit } from './bus.js';
-import { importarFoto, obtenerListaAtomos, obtenerListaEnlaces } from './atoms.js';
+import {
+    CAPACIDADES_CAPAS,
+    MAX_PARTICULAS,
+    importarFoto,
+    obtenerConteoParticulas,
+    obtenerFotoParaArchivo,
+    obtenerListaAtomos,
+} from './atoms.js';
 import { ELEMENTOS, MAX_ATOMOS } from './elementos.js';
 
 const FORMATO = 'moleculab-escena';
-const VERSION = 1;
+const VERSION = 2;
+const VERSIONES_ACEPTADAS = [1, 2];
 /** Tamaño máximo del archivo que se acepta al importar, en bytes. */
 const TAMANO_MAXIMO = 200 * 1024;
 /** Decimales de las posiciones al exportar, para que el archivo sea corto. */
 const DECIMALES = 3;
+/** Primera letra del id de cada tipo de partícula (P1, N1, E1...). */
+const PREFIJO_PARTICULA = { proton: 'P', neutron: 'N', electron: 'E' };
 
 const ICONO_EXPORTAR = `url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22M12 4v11%22/%3E%3Cpath d=%22m7 10 5 5 5-5%22/%3E%3Cpath d=%22M4 20h16%22/%3E%3C/svg%3E")`;
 const ICONO_IMPORTAR = `url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22M12 15V4%22/%3E%3Cpath d=%22m7 9 5-5 5 5%22/%3E%3Cpath d=%22M4 20h16%22/%3E%3C/svg%3E")`;
 
 /**
- * Valida los datos de un archivo antes de importarlos. Revisa el formato,
- * los elementos, que los ids sean únicos, que las posiciones sean números,
- * que ningún par de átomos se encime, que los enlaces apunten a átomos
- * existentes y que ningún átomo tenga más enlaces que su valencia. No exige valencia completa: un archivo puede
+ * Dice si un objeto tiene x, y y z como números finitos.
+ * @param {*} posicion Objeto a revisar.
+ * @returns {boolean}
+ */
+function tienePosicionValida(posicion) {
+    return ['x', 'y', 'z'].every((eje) => Number.isFinite(posicion?.[eje]));
+}
+
+/**
+ * Valida las partículas de un archivo versión 2. Revisa tipo, id único,
+ * que las libres no sean protones, que las del modelo tengan al menos un
+ * protón y que cada capa no supere su capacidad.
+ * @param {*} lista Campo `particulas` del archivo.
+ * @returns {{ ok: true, particulas: Array } | { ok: false, error: string }}
+ */
+function validarParticulas(lista) {
+    const fallo = (error) => ({ ok: false, error });
+    if (!Array.isArray(lista)) return fallo('Al archivo le faltan las partículas');
+    if (lista.length > MAX_PARTICULAS) {
+        return fallo(`Una molécula puede tener como máximo ${MAX_PARTICULAS} partículas`);
+    }
+
+    const ids = new Set();
+    const particulas = [];
+    const porCapa = CAPACIDADES_CAPAS.map(() => 0);
+    let protonesEnModelo = 0;
+    let particulasEnModelo = 0;
+
+    for (const dato of lista) {
+        const { id, tipo, libre, capa, posicion } = dato ?? {};
+        const prefijo = Object.hasOwn(PREFIJO_PARTICULA, tipo) ? PREFIJO_PARTICULA[tipo] : null;
+        if (typeof id !== 'string' || !prefijo || !id.startsWith(prefijo)
+            || !/^\d+$/.test(id.slice(prefijo.length))) {
+            return fallo(`La partícula ${id ?? '(sin id)'} no es válida`);
+        }
+        if (ids.has(id)) return fallo(`El id ${id} está repetido`);
+        ids.add(id);
+        if (typeof libre !== 'boolean') return fallo(`La partícula ${id} no indica si está suelta`);
+        if (!tienePosicionValida(posicion)) return fallo(`La posición de ${id} no es válida`);
+
+        if (libre) {
+            if (tipo === 'proton') return fallo(`El protón ${id} no puede estar suelto: se une al núcleo`);
+        } else {
+            particulasEnModelo += 1;
+            if (tipo === 'proton') protonesEnModelo += 1;
+            if (tipo === 'electron') {
+                if (!Number.isInteger(capa) || capa < 0 || capa >= CAPACIDADES_CAPAS.length) {
+                    return fallo(`El electrón ${id} tiene una capa no válida`);
+                }
+                porCapa[capa] += 1;
+            }
+        }
+        particulas.push({
+            id,
+            tipo,
+            libre,
+            capa: !libre && tipo === 'electron' ? capa : -1,
+            posicion: { x: posicion.x, y: posicion.y, z: posicion.z },
+        });
+    }
+
+    if (particulasEnModelo > 0 && protonesEnModelo === 0) {
+        return fallo('Hay partículas en el modelo de Bohr sin protones: el modelo necesita al menos un protón');
+    }
+    for (let capa = 0; capa < porCapa.length; capa++) {
+        if (porCapa[capa] > CAPACIDADES_CAPAS[capa]) {
+            return fallo(`La capa ${capa + 1} tiene más electrones que su capacidad (${CAPACIDADES_CAPAS[capa]})`);
+        }
+    }
+    return { ok: true, particulas };
+}
+
+/**
+ * Valida los datos de un archivo antes de importarlos. Revisa el formato y la
+ * versión, los elementos, que los ids sean únicos, que las posiciones sean
+ * números, que ningún par de átomos se encime, que los enlaces apunten a
+ * átomos existentes, que ningún átomo tenga más enlaces que su valencia y, en
+ * la versión 2, las partículas. No exige valencia completa: un archivo puede
  * guardar una molécula a medio armar, igual que deshacer.
  * @param {*} datos Objeto leído del archivo JSON.
- * @returns {{ ok: true, foto: { atomos: Array, enlaces: Array } } | { ok: false, error: string }}
+ * @returns {{ ok: true, foto: { atomos: Array, enlaces: Array, particulas: Array, modeloBohr: Object | null } } | { ok: false, error: string }}
  */
 function validarFoto(datos) {
     const fallo = (error) => ({ ok: false, error });
 
     if (!datos || typeof datos !== 'object' || datos.formato !== FORMATO) {
         return fallo('El archivo no es una molécula de MolecuLab');
+    }
+    if (!VERSIONES_ACEPTADAS.includes(datos.version)) {
+        return fallo('La versión del archivo no es compatible con esta app');
     }
     if (!Array.isArray(datos.atomos) || !Array.isArray(datos.enlaces)) {
         return fallo('Al archivo le faltan los átomos o los enlaces');
@@ -53,9 +141,7 @@ function validarFoto(datos) {
             return fallo(`El átomo ${id ?? '(sin id)'} no tiene un elemento válido`);
         }
         if (elementoDe.has(id)) return fallo(`El id ${id} está repetido`);
-        if (!['x', 'y', 'z'].every((eje) => Number.isFinite(posicion?.[eje]))) {
-            return fallo(`La posición de ${id} no es válida`);
-        }
+        if (!tienePosicionValida(posicion)) return fallo(`La posición de ${id} no es válida`);
         elementoDe.set(id, elemento);
         atomos.push({ id, elemento, posicion: { x: posicion.x, y: posicion.y, z: posicion.z } });
     }
@@ -101,35 +187,56 @@ function validarFoto(datos) {
         }
     }
 
-    return { ok: true, foto: { atomos, enlaces } };
+    const particulas = [];
+    let modeloBohr = null;
+    if (datos.version === 2) {
+        const resultadoParticulas = validarParticulas(datos.particulas);
+        if (!resultadoParticulas.ok) return fallo(resultadoParticulas.error);
+        particulas.push(...resultadoParticulas.particulas);
+
+        if (datos.modeloBohr != null) {
+            if (!tienePosicionValida(datos.modeloBohr)) {
+                return fallo('La posición del modelo de Bohr no es válida');
+            }
+            modeloBohr = { x: datos.modeloBohr.x, y: datos.modeloBohr.y, z: datos.modeloBohr.z };
+        }
+    }
+
+    return { ok: true, foto: { atomos, enlaces, particulas, modeloBohr } };
 }
 
 /**
- * Descarga la escena actual como archivo .json. No cambia la escena.
- * @returns {boolean} false si no hay átomos que exportar.
+ * Descarga la escena actual como archivo .json. No cambia la escena ni el
+ * historial. Se puede exportar aunque todavía falte completar un átomo.
+ * @returns {boolean} false si no hay átomos ni partículas que exportar.
  */
 export function exportarMolecula() {
-    const atomos = obtenerListaAtomos();
-    if (atomos.length === 0) {
-        emit('ui:mensaje', { tipo: 'aviso', texto: 'Todavía no hay átomos para exportar' });
+    const foto = obtenerFotoParaArchivo();
+    if (foto.atomos.length === 0 && foto.particulas.length === 0) {
+        emit('ui:mensaje', { tipo: 'aviso', texto: 'Todavía no hay nada para exportar' });
         return false;
     }
 
     const redondear = (valor) => Number(valor.toFixed(DECIMALES));
+    const redondearPosicion = (p) => ({ x: redondear(p.x), y: redondear(p.y), z: redondear(p.z) });
     const datos = {
         formato: FORMATO,
         version: VERSION,
         creado: new Date().toISOString(),
-        atomos: atomos.map((atomo) => ({
+        atomos: foto.atomos.map((atomo) => ({
             id: atomo.id,
             elemento: atomo.elemento,
-            posicion: {
-                x: redondear(atomo.posicion.x),
-                y: redondear(atomo.posicion.y),
-                z: redondear(atomo.posicion.z),
-            },
+            posicion: redondearPosicion(atomo.posicion),
         })),
-        enlaces: obtenerListaEnlaces(),
+        enlaces: foto.enlaces,
+        particulas: foto.particulas.map((particula) => ({
+            id: particula.id,
+            tipo: particula.tipo,
+            libre: particula.libre,
+            capa: particula.capa,
+            posicion: redondearPosicion(particula.posicion),
+        })),
+        modeloBohr: foto.modeloBohr ? redondearPosicion(foto.modeloBohr) : null,
     };
 
     const archivo = new Blob([JSON.stringify(datos, null, 2)], { type: 'application/json' });
@@ -149,7 +256,8 @@ export function exportarMolecula() {
 
 /**
  * Lee un archivo elegido por el usuario, lo valida y reemplaza la escena.
- * Si ya hay átomos, pide confirmación antes de reemplazarlos.
+ * Si la escena tiene átomos, enlaces o partículas, pide confirmación antes.
+ * Si se cancela o el archivo no es válido, la escena no cambia.
  * @param {File} archivo
  */
 async function importarArchivo(archivo) {
@@ -172,7 +280,8 @@ async function importarArchivo(archivo) {
         return;
     }
 
-    if (obtenerListaAtomos().length > 0
+    const hayContenido = obtenerListaAtomos().length > 0 || obtenerConteoParticulas().total > 0;
+    if (hayContenido
         && !window.confirm('¿Reemplazar la escena actual con la molécula del archivo?')) {
         return;
     }
@@ -182,6 +291,7 @@ async function importarArchivo(archivo) {
 /**
  * Conecta los botones Exportar e Importar de la barra de respaldo y
  * agrega sus íconos. Devuelve true si los botones existen.
+ * @returns {boolean}
  */
 export function iniciarIO() {
     const botonExportar = document.querySelector('[data-accion="exportar"]');

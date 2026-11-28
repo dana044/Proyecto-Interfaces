@@ -16,7 +16,17 @@ import { estado, setModo } from './state.js';
 import { hablar } from './voice.js';
 import { ELEMENTOS } from './elementos.js';
 import { identificarMolecula, descripcionEnlace } from './molecules.js';
-import { limpiarEscena, obtenerListaAtomos, obtenerListaEnlaces } from './atoms.js';
+import {
+    limpiarEscena,
+    obtenerListaAtomos,
+    obtenerListaEnlaces,
+    restaurarEscena,
+    suspenderEscena,
+    vaciarHistorial,
+} from './atoms.js';
+
+/** Escena e historial del editor libre, guardados mientras se juega un reto. */
+let escenaLibre = null;
 
 /** Retos en orden de dificultad: las 6 primeras del catálogo. */
 export const RETOS_IDS = ['h2', 'o2', 'h2o', 'co2', 'ch4', 'nh3'];
@@ -340,6 +350,9 @@ export async function entrarModoReto() {
     if (estado.reto.indice >= retos.length) reiniciarProgreso();
     registroActual();
     estado.reto.inicioMs = Date.now();
+    // La escena y el historial del editor libre se guardan aparte: el reto
+    // empieza vacío y su deshacer no llega a estados anteriores a entrar.
+    escenaLibre = suspenderEscena();
     setModo('reto');
     iniciarTemporizador();
     const reto = retoActual();
@@ -362,6 +375,12 @@ export function salirModoReto() {
     detenerTemporizador();
     pausarTemporizador();
     setModo('libre');
+    // Al salir se devuelve la escena del editor libre con su historial. Lo
+    // construido dentro del reto no se mezcla con ella.
+    if (escenaLibre) {
+        restaurarEscena(escenaLibre);
+        escenaLibre = null;
+    }
     publicarActualizacion();
     emit('ui:mensaje', { tipo: 'aviso', texto: 'Saliste al modo libre. Lo que construiste se queda como está.' });
     return true;
@@ -429,6 +448,8 @@ function alVerificar({ nombre, formula, completa }) {
                 // La escena se limpia para el reto nuevo; el
                 // deshacer lo puede recuperar si hace falta.
                 limpiarEscena({ confirmar: false });
+                // Deshacer no puede traer átomos, enlaces ni partículas del reto anterior.
+                vaciarHistorial();
                 publicarActualizacion();
                 const siguiente = retoActual();
                 emit('ui:mensaje', {
