@@ -54,6 +54,11 @@
        JavaScript lo marca solo cuando llega información nueva. -->
   <input type="checkbox" id="menu-info" class="solo-lector">
 
+  <!-- Interruptor del panel de ayuda (sin JavaScript).
+       Se activa con clic en la etiqueta «Ayuda» o con Tab y Espacio.
+       JavaScript lo marca cuando se pide ayuda por voz. -->
+  <input type="checkbox" id="menu-ayuda" class="solo-lector">
+
   <header class="encabezado">
     <div class="encabezado-izq">
       <label for="menu-atomos" class="boton-menu">
@@ -77,6 +82,7 @@
           <span class="punto-estado" aria-hidden="true"></span>
           <span>Micrófono</span>
           <span class="estado-boton">Pausado</span>
+          <span class="nivel-microfono" aria-hidden="true"><span class="nivel-microfono-relleno"></span></span>
         </button>
 
         <div class="estado-equipo">
@@ -88,6 +94,9 @@
       </div>
       <label for="menu-info" class="boton-menu">
         <span>Información</span>
+      </label>
+      <label for="menu-ayuda" class="boton-menu">
+        <span>Ayuda</span>
       </label>
       <div id="selector-vista" class="selector-vista" role="group" aria-label="Qué mostrar" hidden>
         <button type="button" class="boton-vista" data-vista="dividida" aria-pressed="true">Dividida</button>
@@ -167,10 +176,6 @@
            el cursor sobre él en la escena, o al tocarlo (en táctil
            queda fijada; se cierra tocándola o tocando fuera). -->
         <div id="tarjeta-atomo" class="tarjeta-atomo" hidden></div>
-
-        <!-- Pista de gestos y atajos: solo lectura. -->
-        <p class="pista-escena" aria-hidden="true">Mano para mover · Pulgar arriba para verificar · Espacio para hablar
-        </p>
 
         <!-- Cámara en espejo con la superposición de la mano (abajo a la izquierda, como en el wireframe) -->
         <figure class="camara-flotante">
@@ -266,6 +271,95 @@
       </section>
 
       <p class="nota-privacidad">La cámara se procesa en tu navegador. No se guarda nada.</p>
+    </aside>
+
+    <!-- Ayuda de voz y gestos: un solo botón con dos pestañas.
+         Las pestañas son radio sin JavaScript, como los paneles. -->
+    <aside id="panel-ayuda" class="panel panel-ayuda" aria-labelledby="titulo-ayuda">
+      <h2 id="titulo-ayuda">Ayuda</h2>
+      <input type="radio" name="pestana-ayuda" id="pestana-voz" class="solo-lector" checked>
+      <input type="radio" name="pestana-ayuda" id="pestana-gestos" class="solo-lector">
+      <div class="pestanas-ayuda" role="tablist" aria-label="Ayuda de voz o de gestos">
+        <label for="pestana-voz" class="pestana-ayuda">Voz</label>
+        <label for="pestana-gestos" class="pestana-ayuda">Gestos</label>
+      </div>
+
+      <section class="contenido-ayuda contenido-voz" aria-labelledby="titulo-ayuda-voz">
+        <h3 id="titulo-ayuda-voz">Lo que puedes decir</h3>
+        <h4>Agregar átomos</h4>
+        <ul>
+          <li>«agrega un oxígeno»</li>
+          <li>«agrega dos hidrógenos»</li>
+          <li>«agrega el oxígeno»</li>
+        </ul>
+        <h4>Unir átomos</h4>
+        <ul>
+          <li>«unir dos hidrógenos»</li>
+          <li>«unir oxígeno con hidrógeno»</li>
+          <li>«crear un doble enlace de dos hidrógenos»</li>
+        </ul>
+        <h4>Crear moléculas</h4>
+        <ul>
+          <li>«crea agua»</li>
+          <li>«crea oxígeno»</li>
+          <li>«crea dióxido de carbono»</li>
+        </ul>
+        <h4>Verificar</h4>
+        <ul>
+          <li>«verificar molécula»</li>
+          <li>«qué molécula es esta»</li>
+        </ul>
+        <h4>Partículas y átomos</h4>
+        <ul>
+          <li>«agrega un protón»</li>
+          <li>«quita un electrón»</li>
+          <li>«crear átomo»</li>
+          <li>«forma el átomo»</li>
+        </ul>
+        <h4>Preguntas</h4>
+        <ul>
+          <li>«qué es un protón»</li>
+          <li>«qué es un electrón»</li>
+          <li>«qué es un enlace»</li>
+          <li>«por qué se unen»</li>
+        </ul>
+        <h4>Controles</h4>
+        <ul>
+          <li>«deshacer» · «rehacer» · «limpiar»</li>
+          <li>«modo reto» · «modo libre»</li>
+          <li>«acercar» · «alejar» · «gira a la izquierda»</li>
+          <li>«vista inicial» · «modo oscuro»</li>
+          <li>«silencia los tonos» · «exportar»</li>
+          <li>«abre la pizarra»</li>
+          <li>«realidad aumentada» · «centra la molécula»</li>
+        </ul>
+        <h4>Micrófono y ayuda</h4>
+        <ul>
+          <li>«enciende el micrófono» · «apaga el micrófono»</li>
+          <li>«ayuda» · «abre la ayuda de gestos» · «cierra la ayuda»</li>
+          <li>«para» corta la respuesta · «sí» y «no» confirman</li>
+        </ul>
+      </section>
+
+      <section class="contenido-ayuda contenido-gestos" aria-labelledby="titulo-ayuda-gestos">
+        <h3 id="titulo-ayuda-gestos">Lo que puedes hacer con la mano</h3>
+        <ul>
+          <li><strong>Mover la mano:</strong> mueve el cursor en la interfaz; en el tablero mueve la vista o el átomo que agarraste.</li>
+          <li><strong>Índice arriba:</strong> agarra un átomo; al bajar el índice, lo suelta.</li>
+          <li><strong>Palma abierta:</strong> suelta lo que agarraste.</li>
+          <li><strong>Pellizco:</strong> en el tablero mueve la vista; mantenido 0.6 s sobre un botón, lo pulsa.</li>
+          <li><strong>Dos manos en marco:</strong> acerca o aleja.</li>
+          <li><strong>Pulgar hacia un lado (0.5 s):</strong> abre o cierra la paleta de átomos.</li>
+          <li><strong>Meñique arriba:</strong> enciende o apaga el micrófono.</li>
+          <li><strong>Puño cerrado:</strong> entra o sale del tablero.</li>
+          <li><strong>Pulgar arriba (1 s):</strong> confirma y verifica la molécula.</li>
+          <li><strong>Pulgar abajo (0.5 s):</strong> entra o sale de la realidad aumentada.</li>
+          <li><strong>Índice y medio levantados (0.5 s):</strong> elimina el átomo bajo el cursor.</li>
+          <li><strong>Seña de «I love you»:</strong> entra o sale del modo reto.</li>
+          <li><strong>«Llamada» a la izquierda:</strong> deshacer; a la derecha: rehacer.</li>
+          <li><strong>Mano abierta con el pulgar recogido:</strong> limpia la escena.</li>
+        </ul>
+      </section>
     </aside>
 
   </main>

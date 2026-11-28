@@ -204,7 +204,8 @@ p {
 
 /* Menú abierto: su etiqueta se rellena con el acento */
 #menu-atomos:checked~.encabezado label[for="menu-atomos"],
-#menu-info:checked~.encabezado label[for="menu-info"] {
+#menu-info:checked~.encabezado label[for="menu-info"],
+#menu-ayuda:checked~.encabezado label[for="menu-ayuda"] {
   color: #FFFFFF;
   background: var(--accion);
   border: none;
@@ -212,7 +213,8 @@ p {
 
 /* Foco de teclado sobre el interruptor oculto, mostrado en la etiqueta */
 #menu-atomos:focus-visible~.encabezado label[for="menu-atomos"],
-#menu-info:focus-visible~.encabezado label[for="menu-info"] {
+#menu-info:focus-visible~.encabezado label[for="menu-info"],
+#menu-ayuda:focus-visible~.encabezado label[for="menu-ayuda"] {
   outline: 3px solid var(--accion);
   outline-offset: 3px;
 }
@@ -329,7 +331,15 @@ p {
   grid-template-columns: minmax(0, 1fr) 320px;
 }
 
+#menu-ayuda:checked~.escena {
+  grid-template-columns: minmax(0, 1fr) 320px;
+}
+
 #menu-atomos:checked~#menu-info:checked~.escena {
+  grid-template-columns: 300px minmax(0, 1fr) 320px;
+}
+
+#menu-atomos:checked~#menu-ayuda:checked~.escena {
   grid-template-columns: 300px minmax(0, 1fr) 320px;
 }
 
@@ -521,13 +531,16 @@ p {
   letter-spacing: 0.04em;
 }
 
-/* Insignia con fondo claro (berilio): texto oscuro FIJO, no
-   var(--texto), porque en modo oscuro esa variable es clara y el
-   texto volvería a perderse sobre el ámbar. El selector lleva
-   .simbolo delante porque la regla .simbolo (más abajo, con el
-   mismo peso) pone el texto en blanco y si no ganaría ella. */
+/* Insignia con fondo claro: texto oscuro FIJO, no var(--texto),
+   porque en modo oscuro esa variable es clara y el texto volvería
+   a perderse sobre el fondo claro. Hoy ningún elemento tiene fondo
+   claro (el berilio es naranja oscuro), pero la regla queda por si
+   aparece uno. El selector lleva .simbolo delante porque la regla
+   .simbolo (más abajo, con el mismo peso) pone el texto en blanco
+   y si no ganaría ella. */
 .simbolo.simbolo-claro {
-  color: #ffffff;
+  color: #1F2430;
+  border: 2px solid var(--atomo-c);
 }
 
 #menu-atomos:checked~.escena .panel-atomos {
@@ -541,6 +554,81 @@ p {
 }
 
 #menu-info:checked~.escena .panel-info {
+  display: block;
+}
+
+/* Panel de ayuda: oculto al inicio, como el de información */
+.panel-ayuda {
+  display: none;
+  max-width: 25vw;
+}
+
+#menu-ayuda:checked~.escena .panel-ayuda {
+  display: block;
+}
+
+.panel-ayuda h3 {
+  margin: 24px 0 10px;
+  font-family: var(--fuente-titulo);
+  font-size: 18px;
+  color: var(--texto-secundario);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.panel-ayuda h3:first-of-type {
+  margin-top: 0;
+}
+
+.contenido-ayuda h4 {
+  margin: 16px 0 6px;
+  font-size: 15px;
+  color: var(--texto-secundario);
+}
+
+.contenido-ayuda ul {
+  margin: 0 0 4px;
+  padding-left: 20px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* Pestañas de ayuda: Voz y Gestos en el mismo botón.
+   Son radio sin JavaScript, como los interruptores de los paneles. */
+.pestanas-ayuda {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.pestana-ayuda {
+  padding: 8px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accion);
+  background: var(--accion-suave);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+#pestana-voz:checked~.pestanas-ayuda label[for="pestana-voz"],
+#pestana-gestos:checked~.pestanas-ayuda label[for="pestana-gestos"] {
+  color: #FFFFFF;
+  background: var(--accion);
+}
+
+#pestana-voz:focus-visible~.pestanas-ayuda label[for="pestana-voz"],
+#pestana-gestos:focus-visible~.pestanas-ayuda label[for="pestana-gestos"] {
+  outline: 3px solid var(--accion);
+  outline-offset: 3px;
+}
+
+.contenido-ayuda {
+  display: none;
+}
+
+#pestana-voz:checked~.contenido-voz,
+#pestana-gestos:checked~.contenido-gestos {
   display: block;
 }
 
@@ -1149,7 +1237,9 @@ p {
   .escena,
   #menu-atomos:checked~.escena,
   #menu-info:checked~.escena,
-  #menu-atomos:checked~#menu-info:checked~.escena {
+  #menu-ayuda:checked~.escena,
+  #menu-atomos:checked~#menu-info:checked~.escena,
+  #menu-atomos:checked~#menu-ayuda:checked~.escena {
     grid-template-columns: 1fr;
   }
 
@@ -1328,24 +1418,6 @@ label[for="menu-info"].boton-menu::before {
   white-space: normal;
   overflow: visible;
   text-overflow: clip;
-}
-
-/* Pista de gestos en la parte inferior de la escena */
-.pista-escena {
-  position: absolute;
-  left: 50%;
-  bottom: 16px;
-  z-index: 3;
-  transform: translateX(-50%);
-  margin: 0;
-  padding: 6px 14px;
-  font-size: 13px;
-  color: var(--texto-secundario);
-  background: var(--superficie);
-  border: 1px solid var(--borde);
-  border-radius: 999px;
-  white-space: nowrap;
-  pointer-events: none;
 }
 
 /* Títulos de panel en mayúsculas pequeñas, estilo técnico */
@@ -2353,6 +2425,34 @@ body.modo-ra .camara-flotante {
   background: currentColor;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'%3E%3Crect x='9' y='3' width='6' height='11' rx='3'/%3E%3Cpath d='M5 11a7 7 0 0 0 14 0M12 18v3'/%3E%3C/svg%3E") center / contain no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'%3E%3Crect x='9' y='3' width='6' height='11' rx='3'/%3E%3Cpath d='M5 11a7 7 0 0 0 14 0M12 18v3'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* Medidor de nivel del micrófono: una barrita al pie del botón del
+   micrófono que crece con lo que entra. Solo visual: si no entra
+   nada (micrófono apagado o silencio) se queda en cero. */
+.encabezado .indicadores-superiores [data-accion="microfono"] {
+  position: relative;
+}
+
+.encabezado .indicadores-superiores [data-accion="microfono"] .nivel-microfono {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 4px;
+  height: 4px;
+  background: var(--borde);
+  border-radius: 2px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.encabezado .indicadores-superiores [data-accion="microfono"] .nivel-microfono-relleno {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: #16a34a;
+  border-radius: 2px;
+  transition: width 0.1s linear;
 }
 
 .encabezado .indicadores-superiores .estado-equipo {

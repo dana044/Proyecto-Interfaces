@@ -37,6 +37,14 @@ for (const [simbolo, datos] of Object.entries(ELEMENTOS)) {
 
 elementosPorVoz.delete('fluoruros');
 
+const nombrePorSimbolo = new Map();
+const pluralPorSimbolo = new Map();
+
+for (const [simbolo, datos] of Object.entries(ELEMENTOS)) {
+    nombrePorSimbolo.set(simbolo, datos.nombre);
+    pluralPorSimbolo.set(simbolo, datos.plural);
+}
+
 const VERBO_AGREGAR = /^(?:agrega(?:r)?|pon(?:er)?|anade|anadir)\s+/;
 const VERBO_QUITAR = /^(?:quita(?:r)?|saca(?:r)?)\s+/;
 const CONSULTA_MOLECULA = /^(?:que es esto|que molecula es esta)$/;
@@ -242,6 +250,112 @@ function interpretarQuitarAtomo(frase) {
     return true;
 }
 
+/*
+ * Rescate: cuando ninguna hipótesis encaja exacta, se contempla lo que
+ * se escuchó antes de rendirse. Primero por palabras clave (un elemento
+ * y un verbo) y luego por parecido con las frases conocidas (distancia
+ * de Levenshtein). Solo se ejecuta si el parecido es alto; si no, se
+ * pide que lo repita.
+ */
+function distanciaLevenshtein(a, b) {
+    if (a === b) return 0;
+    if (!a.length) return b.length;
+    if (!b.length) return a.length;
+    let anterior = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+        const actual = [i];
+        for (let j = 1; j <= b.length; j++) {
+            actual[j] = Math.min(
+                anterior[j] + 1,
+                actual[j - 1] + 1,
+                anterior[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+            );
+        }
+        anterior = actual;
+    }
+    return anterior[b.length];
+}
+
+function parecido(a, b) {
+    const mayor = Math.max(a.length, b.length);
+    if (!mayor) return 1;
+    return 1 - distanciaLevenshtein(a, b) / mayor;
+}
+
+const FRASES_CONOCIDAS = [
+    'agrega un oxigeno', 'agrega dos hidrogenos', 'agrega un carbono',
+    'unir dos hidrogenos', 'unir oxigeno con hidrogeno',
+    'crear un doble enlace de dos hidrogenos', 'crea agua', 'anade agua',
+    'crea dioxido de carbono', 'verificar molecula', 'verifica la molecula',
+    'limpiar', 'deshacer', 'rehacer', 'modo reto', 'modo libre', 'ayuda',
+    'exportar', 'importar', 'abre la pizarra', 'silencia los tonos',
+    'modo oscuro', 'modo claro', 'vista inicial', 'acercar', 'alejar',
+    'gira a la izquierda', 'gira a la derecha', 'que es un proton',
+    'quita un oxigeno', 'que molecula es esta',
+    'crear atomo', 'realidad aumentada', 'centra la molecula',
+];
+
+const UMBRAL_PARECIDO = 0.65;
+
+function buscarElementosEnFrase(frase) {
+    const encontrados = [];
+    for (const palabra of frase.split(/\s+/)) {
+        const elemento = elementosPorVoz.get(palabra);
+        if (elemento && !encontrados.includes(elemento)) encontrados.push(elemento);
+    }
+    return encontrados;
+}
+
+function intentarRescate(frase) {
+    const elementos = buscarElementosEnFrase(frase);
+    if (elementos.length) {
+        const primero = elementos[0];
+        const nombre = nombrePorSimbolo.get(primero) ?? primero;
+        const plural = pluralPorSimbolo.get(primero) ?? primero;
+
+        if (/\b(unir|une|enlazar|enlaza|conectar|conecta|enlace)\b/.test(frase)) {
+            if (elementos.length > 1) {
+                const segundo = elementos[1];
+                return procesarVoz(`unir ${nombre} con ${nombrePorSimbolo.get(segundo) ?? segundo}`);
+            }
+            return procesarVoz(`unir dos ${plural}`);
+        }
+
+        if (/\b(quita|saca|elimina|borra)\b/.test(frase)) {
+            return procesarVoz(`quita un ${nombre}`);
+        }
+
+        if (/\b(agrega|agregar|pon|poner|anade|anadir|crea|crear|haz|hacer)\b/.test(frase)) {
+            return procesarVoz(`agrega un ${nombre}`);
+        }
+
+        // Solo el elemento, sin verbo: lo más probable es agregarlo.
+        if (/^(?:(?:un|una|el|la|dos|tres|cuatro|cinco|\d+)\s+)?[a-z]+$/.test(frase)) {
+            return procesarVoz(`agrega ${frase.replace(/^(?:el|la)\s+/, '')}`);
+        }
+    }
+
+    // Solo el nombre de una molécula: lo más probable es crearla.
+    if (MOLECULAS_POR_VOZ.has(frase)) {
+        return procesarVoz(`crea ${frase}`);
+    }
+
+    let mejor = null;
+    let mejorParecido = 0;
+    for (const conocida of FRASES_CONOCIDAS) {
+        const similitud = parecido(frase, conocida);
+        if (similitud > mejorParecido) {
+            mejorParecido = similitud;
+            mejor = conocida;
+        }
+    }
+    if (mejor && mejorParecido >= UMBRAL_PARECIDO) {
+        return procesarVoz(mejor);
+    }
+
+    return false;
+}
+
 function procesarVoz(frase) {
 
     if (CONSULTA_MOLECULA.test(frase)) {
@@ -377,6 +491,52 @@ function procesarVoz(frase) {
         return true;
     }
 
+    // Crear un átomo con las partículas del modelo de Bohr. Va antes
+    // de interpretarMolecula para que "crear átomo" no se lea como
+    // "crea agua" ni como ningún nombre de molécula.
+    if ([
+        'crear atomo', 'crea un atomo', 'forma el atomo', 'arma el atomo'
+    ].includes(frase)) {
+        emit('voz:comando', { intencion: 'crear-atomo', parametros: {} });
+        return true;
+    }
+
+    if ([
+        'realidad aumentada', 'activa la realidad aumentada',
+        'apaga la realidad aumentada', 'salir de la realidad aumentada',
+        'sal de la realidad aumentada'
+    ].includes(frase)) {
+        const accion = frase === 'realidad aumentada' ? 'alternar'
+            : frase.includes('apaga') || frase.includes('salir') || frase.includes('sal de')
+                ? 'desactivar' : 'activar';
+        emit('voz:comando', { intencion: 'realidad-aumentada', parametros: { accion } });
+        return true;
+    }
+
+    if (frase === 'centra la molecula' || frase === 'centrar la molecula') {
+        emit('voz:comando', { intencion: 'centrar-ra', parametros: {} });
+        return true;
+    }
+
+    if ([
+        'abre la ayuda', 'abre la ayuda de voz', 'ayuda de voz'
+    ].includes(frase)) {
+        emit('voz:comando', { intencion: 'panel-ayuda', parametros: { abrir: true, pestana: 'voz' } });
+        return true;
+    }
+
+    if ([
+        'abre la ayuda de gestos', 'ayuda de gestos'
+    ].includes(frase)) {
+        emit('voz:comando', { intencion: 'panel-ayuda', parametros: { abrir: true, pestana: 'gestos' } });
+        return true;
+    }
+
+    if (frase === 'cierra la ayuda') {
+        emit('voz:comando', { intencion: 'panel-ayuda', parametros: { abrir: false } });
+        return true;
+    }
+
     if (frase === 'apaga el microfono' || frase === 'apagar microfono') {
         emit('voz:comando', { intencion: 'microfono', parametros: { encender: false } });
         return true;
@@ -392,7 +552,10 @@ function procesarVoz(frase) {
             emit('voz:comando', { intencion: 'ayuda', parametros: {} });
             return true;
         }
-        responder('Puedes decir: agrega oxígeno, unir dos hidrógenos, crea agua, deshacer, rehacer, limpiar, verificar, exportar, abre la pizarra, silencia los tonos, modo oscuro o modo reto.');
+        // La lista vive en la pestaña Ayuda: se abre sola y se dice
+        // dónde está, en vez de recitarla.
+        emit('voz:comando', { intencion: 'panel-ayuda', parametros: { abrir: true, pestana: 'voz' } });
+        responder('Mira la pestaña Ayuda, ahí está todo lo que puedes decir.');
         return true;
     }
 
@@ -424,50 +587,65 @@ const LIMPIAR_VOZ = [
 
 let pendienteLimpiar = false;
 let temporizadorConfirmacion = null;
-let fallosSeguidos = 0;
 
-function interpretarVoz({ texto }) {
+function interpretarVoz({ texto, alternativas }) {
     if (typeof texto !== 'string') return;
-    const frase = normalizar(texto);
-    if (!frase) return;
+    // Todas las hipótesis del reconocimiento, en orden y sin duplicados:
+    // con ruido, la correcta muchas veces no es la primera.
+    const candidatos = [texto, ...(Array.isArray(alternativas) ? alternativas : [])]
+        .map((candidato) => (typeof candidato === 'string' ? normalizar(candidato) : ''))
+        .filter(Boolean);
+    const vistos = new Set();
+    const unicos = candidatos.filter((candidato) => {
+        if (vistos.has(candidato)) return false;
+        vistos.add(candidato);
+        return true;
+    });
+    if (!unicos.length) return;
 
+    // Confirmación de limpiar: aquí "sí" y "no" sí cuentan, y solo
+    // cuenta la mejor hipótesis (como antes).
     if (pendienteLimpiar) {
         pendienteLimpiar = false;
         clearTimeout(temporizadorConfirmacion);
-        if (frase === 'si') {
+        if (unicos[0] === 'si') {
             emit('voz:comando', { intencion: 'limpiar', parametros: { confirmada: true } });
             return;
         }
-        if (frase === 'no') {
+        if (unicos[0] === 'no') {
             responder('Ok, no borro nada.');
+            return;
+        }
+        // Otra frase mientras se esperaba sí/no: se sigue probando.
+    }
+
+    // Un "sí" o "no" suelto se ignora en silencio, y nunca se rescata
+    // como silicio: "sí" normalizado es "si", símbolo del silicio.
+    const utiles = unicos.filter((frase) => frase !== 'si' && frase !== 'no');
+    if (!utiles.length) return;
+
+    for (const frase of utiles) {
+        if (LIMPIAR_VOZ.includes(frase)) {
+            pendienteLimpiar = true;
+            clearTimeout(temporizadorConfirmacion);
+            temporizadorConfirmacion = setTimeout(() => {
+                pendienteLimpiar = false;
+            }, 15000);
+            responder('¿Seguro? Di sí o no.');
+            return;
+        }
+
+        if (procesarVoz(frase)) {
             return;
         }
     }
 
-    if (frase === 'si' || frase === 'no') return;
-
-    if (LIMPIAR_VOZ.includes(frase)) {
-        pendienteLimpiar = true;
-        clearTimeout(temporizadorConfirmacion);
-        temporizadorConfirmacion = setTimeout(() => {
-            pendienteLimpiar = false;
-        }, 15000);
-        responder('¿Seguro? Di sí o no.');
+    // Ninguna hipótesis encajó exacta: se contempla lo que se escuchó.
+    if (intentarRescate(utiles[0])) {
         return;
     }
 
-    if (procesarVoz(frase)) {
-        fallosSeguidos = 0;
-        return;
-    }
-
-    fallosSeguidos += 1;
-    if (fallosSeguidos >= 2) {
-        fallosSeguidos = 0;
-        responder('Puedes decir: agrega oxígeno, unir dos hidrógenos, crea agua, deshacer, rehacer, limpiar, verificar, acercar, alejar, gira a la izquierda, modo reto, modo libre o ayuda.');
-        return;
-    }
-    responder('No te entendí, prueba con “agrega oxígeno”.');
+    responder('No te escuché bien, repítelo.');
 }
 
 function pulsarBoton(selector) {
@@ -479,6 +657,20 @@ function cambiarPanel(id, abrir) {
     if (typeof document === 'undefined') return;
     const casilla = document.getElementById(id);
     if (casilla) casilla.checked = abrir;
+}
+
+// La pestaña (Voz o Gestos) que se ve dentro del panel de ayuda.
+function cambiarPestanaAyuda(pestana) {
+    if (typeof document === 'undefined') return;
+    const radio = document.getElementById(pestana === 'gestos' ? 'pestana-gestos' : 'pestana-voz');
+    if (radio) radio.checked = true;
+}
+
+// Si la realidad aumentada está activa: el cuerpo lleva modo-ra.
+// Sin documento (pruebas en Node) se dice que no, para no pulsar nada.
+function raActiva() {
+    if (typeof document === 'undefined') return false;
+    return document.body.classList.contains('modo-ra');
 }
 
 function ejecutarComandoVoz({ intencion, parametros }) {
@@ -528,10 +720,33 @@ function ejecutarComandoVoz({ intencion, parametros }) {
 
         case 'panel-info':
             cambiarPanel('menu-info', parametros?.abrir !== false);
+            if (parametros?.abrir !== false) cambiarPanel('menu-ayuda', false);
             break;
 
         case 'microfono':
             establecerModoMicrofono(parametros?.encender === true);
+            break;
+
+        case 'realidad-aumentada': {
+            // "activa" solo pulsa si está apagada y "apaga" solo si está
+            // prendida; "realidad aumentada" a secas alterna.
+            const accion = parametros?.accion || 'alternar';
+            if (accion === 'alternar'
+                || (accion === 'activar' && !raActiva())
+                || (accion === 'desactivar' && raActiva())) {
+                pulsarBoton('[data-accion="ra"]');
+            }
+            break;
+        }
+
+        case 'centrar-ra':
+            pulsarBoton('#centrar-ra');
+            break;
+
+        case 'panel-ayuda':
+            cambiarPanel('menu-ayuda', parametros?.abrir !== false);
+            if (parametros?.abrir !== false) cambiarPanel('menu-info', false);
+            if (parametros?.pestana) cambiarPestanaAyuda(parametros.pestana);
             break;
 
         default:

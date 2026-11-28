@@ -49,7 +49,8 @@
   /* overflow-y: auto es necesario: .panel-atomos trae overflow: hidden y
      cortaría la lista de átomos y el modelo de Bohr. */
   .panel-atomos,
-  .panel-info {
+  .panel-info,
+  .panel-ayuda {
     max-width: none;
     max-height: 50vh;
     max-height: 50dvh;
@@ -279,11 +280,6 @@
   .panel-info {
     max-height: 50vh;
     max-height: 50dvh;
-  }
-
-  /* La pista de gestos se encima con los átomos en pantallas chicas. */
-  .pista-escena {
-    display: none;
   }
 
   .camara-flotante {

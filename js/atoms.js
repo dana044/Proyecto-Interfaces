@@ -2233,6 +2233,10 @@ export function iniciarComandosDeAtomos() {
             rehacer();
             return;
         }
+        if (intencion === 'crear-atomo') {
+            crearAtomoDesdeParticulas();
+            return;
+        }
         if (intencion === 'limpiar') {
             // Si se cancela la confirmación, las partículas se quedan.
             if (limpiarEscena({ confirmar: !parametros?.confirmada })) {

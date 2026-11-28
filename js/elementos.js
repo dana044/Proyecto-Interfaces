@@ -17,7 +17,7 @@
  */
 export const GRUPOS = {
     'Metales alcalinos': { color: 0xc2414f },
-    'Metales alcalinotérreos': { color: 0xd97706 },
+    'Metales alcalinotérreos': { color: 0x9a3412 },
     Metaloides: { color: 0x92600f },
     'No metales reactivos': { color: 0x2563eb },
     'Gases nobles': { color: 0xb4537a },
@@ -28,7 +28,7 @@ export const ELEMENTOS = {
     He: { nombre: 'Helio', plural: 'helios', z: 2, valencia: 0, masa: 4, grupo: 'Gases nobles', color: GRUPOS['Gases nobles'].color, colorEstandar: 0xd9ffff, radio: 0.32 },
     Li: { nombre: 'Litio', plural: 'litios', z: 3, valencia: 1, masa: 7, grupo: 'Metales alcalinos', color: GRUPOS['Metales alcalinos'].color, colorEstandar: 0xcc80ff, radio: 0.49 },
     Be: { nombre: 'Berilio', plural: 'berilios', z: 4, valencia: 2, masa: 9, grupo: 'Metales alcalinotérreos', color: GRUPOS['Metales alcalinotérreos'].color, colorEstandar: 0xc2ff00, radio: 0.46 },
-    B: { nombre: 'Boro', plural: 'boros', z: 5, valencia: 3, masa: 11, grupo: 'Metaloides', color: GRUPOS.Metaloides.color, colorEstandar: 0xffb5b5, radio: 0.44, contornoLetra: false },
+    B: { nombre: 'Boro', plural: 'boros', z: 5, valencia: 3, masa: 11, grupo: 'Metaloides', color: GRUPOS.Metaloides.color, colorEstandar: 0xffb5b5, radio: 0.44 },
     C: { nombre: 'Carbono', plural: 'carbonos', z: 6, valencia: 4, masa: 12, grupo: 'No metales reactivos', color: GRUPOS['No metales reactivos'].color, colorEstandar: 0x404040, radio: 0.45 },
     N: { nombre: 'Nitrógeno', plural: 'nitrógenos', z: 7, valencia: 3, masa: 14, grupo: 'No metales reactivos', color: GRUPOS['No metales reactivos'].color, colorEstandar: 0x3050f8, radio: 0.42 },
     O: { nombre: 'Oxígeno', plural: 'oxígenos', z: 8, valencia: 2, masa: 16, grupo: 'No metales reactivos', color: GRUPOS['No metales reactivos'].color, colorEstandar: 0xff0d0d, radio: 0.42 },

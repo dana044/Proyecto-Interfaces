@@ -101,8 +101,9 @@ function iniciarPanelAtomos() {
     insignia.setAttribute('aria-hidden', 'true');
     insignia.style.backgroundColor =
       '#' + datos.color.toString(16).padStart(6, '0');
-    // Fondo claro (berilio): el símbolo va en oscuro para que se
-    // lea; el resto queda en blanco, que sí pasa el contraste.
+    // Fondo claro: el símbolo va en oscuro para que se lea; el
+    // resto queda en blanco, que sí pasa el contraste. Hoy ningún
+    // elemento tiene fondo claro, pero la regla queda por si aparece.
     if (colorDeFondoClaro(datos.color)) insignia.classList.add('simbolo-claro');
 
     // Por el momento el panel solo muestra el nombre. La información
@@ -131,8 +132,21 @@ export function iniciarInterfaz() {
   // salían abiertos.
   const menuAtomos = document.querySelector('#menu-atomos');
   const menuInfo = document.querySelector('#menu-info');
+  const menuAyuda = document.querySelector('#menu-ayuda');
   if (menuAtomos) menuAtomos.checked = false;
   if (menuInfo) menuInfo.checked = false;
+  if (menuAyuda) menuAyuda.checked = false;
+
+  // Información y Ayuda comparten la columna derecha: solo se ve uno
+  // a la vez. Al abrir uno con clic o teclado, el otro se cierra.
+  // (Por voz y al verificar se cierran en commands.js y en
+  // mostrarPanelInfo, porque marcar .checked no dispara change.)
+  menuInfo?.addEventListener('change', () => {
+    if (menuInfo.checked && menuAyuda) menuAyuda.checked = false;
+  });
+  menuAyuda?.addEventListener('change', () => {
+    if (menuAyuda.checked && menuInfo) menuInfo.checked = false;
+  });
 
   // Pulgar hacia un lado: abre o cierra la paleta de moléculas.
   on('gesto:paleta', () => {
@@ -252,6 +266,15 @@ export function iniciarInterfaz() {
     microfono.classList.add(datos.clase);
     const textoEstado = microfono.querySelector('.estado-boton');
     if (textoEstado) textoEstado.textContent = datos.texto;
+  });
+
+  // Medidor de nivel del micrófono: la barra crece con lo que entra.
+  // Si el micrófono está apagado o no entra nada, se queda en cero.
+  const nivelMicrofono = microfono.querySelector('.nivel-microfono-relleno');
+  on('voz:nivel', ({ nivel }) => {
+    if (!nivelMicrofono) return;
+    const porcentaje = Math.round(Math.min(1, Math.max(0, Number(nivel) || 0)) * 100);
+    nivelMicrofono.style.width = `${porcentaje}%`;
   });
 
   on('estado:camara', ({ estado }) => {
@@ -467,4 +490,7 @@ export function iniciarInterfaz() {
 function mostrarPanelInfo() {
   const interruptor = document.querySelector('#menu-info');
   if (interruptor) interruptor.checked = true;
+  // La Ayuda comparte la columna: si estaba abierta, se cierra.
+  const ayuda = document.querySelector('#menu-ayuda');
+  if (ayuda) ayuda.checked = false;
 }
