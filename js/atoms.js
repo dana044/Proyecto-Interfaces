@@ -1915,7 +1915,7 @@ function unirParticulaAlModelo(particula) {
     if (particula.tipo === 'neutron') reorganizarNucleo();
     else reajustarCapasElectronicas();
     // El conteo no cambia, pero el modelo ganó una partícula: se
-    // avisa para que el panel se abra solo, como al agregarla.
+    // actualizan los datos del panel sin abrirlo.
     emitirConteoParticulas();
     return true;
 }
