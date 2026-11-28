@@ -348,10 +348,9 @@ export function iniciarInterfaz() {
   // filas de partículas del panel de átomos. Al cambiar los protones
   // se identifica el elemento formado (Z = protones) y se muestra su
   // masa aproximada (protones + neutrones); los neutrones solos no
-  // cambian el elemento, solo la masa. El panel solo se abre solo
-  // cuando hay partículas en el modelo: al soltar partículas
-  // sueltas no se abre, para no tapar la escena ni empujarlas
-  // fuera de la vista.
+  // cambian el elemento, solo la masa. El panel de información no se
+  // abre solo al cambiar el modelo de Bohr: solo se actualizan sus datos,
+  // para no tapar la escena ni empujar las partículas fuera de la vista.
   on('escena:particulas-cambiadas', ({ protones, neutrones, electrones, enModelo }) => {
     const panelInfo = document.querySelector('#panel-info');
     if (!panelInfo) return;
@@ -375,7 +374,6 @@ export function iniciarInterfaz() {
       lineaMasa.hidden = !identificado.simbolo;
       valorMasa.textContent = String(identificado.simbolo ? identificado.masa : 0);
     }
-    if (enModelo > 0) mostrarPanelInfo();
   });
 
   // Explicación del enlace: al formarse, el panel dice qué
