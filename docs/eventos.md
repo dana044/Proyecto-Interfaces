@@ -5,11 +5,17 @@ Coordenadas x, y: normalizadas de 0 a 1, con la cámara en espejo.
 ## Gestos (js/gestures.js)
 
 La cámara y el detector viven en `js/gestures.js`, que publica
-`estado:camara` y `estado:manos`. El cursor sigue la punta del índice con
+`estado:camara` y `estado:manos`. La cámara se enciende al arrancar y no se
+apaga; la RA usa esa misma cámara. El cursor sigue la punta del índice con
 una ganancia de 2.0 alrededor del centro (`GANANCIA_CURSOR`) y suavizado
 0.5. Las coordenadas (x, y) de los gestos son de la ventana (0 a 1). Sobre
-el tablero el índice selecciona átomos; sobre la interfaz, pulsa o toma un
-elemento de la paleta.
+el tablero el índice selecciona átomos; sobre la interfaz, toma un elemento
+de la paleta o, mantenido 2 s, pulsa el botón.
+
+Modo de detección: al abrir la página los gestos están apagados. Solo las
+palmas juntas por el pulgar medio segundo emiten `gesto:deteccion`
+{activo} y encienden o apagan el modo; el resto de los gestos solo
+funcionan con el modo encendido, también dentro de la RA.
 
 Gestos:
 
@@ -24,10 +30,14 @@ Gestos:
 - Paleta: pulgar hacia un lado medio segundo emite `gesto:paleta`.
 - Tomar y colocar: índice arriba sobre un botón de la paleta toma el
   elemento; al abrir la mano, `gesto:soltar` {x, y, cancelado}.
+- Pulsar un botón: índice arriba sobre un botón de la interfaz durante 2 s lo
+  pulsa, con el círculo verde de progreso. Los botones que toman un elemento
+  de la paleta se toman al instante, como antes. No emite evento: pulsa el
+  botón con `click()`.
 - Eliminar: índice y medio levantados medio segundo emite
   `gesto:eliminar-pedido` {x, y}; atoms.js elimina ese átomo y emite
   `gesto:eliminar` {id}.
-- Deshacer: llamada (🤙) con la mano derecha, meñique hacia la izquierda, medio
+- Deshacer: llamada con la mano derecha, meñique hacia la izquierda, medio
   segundo, emite `gesto:deshacer`.
 - Rehacer: llamada con la mano izquierda, meñique hacia la derecha, medio
   segundo, emite `gesto:rehacer`.
@@ -38,8 +48,9 @@ Gestos:
   la palma, un segundo, emite `gesto:limpiar`; `atoms.js` borra átomos,
   enlaces y partículas, salvo que se lleve algo en la mano.
 - Micrófono: meñique arriba 0.8 s emite `gesto:microfono`.
-- Listo: puño con pulgar arriba (👍) un segundo emite `gesto:listo`.
-- Realidad aumentada: pulgar abajo (👎) medio segundo emite `gesto:ra`.
+- Listo: puño con pulgar arriba un segundo emite `gesto:listo`.
+- Realidad aumentada: pulgar abajo medio segundo emite `gesto:ra`. Sirve
+  para entrar y para salir de la RA.
 
 Los gestos con espera muestran un círculo de progreso que se oculta en
 cuanto la pose se rompe.
@@ -47,7 +58,7 @@ cuanto la pose se rompe.
 El tutorial (`js/tutorial.js`) guía los gestos en orden y pide un átomo de
 ejemplo; emite `tutorial:atomo-ejemplo` {mostrar} al abrirse y al cerrarse,
 y `tutorial:terminado` {completo} al cerrarse (completo solo si se
-terminaron los 14 pasos; dura 3 minutos como máximo y no vuelve a
+terminaron los 15 pasos; dura 3 minutos como máximo y no vuelve a
 aparecer en la misma sesión).
 La paleta emite `ui:paleta` {abierta}, y el elemento en la mano se muestra
 en el cursor con `cursor:elemento` {simbolo, color}.
@@ -71,6 +82,7 @@ en el cursor con `cursor:elemento` {simbolo, color}.
 | gesto:microfono          | —                 |
 | gesto:listo              | —                 |
 | gesto:ra                 | —                 |
+| gesto:deteccion          | {activo}         |
 | ui:paleta                | {abierta}         |
 | cursor:elemento          | {simbolo, color}  |
 | tutorial:atomo-ejemplo   | {mostrar}         |

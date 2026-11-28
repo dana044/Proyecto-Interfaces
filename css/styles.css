@@ -1909,6 +1909,19 @@ label[for="menu-info"].boton-menu::before {
   animation: mg-right 2.4s infinite;
 }
 
+/* Palmas juntas: las dos manos se acercan por el pulgar y se separan. */
+.tutorial-demo.demo-detectar .mg-mano {
+  font-size: 40px;
+}
+
+.tutorial-demo.demo-detectar .mg-juntar-izq {
+  animation: mg-juntar-izq 2.4s infinite;
+}
+
+.tutorial-demo.demo-detectar .mg-juntar-der {
+  animation: mg-juntar-der 2.4s infinite;
+}
+
 .tutorial-demo.demo-colocar .mg-fase1,
 .tutorial-demo.demo-colocar .mg-fase2,
 .tutorial-demo.demo-colocar .mg-fase3 {
@@ -1981,6 +1994,32 @@ label[for="menu-info"].boton-menu::before {
   65%,
   100% {
     transform: translateX(-14px) scaleX(-1);
+  }
+}
+
+@keyframes mg-juntar-izq {
+
+  0%,
+  15% {
+    transform: translateX(-22px) scaleX(-1);
+  }
+
+  60%,
+  100% {
+    transform: translateX(6px) scaleX(-1);
+  }
+}
+
+@keyframes mg-juntar-der {
+
+  0%,
+  15% {
+    transform: translateX(22px);
+  }
+
+  60%,
+  100% {
+    transform: translateX(-6px);
   }
 }
 
@@ -2532,11 +2571,56 @@ body.modo-ra .camara-flotante {
    menos movimiento, todo queda quieto. */
 @media (prefers-reduced-motion: reduce) {
 
-  *,
-  *::before,
-  *::after {
+  *:not(.tutorial-demo, .tutorial-demo *),
+  *:not(.tutorial-demo, .tutorial-demo *)::before,
+  *:not(.tutorial-demo, .tutorial-demo *)::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Ayuda de gestos: la animación del tutorial va al lado de cada renglón. */
+.contenido-gestos ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.contenido-gestos li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.ayuda-demo {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 96px;
+  height: 72px;
+  overflow: hidden;
+}
+
+.ayuda-demo .tutorial-demo {
+  max-width: 96px;
+}
+
+.ayuda-demo .mg-mano {
+  font-size: 30px;
+}
+
+.ayuda-demo .mg-mano svg {
+  width: 36px;
+  height: 39px;
+}
+
+.ayuda-demo .tutorial-demo.demo-acercar .mg-mano {
+  font-size: 22px;
+}
+
+.ayuda-demo .tutorial-demo.demo-detectar .mg-mano {
+  font-size: 24px;
 }

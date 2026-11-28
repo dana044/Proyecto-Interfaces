@@ -1,14 +1,14 @@
 /**
  * @fileoverview Tutorial de gestos con demostraciones y un átomo de ejemplo.
  *
- * Empieza directo en el primer gesto. Cada paso muestra una animación del
- * gesto y se marca solo cuando el sistema reconoce el gesto. El panel no
+ * Empieza con las palmas juntas, que activan los gestos. Cada paso muestra una
+ * animación del gesto y se marca solo cuando el sistema reconoce el gesto. El panel no
  * bloquea la escena: se puede seguir eligiendo y colocando elementos.
  * Dura 3 minutos como máximo y no vuelve a aparecer en la misma sesión.
  */
 
 import { emit, on } from './bus.js';
-import { configurarPellizco, obtenerEstadoCamara } from './gestures.js';
+import { configurarPellizco, obtenerEstadoCamara, obtenerModoDeteccion } from './gestures.js';
 import { DEMOS } from './tutorial-animaciones.js';
 
 const CLAVE_VISTO = 'moleculab-tutorial-visto';
@@ -16,6 +16,14 @@ const CLAVE_UMBRAL = 'moleculab-umbral-pellizco';
 const LIMITE_MS = 180000;
 
 const PASOS = [
+  {
+    id: 'detectar',
+    titulo: 'Activar gestos',
+    texto: 'Junta las palmas por el pulgar, como 👐, y mantenlas medio segundo para activar los gestos. Hazlo otra vez para apagarlos.',
+    evento: 'gesto:deteccion',
+    // Se completa solo al encender; al apagar no cuenta.
+    condicion: (datos) => datos?.activo === true,
+  },
   {
     id: 'agarrar',
     titulo: 'Seleccionar',
@@ -89,16 +97,16 @@ const PASOS = [
     evento: 'gesto:limpiar',
   },
   {
-    id: 'listo',
-    titulo: 'Listo',
-    texto: 'Cierra la mano con el pulgar hacia arriba y mantenlo un segundo para confirmar la molécula.',
-    evento: 'gesto:listo',
-  },
-  {
     id: 'ra',
     titulo: 'Realidad aumentada',
     texto: 'Baja el pulgar (pulgar hacia abajo) y mantenlo medio segundo para entrar o salir de la realidad aumentada.',
     evento: 'gesto:ra',
+  },
+  {
+    id: 'listo',
+    titulo: 'Listo',
+    texto: 'Cierra la mano con el pulgar hacia arriba y mantenlo un segundo para confirmar la molécula.',
+    evento: 'gesto:listo',
   },
 ];
 
@@ -194,7 +202,7 @@ function construirPantalla() {
   const descripcion = crearElemento(
     'p',
     'tutorial-descripcion',
-    'La palma abierta solo mueve el cursor. Haz cada gesto como lo muestra la animación. Tienes 3 minutos.',
+    'Primero junta las palmas para activar los gestos. Haz cada gesto como lo muestra la animación. Tienes 3 minutos.',
   );
 
   zonaDemo = crearElemento('div', 'tutorial-paso-zona');
@@ -282,8 +290,9 @@ function completarPaso() {
 
 // Cada gesto completa su paso solo si es el que toca.
 PASOS.forEach((paso, i) => {
-  on(paso.evento, () => {
+  on(paso.evento, (datos) => {
     if (!activo || completando || pasoActual !== i) return;
+    if (paso.condicion && !paso.condicion(datos)) return;
     completarPaso();
   });
 });
@@ -302,10 +311,12 @@ on('estado:camara', ({ estado }) => {
 export function iniciarTutorial(opciones = {}) {
   if (activo) return false;
 
-  try {
-    if (sessionStorage.getItem(CLAVE_VISTO)) return false;
-  } catch (error) {
-    console.warn('[tutorial] No se pudo leer si el tutorial ya se vio:', error);
+  if (!opciones.forzar) {
+    try {
+      if (sessionStorage.getItem(CLAVE_VISTO)) return false;
+    } catch (error) {
+      console.warn('[tutorial] No se pudo leer si el tutorial ya se vio:', error);
+    }
   }
 
   const estado = obtenerEstadoCamara();
@@ -319,6 +330,12 @@ export function iniciarTutorial(opciones = {}) {
   document.body.appendChild(contenedor);
   activo = true;
   pasoActual = 0;
+  // Si los gestos ya están encendidos, el paso de palmas ya se cumplió.
+  if (PASOS[0].id === 'detectar' && obtenerModoDeteccion()) {
+    elementosPasos[0].item.classList.add('tutorial-paso-completo');
+    elementosPasos[0].palomita.textContent = '✓';
+    pasoActual = 1;
+  }
   mostrarPasoActual();
   emit('tutorial:atomo-ejemplo', { mostrar: true });
 
@@ -328,4 +345,13 @@ export function iniciarTutorial(opciones = {}) {
   }, opciones.limiteMs || LIMITE_MS);
 
   return true;
+}
+
+/** Pone la animación de cada gesto junto a su renglón de la ayuda (data-demo). */
+export function pintarDemosDeAyuda() {
+  document.querySelectorAll('.contenido-gestos [data-demo]').forEach((espacio) => {
+    const clave = espacio.dataset.demo;
+    if (!DEMOS[clave]) return;
+    espacio.innerHTML = `<div class="tutorial-demo demo-${clave}" aria-hidden="true">${DEMOS[clave]}</div>`;
+  });
 }

@@ -15,6 +15,11 @@
  * - puño cerrado: entra o sale del tablero (modo lienzo o interfaz).
  * - pellizco mantenido 0.6 s en la interfaz: pulsa el botón bajo el cursor.
  * - pulgar arriba un segundo: confirma (listo).
+ * - palmas juntas por el pulgar medio segundo: activa o apaga el modo de
+ *   detección. Con el modo apagado la cámara sigue encendida y solo las
+ *   palmas hacen algo.
+ * - índice arriba sobre un botón 2 s: lo pulsa (los de la paleta se toman
+ *   al instante).
  *
  * @see docs/eventos.md
  */
@@ -54,6 +59,11 @@ const MS_MANTENER_PALETA = 500;
 const MS_MANTENER_MICROFONO = 800;
 const MS_MANTENER_ELIMINAR = 500;
 const MS_MANTENER_RA = 500;
+const MS_MANTENER_DETECCION = 500;
+/** Índice arriba sobre un botón este tiempo lo pulsa. */
+const MS_PULSAR_BOTON = 2000;
+/** Los pulgares están juntos si sus puntas quedan a menos de esta fracción del tamaño de la mano. */
+const FACTOR_PULGARES_JUNTOS = 0.5;
 /** El cursor no se puede mover más que esto mientras se mantiene el pellizco para pulsar. */
 const UMBRAL_PULGAR_LADO_X = 0.08;
 const UMBRAL_PULGAR_LADO_Y = 0.05;
@@ -112,6 +122,11 @@ let puntoPunoAnterior = null;
 let puntoPunoSuave = null;
 let poseGirarDetectada = false;
 let ultimoBloqueoAgarre = '';
+let modoDeteccion = false;
+let bloqueoResolucion = false;
+let objetivoPulsar = null;
+let inicioPulsar = 0;
+let pulsadoEnPose = false;
 
 /**
  * Publica el estado de la cámara en el bus.
@@ -164,7 +179,9 @@ async function pedirCamara(ancho, alto) {
     video: {
       width: { ideal: ancho },
       height: { ideal: alto },
-      facingMode: 'user',
+      // La trasera tiene prioridad: la RA la necesita para ver la tarjeta.
+      // En equipos con una sola cámara, el navegador usa esa.
+      facingMode: { ideal: 'environment' },
     },
     audio: false,
   });
@@ -207,7 +224,7 @@ function detenerStream() {
  * Baja la cámara a 640x480 cuando la detección va por debajo de 20 FPS.
  */
 async function reducirResolucion() {
-  if (resolucionReducida || !video) return;
+  if (resolucionReducida || !video || bloqueoResolucion) return;
 
   resolucionReducida = true;
 
@@ -305,8 +322,8 @@ function dibujarManos(resultado) {
     y: desplazamientoY + punto.y * video.videoHeight * escala,
   });
 
-  const grosorLinea = Math.max(3, Math.round(lienzo.width * 0.025));
-  const radioPunto = Math.max(3, Math.round(lienzo.width * 0.02));
+  const grosorLinea = Math.max(2, Math.round(lienzo.width * 0.01));
+  const radioPunto = Math.max(2, Math.round(lienzo.width * 0.015));
 
   for (const puntos of resultado.landmarks || []) {
     contexto.strokeStyle = '#6a45c2';
@@ -676,6 +693,7 @@ const mantenedorReto = crearMantenedor(MS_MANTENER_RETO);
 const mantenedorLimpiar = crearMantenedor(MS_MANTENER_LIMPIAR);
 const mantenedorDeshacer = crearMantenedor(MS_MANTENER_DESHACER);
 const mantenedorRehacer = crearMantenedor(MS_MANTENER_DESHACER);
+const mantenedorDeteccion = crearMantenedor(MS_MANTENER_DETECCION);
 
 /**
  * Pulgar arriba un segundo: emite gesto:listo.
@@ -1006,6 +1024,7 @@ function procesarManoPerdida(ahora) {
   mantenedorMicrofono.reiniciar();
   mantenedorEliminar.reiniciar();
   mantenedorRA.reiniciar();
+  reiniciarPulsar();
   ocultarProgreso();
   if (!agarrando) {
     ocultarCursor();
@@ -1075,6 +1094,7 @@ function procesarAgarre(resultado, ahora) {
     registrarBloqueoAgarre(enPinza ? 'pinza' : 'palma abierta');
   }
 
+  procesarPulsarBoton(indiceArriba && !enPinza && !palmaAbierta, ahora);
   procesarListo(puntos, ahora);
   procesarPaleta(puntos, ahora);
   procesarMicrofono(puntos, ahora);
@@ -1082,6 +1102,146 @@ function procesarAgarre(resultado, ahora) {
   procesarEliminar(puntos, ahora);
   procesarRA(puntos, ahora);
   mostrarCursor(suavizado.x, suavizado.y);
+}
+
+/**
+ * Dos palmas abiertas con los pulgares juntos (👐). Es la seña que
+ * activa o apaga el modo de detección.
+ * @param {Array<Array<{x: number, y: number}>>} manos
+ */
+function esPalmasJuntas(manos) {
+  if (manos.length < 2) return false;
+  const [a, b] = manos;
+  const tamano = Math.max(tamanoMano(a), tamanoMano(b));
+  return esPalmaAbierta(a)
+    && esPalmaAbierta(b)
+    && distanciaPx(a[4], b[4]) < FACTOR_PULGARES_JUNTOS * tamano;
+}
+
+/**
+ * Botón de la interfaz que el índice puede pulsar a los 2 s, o null. Los
+ * botones que toman un elemento de la paleta quedan fuera: ahí el índice
+ * toma el elemento al instante, como antes.
+ * @param {number} x
+ * @param {number} y
+ * @returns {Element|null}
+ */
+function botonPulsable(x, y) {
+  const elemento = document.elementFromPoint(x * window.innerWidth, y * window.innerHeight);
+  const boton = elemento?.closest('button, label.boton-menu, a[href], [role="button"]');
+  if (!boton || boton.disabled || boton.closest('#lienzo-3d')) return null;
+  if (boton.matches('[data-accion="agregar"][data-elemento], [data-particula][data-accion-particula="agregar"]')) {
+    return null;
+  }
+  return boton;
+}
+
+/** Cancela la pulsación en curso: bajó el índice o cambió de botón. */
+function reiniciarPulsar() {
+  if (objetivoPulsar) ocultarProgreso();
+  objetivoPulsar = null;
+  inicioPulsar = 0;
+  pulsadoEnPose = false;
+}
+
+/**
+ * Índice arriba sobre un botón: muestra el círculo verde y, a los 2 s,
+ * pulsa el botón. No vuelve a pulsarlo hasta bajar el índice o cambiar
+ * de botón.
+ * @param {boolean} apuntando - Índice arriba, sin pinza ni palma abierta.
+ * @param {number} ahora
+ */
+function procesarPulsarBoton(apuntando, ahora) {
+  const boton = apuntando && suavizado ? botonPulsable(suavizado.x, suavizado.y) : null;
+  if (!boton) {
+    reiniciarPulsar();
+    return;
+  }
+  if (boton !== objetivoPulsar) {
+    reiniciarPulsar();
+    objetivoPulsar = boton;
+    inicioPulsar = ahora;
+  }
+  if (pulsadoEnPose) return;
+
+  const avance = (ahora - inicioPulsar) / MS_PULSAR_BOTON;
+  if (avance < 1) {
+    mostrarProgreso(suavizado.x, suavizado.y, avance);
+    return;
+  }
+  pulsadoEnPose = true;
+  ocultarProgreso();
+  boton.click();
+}
+
+/**
+ * Palmas juntas medio segundo: activa o apaga el modo de detección. Se
+ * mira siempre, también con el modo apagado; es lo único que se atiende ahí.
+ * @param {Array<Array<{x: number, y: number}>>} manos
+ * @param {number} ahora
+ */
+function procesarModoDeteccion(manos, ahora) {
+  const [a, b] = manos;
+  const x = a && b ? 1 - (a[4].x + b[4].x) / 2 : 0.5;
+  const y = a && b ? (a[4].y + b[4].y) / 2 : 0.5;
+  if (mantenedorDeteccion.actualizar(esPalmasJuntas(manos), ahora, x, y)) alternarDeteccion();
+}
+
+/** Enciende o apaga el modo de detección. Al apagarlo se suelta lo que se lleve. */
+function alternarDeteccion() {
+  if (modoDeteccion) {
+    limpiarEstadoGestos();
+    modoDeteccion = false;
+    emit('gesto:deteccion', { activo: false });
+    emit('ui:mensaje', {
+      tipo: 'aviso',
+      texto: 'Gestos apagados. La cámara sigue encendida; junta las palmas por el pulgar para volver a activarlos.',
+    });
+    return;
+  }
+  modoDeteccion = true;
+  emit('gesto:deteccion', { activo: true });
+  emit('ui:mensaje', {
+    tipo: 'correcto',
+    texto: 'Gestos activados. Junta las palmas por el pulgar otra vez para apagarlos.',
+  });
+}
+
+/**
+ * Suelta lo que se lleve, oculta el cursor y cancela las esperas de los
+ * gestos. Lo usan al apagar el modo de detección y al detener los gestos.
+ */
+function limpiarEstadoGestos() {
+  if (agarrando) emit('gesto:seleccionar-fin', { ...suavizado });
+  if (manoEnCuadro && suavizado) emit('gesto:soltar', { ...suavizado, cancelado: true });
+  manoEnCuadro = false;
+  palmaAntes = false;
+  puntoPunoAnterior = null;
+  puntoPunoSuave = null;
+  mantenedorReto.reiniciar();
+  mantenedorLimpiar.reiniciar();
+  mantenedorDeshacer.reiniciar();
+  mantenedorRehacer.reiniciar();
+  ultimoBloqueoAgarre = '';
+  agarrando = false;
+  cuadrosSinIndice = 0;
+  suavizado = null;
+  moverActivo = false;
+  suavizadoMover = null;
+  referenciaMover = null;
+  zoomActivo = false;
+  referenciaZoom = null;
+  ultimoFactorZoom = 1;
+  mantenedorListo.reiniciar();
+  mantenedorPaleta.reiniciar();
+  mantenedorMicrofono.reiniciar();
+  mantenedorEliminar.reiniciar();
+  ocultarCursor();
+  limpiarElementoEnCursor();
+  ocultarProgreso();
+  mantenedorRA.reiniciar();
+  reiniciarPulsar();
+  poseGirarDetectada = false;
 }
 
 /** Bucle de detección: un cuadro nuevo del video, una detección. */
@@ -1103,11 +1263,14 @@ function bucleDeteccion() {
     const resultado = landmarker.detectForVideo(video, ahora);
     actualizarManos(resultado);
     dibujarManos(resultado);
-    procesarAgarre(resultado, ahora);
-    procesarMover(resultado);
-    procesarGirar(resultado);
-    procesarPosesNuevas(resultado, ahora);
-    procesarZoom(resultado);
+    procesarModoDeteccion(resultado.landmarks || [], ahora);
+    if (modoDeteccion) {
+      procesarAgarre(resultado, ahora);
+      procesarMover(resultado);
+      procesarGirar(resultado);
+      procesarPosesNuevas(resultado, ahora);
+      procesarZoom(resultado);
+    }
     medirFPS(ahora);
   } catch (error) {
     console.warn('[gestos] No se pudo detectar en este cuadro:', error);
@@ -1162,33 +1325,8 @@ export async function iniciarGestos() {
  */
 export function detenerGestos() {
   detenido = true;
-  if (agarrando) emit('gesto:seleccionar-fin', { ...suavizado });
-  if (manoEnCuadro && suavizado) emit('gesto:soltar', { ...suavizado, cancelado: true });
-  manoEnCuadro = false;
-  palmaAntes = false;
-  puntoPunoAnterior = null;
-  puntoPunoSuave = null;
-  mantenedorReto.reiniciar();
-  mantenedorLimpiar.reiniciar();
-  mantenedorDeshacer.reiniciar();
-  mantenedorRehacer.reiniciar();
-  ultimoBloqueoAgarre = '';
-  agarrando = false;
-  cuadrosSinIndice = 0;
-  suavizado = null;
-  moverActivo = false;
-  suavizadoMover = null;
-  referenciaMover = null;
-  zoomActivo = false;
-  referenciaZoom = null;
-  ultimoFactorZoom = 1;
-  mantenedorListo.reiniciar();
-  mantenedorPaleta.reiniciar();
-  mantenedorMicrofono.reiniciar();
-  mantenedorEliminar.reiniciar();
-  ocultarCursor();
-  limpiarElementoEnCursor();
-  ocultarProgreso();
+  modoDeteccion = false;
+  limpiarEstadoGestos();
   cancelAnimationFrame(idAnimacion);
   detenerStream();
   if (video) video.srcObject = null;
@@ -1196,6 +1334,25 @@ export function detenerGestos() {
   ultimasManos = [];
   ultimoNumeroManos = -1;
   iniciado = false;
+}
+
+/** Devuelve el flujo de la cámara que comparten los gestos y la RA, o null si no hay. */
+export function obtenerFlujoCamara() {
+  return stream;
+}
+
+/** Devuelve true si el modo de detección está encendido. */
+export function obtenerModoDeteccion() {
+  return modoDeteccion;
+}
+
+/**
+ * Impide cambiar la resolución de la cámara mientras la RA la usa: MindAR
+ * fija su tamaño de entrada al encenderse.
+ * @param {boolean} bloquear
+ */
+export function bloquearCambioDeResolucion(bloquear) {
+  bloqueoResolucion = Boolean(bloquear);
 }
 
 /**

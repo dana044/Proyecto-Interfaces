@@ -2312,6 +2312,8 @@ export function iniciarComandosDeAtomos() {
         const id = atomoBajoPuntero(punto.x, punto.y);
         if (!id) return;
         const elemento = atomos.get(id)?.elemento;
+        // Antes de borrar, para que deshacer lo devuelva.
+        guardarFoto(`eliminar ${ELEMENTOS[elemento]?.nombre ?? elemento}`);
         if (!eliminarAtomo(id)) return;
         emit('gesto:eliminar', { id });
         enviarMensaje('aviso', `Eliminé el átomo de ${ELEMENTOS[elemento]?.nombre ?? elemento}.`);
@@ -2377,6 +2379,7 @@ export function iniciarComandosDeAtomos() {
             for (let i = 0; i < cantidad; i++) {
                 const lista = atomosDeElemento(elemento);
                 if (lista.length === 0) break;
+                guardarFoto(`quitar ${nombre}`);
                 eliminarAtomo(lista[lista.length - 1].id);
                 quitados += 1;
             }
@@ -2829,22 +2832,6 @@ function colocarParticulaEnMano(x, y) {
 }
 
 /**
- * Pulsa con el cursor el elemento de la interfaz bajo el punto.
- * Los botones de agregar no se pulsan: se toman con el puño.
- * @param {number} x
- * @param {number} y
- */
-function clicVirtual(x, y) {
-    const elemento = document.elementFromPoint(x * window.innerWidth, y * window.innerHeight);
-    if (!elemento) return;
-    if (elemento.closest('[data-accion="agregar"], [data-particula]')) {
-        enviarMensaje('aviso', 'Para tomar un elemento, cierra la mano sobre su botón.');
-        return;
-    }
-    elemento.click();
-}
-
-/**
  * Punto del tablero (0 a 1) o fuera de él: dice si la posición de
  * la ventana cae dentro del tablero.
  * @param {number} x
@@ -2878,8 +2865,7 @@ function tomarBajoPuntero(x, y) {
 }
 
 /**
- * Índice arriba: fuera del tablero toma un elemento de la paleta o pulsa
- * la interfaz. Dentro del tablero agarra un átomo, salvo que ya se lleve
+ * Índice arriba: fuera del tablero toma un elemento de la paleta. Dentro del tablero agarra un átomo, salvo que ya se lleve
  * algo en la mano.
  * @param {number} x
  * @param {number} y
@@ -2887,8 +2873,7 @@ function tomarBajoPuntero(x, y) {
 function manejarInicioGesto(x, y) {
     const llevaAlgo = Boolean(elementoEnMano || particulaEnMano);
     if (!estaEnTablero(x, y)) {
-        if (!llevaAlgo && tomarBajoPuntero(x, y)) return;
-        clicVirtual(x, y);
+        if (!llevaAlgo) tomarBajoPuntero(x, y);
         return;
     }
     if (llevaAlgo) return;
